@@ -1,5 +1,12 @@
 PKG_CHECK_MODULES(COMMON_DEP
     dlog
+    sqlite3
+    db-util
+    REQUIRED
+    )
+
+FIND_PACKAGE(
+    Boost
     REQUIRED
     )
 
@@ -20,17 +27,23 @@ SET(COMMON_SOURCES
     ${COMMON_PATH}/dpl/core/src/noncopyable.cpp
     ${COMMON_PATH}/dpl/core/src/serialization.cpp
     ${COMMON_PATH}/dpl/core/src/singleton.cpp
+    ${COMMON_PATH}/dpl/core/src/string.cpp
+    ${COMMON_PATH}/dpl/core/src/errno_string.cpp
+    ${COMMON_PATH}/dpl/db/src/sql_connection.cpp
+    ${COMMON_PATH}/dpl/db/src/naive_synchronization_object.cpp
     ${COMMON_PATH}/service/security-manager-common.cpp
     )
 
 INCLUDE_DIRECTORIES(SYSTEM
     ${COMMON_DEP_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
     )
 
 INCLUDE_DIRECTORIES(
     ${COMMON_PATH}/common
     ${COMMON_PATH}/dpl/core/include
     ${COMMON_PATH}/dpl/log/include
+    ${COMMON_PATH}/dpl/db/include
     )
 
 ADD_LIBRARY(${TARGET_SERVER_COMMON} SHARED ${COMMON_SOURCES})
