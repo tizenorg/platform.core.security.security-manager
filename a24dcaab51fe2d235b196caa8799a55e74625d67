@@ -1,0 +1,10 @@
+Code-Review+2: Casey Schaufler <casey.schaufler@intel.com>
+Code-Review+1: Jacek Bukarewicz <j.bukarewicz@samsung.com>
+Verified+1: Jacek Bukarewicz <j.bukarewicz@samsung.com>
+Code-Review+2: Zbigniew Jasinski <z.jasinski@samsung.com>
+Verified+1: Zbigniew Jasinski <z.jasinski@samsung.com>
+Submitted-by: Zbigniew Jasinski <z.jasinski@samsung.com>
+Submitted-at: Fri, 16 May 2014 04:11:27 -0700
+Reviewed-on: https://review.tizen.org/gerrit/21165
+Project: platform/core/security/security-manager
+Branch: refs/heads/tizen

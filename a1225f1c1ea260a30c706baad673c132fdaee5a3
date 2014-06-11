@@ -1,0 +1,8 @@
+Code-Review+2: Bartlomiej Grzelewski <b.grzelewski@samsung.com>
+Code-Review+1: Pawel Polawski <p.polawski@samsung.com>
+Verified+1: Pawel Polawski <p.polawski@samsung.com>
+Submitted-by: Casey Schaufler <casey.schaufler@intel.com>
+Submitted-at: Thu, 17 Apr 2014 08:07:41 -0700
+Reviewed-on: https://review.tizen.org/gerrit/19610
+Project: platform/core/security/security-manager
+Branch: refs/heads/tizen

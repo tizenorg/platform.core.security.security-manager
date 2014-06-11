@@ -1,0 +1,11 @@
+Code-Review+2: Casey Schaufler <casey.schaufler@intel.com>
+Code-Review+1: Michael Leibowitz <michael.leibowitz@intel.com>
+Code-Review+1: Rusty Lynch <rustylynch1234@gmail.com>
+Verified+1: Rusty Lynch <rustylynch1234@gmail.com>
+Code-Review+1: Michael Demeter <michael.demeter@intel.com>
+Code-Review+1: Elena Reshetova <elena.reshetova@intel.com>
+Submitted-by: Michael Leibowitz <michael.leibowitz@intel.com>
+Submitted-at: Fri, 23 Aug 2013 10:37:51 -0700
+Reviewed-on: https://review.tizen.org/gerrit/8509
+Project: platform/core/security/security-manager
+Branch: refs/heads/tizen
