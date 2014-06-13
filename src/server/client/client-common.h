@@ -39,7 +39,7 @@ extern "C" {
     struct msghdr;
 }
 
-namespace SecurityServer {
+namespace SecurityManager {
 
 typedef std::vector<unsigned char> RawBuffer;
 
