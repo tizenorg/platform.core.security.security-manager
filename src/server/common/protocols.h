@@ -22,8 +22,8 @@
  * @brief       This file contains list of all protocols suported by security-sever.
  */
 
-#ifndef _SECURITY_SERVER_PROTOCOLS_
-#define _SECURITY_SERVER_PROTOCOLS_
+#ifndef _SECURITY_MANAGER_PROTOCOLS_
+#define _SECURITY_MANAGER_PROTOCOLS_
 
 #include <vector>
 #include <string>
@@ -50,3 +50,4 @@ enum class SecurityModuleCall
 
 
 #endif // _SECURITY_SERVER_PROTOCOLS_
+
