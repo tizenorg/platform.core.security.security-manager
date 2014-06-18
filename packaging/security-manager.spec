@@ -63,7 +63,6 @@ mkdir -p %{buildroot}/usr/share/license
 cp LICENSE %{buildroot}/usr/share/license/%{name}
 cp LICENSE %{buildroot}/usr/share/license/libsecurity-manager-client
 mkdir -p %{buildroot}/etc/security/
-cp security-manager-audit.conf %{buildroot}/etc/security/
 mkdir -p %{buildroot}/etc/smack/
 cp app-rules-template.smack %{buildroot}/etc/smack/
 %make_install
@@ -114,7 +113,6 @@ fi
 %attr(-,root,root) /usr/lib/systemd/system/security-manager.target
 %attr(-,root,root) /usr/lib/systemd/system/sockets.target.wants/security-manager-installer.socket
 %attr(-,root,root) /usr/lib/systemd/system/security-manager-installer.socket
-%attr(-,root,root) /etc/security/security-manager-audit.conf
 %attr(-,root,root) /etc/smack/app-rules-template.smack
 %{_datadir}/license/%{name}
 
