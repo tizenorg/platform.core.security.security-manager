@@ -58,6 +58,7 @@ export LDFLAGS+="-Wl,--rpath=%{_libdir}"
 
 %cmake . -DVERSION=%{version} \
         -DBIN_INSTALL_DIR=%{_bindir} \
+        -DDB_INSTALL_DIR=%{TZ_SYS_DB} \
         -DCMAKE_BUILD_TYPE=%{?build_type:%build_type}%{!?build_type:RELEASE} \
         -DCMAKE_VERBOSE_MAKEFILE=ON
 make %{?jobs:-j%jobs}
@@ -118,6 +119,8 @@ fi
 %attr(-,root,root) %{_unitdir}/sockets.target.wants/security-manager-installer.socket
 %attr(-,root,root) %{_unitdir}/security-manager-installer.socket
 %attr(-,root,root) %{TZ_SYS_SMACK}/app-rules-template.smack
+%config(noreplace) %attr(0600,root,%{TZ_SYS_USER_GROUP}) %{TZ_SYS_DB}/.security-manager.db
+%config(noreplace) %attr(0600,root,%{TZ_SYS_USER_GROUP}) %{TZ_SYS_DB}/.security-manager.db-journal
 %{_datadir}/license/%{name}
 
 %files -n libsecurity-manager-client
