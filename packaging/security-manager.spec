@@ -82,30 +82,17 @@ ln -s ../security-manager-installer.socket %{buildroot}/%{_unitdir}/sockets.targ
 rm -rf %{buildroot}
 
 %post
-systemctl daemon-reload
-if [ $1 = 1 ]; then
-    # installation
-    systemctl start security-manager.service
-fi
-
-if [ $1 = 2 ]; then
-    # update
-    systemctl restart security-manager.service
-fi
+/sbin/ldconfig
+%systemd_post security-manager.service
 chsmack -a System %{TZ_SYS_DB}/.security-manager.db
 chsmack -a System %{TZ_SYS_DB}/.security-manager.db-journal
 
 %preun
-if [ $1 = 0 ]; then
-    # unistall
-    systemctl stop security-manager.service
-fi
+%systemd_preun security-manager.service
 
 %postun
-if [ $1 = 0 ]; then
-    # unistall
-    systemctl daemon-reload
-fi
+/sbin/ldconfig
+%systemd_postun_with_restart security-manager.service
 
 %post -n libsecurity-manager-client -p /sbin/ldconfig
 
