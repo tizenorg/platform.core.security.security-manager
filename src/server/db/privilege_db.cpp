@@ -159,7 +159,7 @@ void PrivilegeDb::RemoveApplication(const std::string &appId,
 }
 
 void PrivilegeDb::GetAppPrivileges(const std::string &appId,
-        TPrivilegesList &currentPrivileges)
+        std::vector<std::string> &currentPrivileges)
 {
     try_catch<void>([&] {
         DB::SqlConnection::DataCommandAutoPtr command =
@@ -176,7 +176,7 @@ void PrivilegeDb::GetAppPrivileges(const std::string &appId,
 }
 
 void PrivilegeDb::GetPkgPrivileges(const std::string &pkgId,
-        TPrivilegesList &currentPrivileges)
+        std::vector<std::string> &currentPrivileges)
 {
     try_catch<void>([&] {
         DB::SqlConnection::DataCommandAutoPtr command =
@@ -193,7 +193,7 @@ void PrivilegeDb::GetPkgPrivileges(const std::string &pkgId,
 }
 
 void PrivilegeDb::UpdatePrivileges(const std::string &appId,
-        const std::string &pkgId, const TPrivilegesList &privileges)
+        const std::string &pkgId, const std::vector<std::string> &privileges)
 {
     try_catch<void>([&] {
         DB::SqlConnection::DataCommandAutoPtr commandAdd =
@@ -210,7 +210,7 @@ void PrivilegeDb::UpdatePrivileges(const std::string &appId,
         std::unordered_set<std::string> permSet(privileges.begin(), privileges.end());
 
         // Compare old and new privileges sets
-        TPrivilegesList oldPrivileges;
+        std::vector<std::string> oldPrivileges;
         GetAppPrivileges(appId, oldPrivileges);
         for (const auto &privilege : oldPrivileges) {
             auto it = permSet.find(privilege);
