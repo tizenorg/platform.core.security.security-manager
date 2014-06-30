@@ -43,6 +43,7 @@ namespace SecurityManager {
 typedef std::vector<std::string> TPrivilegesList;
 
 enum class QueryType {
+    EGetAppPrivileges,
     EGetPkgPrivileges,
     EAddApplication,
     ERemoveApplication,
@@ -59,6 +60,7 @@ class PrivilegeDb {
 private:
     SecurityManager::DB::SqlConnection *mSqlConnection;
     const std::map<QueryType, const char * const > Queries = {
+        { QueryType::EGetAppPrivileges, "SELECT privilege_name FROM app_privilege_view WHERE app_name=?"},
         { QueryType::EGetPkgPrivileges, "SELECT privilege_name FROM app_privilege_view WHERE pkg_name=?"},
         { QueryType::EAddApplication, "INSERT INTO app_pkg_view (app_name, pkg_name) VALUES (?, ?)" },
         { QueryType::ERemoveApplication, "DELETE FROM app_pkg_view WHERE app_name=? AND pkg_name=?" },
@@ -76,17 +78,6 @@ private:
      *
      */
     bool PkgIdExists(const std::string &pkgId);
-
-    /**
-     * Check if there's a tuple of (appId, packageId) inside the database
-     *
-     * @param appId - application identifier
-     * @param pkgId - package identifier
-     * @param[out] currentPrivileges - list of current privileges assigned to tuple (appId, pkgId)
-     * @exception DB::SqlConnection::Exception::InternalError on internal error
-     */
-    void GetPkgPrivileges(const std::string &pkgId,
-            TPrivilegesList &currentPrivileges);
 
 public:
     class Exception
@@ -127,6 +118,26 @@ public:
     void RollbackTransaction(void);
 
     /**
+     * Retrieve list of privileges assigned to a appId
+     *
+     * @param appId - package identifier
+     * @param[out] currentPrivileges - list of current privileges assigned to appId
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetAppPrivileges(const std::string &appId,
+            TPrivilegesList &currentPrivilege);
+
+    /**
+     * Retrieve list of privileges assigned to a pkgId
+     *
+     * @param pkgId - package identifier
+     * @param[out] currentPrivileges - list of current privileges assigned to pkgId
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetPkgPrivileges(const std::string &pkgId,
+            TPrivilegesList &currentPrivilege);
+
+    /**
      * Add an application into the database
      *
      * @param appId - application identifier
@@ -149,19 +160,16 @@ public:
             bool &pkgIdIsNoMore);
 
     /**
-     * Update privileges belonging to tuple (appId, pkgId)
+     * Update privileges assigned to application
+     * To assure data integrity this method must be called inside db transaction.
      *
      * @param appId - application identifier
      * @param pkgId - package identifier
      * @param privileges - list of privileges to assign
-     * @param[out] addedPrivileges - return list of added privileges
-     * @param[out] removedPrivileges - return list of removed privileges
      * @exception DB::SqlConnection::Exception::InternalError on internal error
      */
-    void UpdatePrivileges(const std::string &appId,
-            const std::string &pkgId, const TPrivilegesList &privileges,
-            TPrivilegesList &addedPrivileges,
-            TPrivilegesList &removedPrivileges);
+    void UpdatePrivileges(const std::string &appId, const std::string &pkgId,
+            const TPrivilegesList &privileges);
 
 };
 
