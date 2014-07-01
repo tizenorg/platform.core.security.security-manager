@@ -28,6 +28,7 @@
 #include <generic-socket-manager.h>
 #include <message-buffer.h>
 #include <connection-info.h>
+#include <privilege_db.h>
 
 namespace SecurityManager {
 
@@ -60,6 +61,7 @@ public:
 
 private:
     ConnectionInfoMap m_connectionInfoMap;
+    PrivilegeDb m_privilegeDb;
 
     /**
      * Handle request from a client
