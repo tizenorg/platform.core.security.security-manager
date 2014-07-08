@@ -123,7 +123,7 @@ class LogSystem :
                const char *function);
 
     /**
-     * Set default's DLOG provider Tag
+     * Set default's provider Tag
      */
     void SetTag(const char *tag);
 
