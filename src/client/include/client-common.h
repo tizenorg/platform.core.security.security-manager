@@ -60,6 +60,15 @@ int sendToManagerAncData(char const * const interface, const RawBuffer &send, st
  */
 int try_catch(const std::function<int()>& func);
 
+/**
+ * Get SMACK label from EXEC labels of a file.
+ * SMACK label should be freed by caller
+ *
+ * @param path file path to take label from
+ * @return SECURITY_MANAGER_API_SUCCESS on success, error code otherwise
+ */
+int getLabelFromBinary(char **smack_label, const char *path);
+
 } // namespace SecurityManager
 
 #endif // _SECURITY_MANAGER_CLIENT_

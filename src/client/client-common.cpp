@@ -27,6 +27,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/smack.h>
+#include <sys/xattr.h>
+#include <linux/xattr.h>
 #include <unistd.h>
 
 #include <dpl/log/log.h>
@@ -35,6 +38,7 @@
 #include <dpl/singleton_safe_impl.h>
 
 #include <message-buffer.h>
+#include <smack-common.h>
 
 #include <security-manager.h>
 
@@ -167,6 +171,54 @@ private:
 } // namespace anonymous
 
 namespace SecurityManager {
+
+int getLabelFromBinary(char **smackLabel, const char *path)
+{
+    char buffer[SMACK_LABEL_LEN + 1];
+    int ret;
+
+    LogDebug("Entering function: " << __func__ << ". Params: smackLabel=" << smackLabel <<
+            " path=" << path);
+
+    /* First try: check SMACKEXEC label on binary */
+    ret = getxattr(path, XATTR_NAME_SMACKEXEC, buffer, sizeof(buffer));
+    if (ret > 0)
+        goto finalize;
+    if (errno != ENODATA)
+        goto error;
+
+    /* Second try: check TIZENEXEC label on binary */
+    ret = getxattr(path, XATTR_NAME_TIZENEXEC, buffer, sizeof(buffer));
+    if (ret > 0)
+        goto finalize;
+    if (errno != ENODATA)
+        goto error;
+
+    /* Third try: check TIZENEXEC label on symbolic link */
+    ret = lgetxattr(path, XATTR_NAME_TIZENEXEC, buffer, sizeof(buffer));
+    if (ret > 0)
+        goto finalize;
+    if (errno != ENODATA)
+        goto error;
+
+    /* None of labels found  return NULL*/
+    *smackLabel = NULL;
+    return SECURITY_MANAGER_API_SUCCESS;
+
+finalize:
+    /* Success! */
+    buffer[ret] = '\0';  /* because getxattr does not add 0 at the end! */
+    *smackLabel = strdup(buffer);
+    if (*smackLabel == NULL) {
+        LogError("Cannot allocate memory for smackLabel");
+        return SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+    }
+    return SECURITY_MANAGER_API_SUCCESS;
+
+error:
+    LogError("Getting exec label from " << path << " failed");
+    return SECURITY_MANAGER_API_ERROR_GETTING_FILE_LABEL_FAILED;
+}
 
 
 int sendToServer(char const * const interface, const RawBuffer &send, MessageBuffer &recv) {
