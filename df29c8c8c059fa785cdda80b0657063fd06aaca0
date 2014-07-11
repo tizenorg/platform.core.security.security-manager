@@ -1,0 +1,10 @@
+Code-Review+2: Casey Schaufler <casey.schaufler@intel.com>
+Code-Review+1: Jacek Bukarewicz <j.bukarewicz@samsung.com>
+Code-Review+1: Jan Cybulski <j.cybulski@samsung.com>
+Verified+1: Jan Cybulski <j.cybulski@samsung.com>
+Code-Review+1: Build Bot <b.bot@partner.samsung.com>
+Submitted-by: Casey Schaufler <casey.schaufler@intel.com>
+Submitted-at: Fri, 11 Jul 2014 08:42:11 -0700
+Reviewed-on: https://review.tizen.org/gerrit/24124
+Project: platform/core/security/security-manager
+Branch: refs/heads/tizen
