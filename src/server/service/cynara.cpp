@@ -127,4 +127,49 @@ void CynaraAdmin::SetPolicies(const std::vector<CynaraAdminPolicy> &policies)
         "Error while updating Cynara policy.");
 }
 
+void CynaraAdmin::UpdatePackagePolicy(
+    const std::string &pkg,
+    const std::string &user,
+    const std::vector<std::string> &oldPrivileges,
+    const std::vector<std::string> &newPrivileges)
+{
+    CynaraAdmin cynaraAdmin;
+    std::vector<CynaraAdminPolicy> policies;
+
+    // Perform sort-merge join on oldPrivileges and newPrivileges.
+    // Assume that they are already sorted and without duplicates.
+    auto oldIter = oldPrivileges.begin();
+    auto newIter = newPrivileges.begin();
+
+    while (oldIter != oldPrivileges.end() && newIter != newPrivileges.end()) {
+        int compare = oldIter->compare(*newIter);
+        if (compare == 0) {
+            ++oldIter;
+            ++newIter;
+            continue;
+        } else if (compare < 0) {
+            policies.push_back(CynaraAdminPolicy(pkg, user, *oldIter,
+                    CynaraAdminPolicy::Operation::Delete));
+            ++oldIter;
+        } else {
+            policies.push_back(CynaraAdminPolicy(pkg, user, *newIter,
+                    CynaraAdminPolicy::Operation::Allow));
+            ++newIter;
+        }
+    }
+
+    for (; oldIter != oldPrivileges.end(); ++oldIter) {
+        policies.push_back(CynaraAdminPolicy(pkg, user, *oldIter,
+                    CynaraAdminPolicy::Operation::Delete));
+    }
+
+    for (; newIter != newPrivileges.end(); ++newIter) {
+        policies.push_back(CynaraAdminPolicy(pkg, user, *newIter,
+                    CynaraAdminPolicy::Operation::Allow));
+    }
+
+    cynaraAdmin.SetPolicies(policies);
+}
+
+
 } // namespace SecurityManager
