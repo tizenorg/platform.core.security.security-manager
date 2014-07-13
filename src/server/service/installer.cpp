@@ -34,6 +34,7 @@
 #include "smack-rules.h"
 #include "smack-labels.h"
 #include "privilege_db.h"
+#include "cynara.h"
 
 namespace SecurityManager {
 
@@ -210,12 +211,18 @@ bool InstallerService::processAppInstall(MessageBuffer &buffer, MessageBuffer &s
         m_privilegeDb.AddApplication(req.appId, req.pkgId, pkgIdIsNew);
         m_privilegeDb.UpdateAppPrivileges(req.appId, req.privileges);
         m_privilegeDb.GetPkgPrivileges(req.pkgId, newPkgPrivileges);
-        // TODO: configure Cynara rules based on oldPkgPrivileges and newPkgPrivileges
+        CynaraAdmin::UpdatePackagePolicy(req.pkgId,
+            CYNARA_ADMIN_WILDCARD, /* TODO: pass proper user identifier */
+            oldPkgPrivileges, newPkgPrivileges);
         m_privilegeDb.CommitTransaction();
         LogDebug("Application installation commited to database");
     } catch (const PrivilegeDb::Exception::InternalError &e) {
         m_privilegeDb.RollbackTransaction();
         LogError("Error while saving application info to database: " << e.DumpToString());
+        goto error_label;
+    } catch (const CynaraException::Base &e) {
+        m_privilegeDb.RollbackTransaction();
+        LogError("Error while setting Cynara rules for application: " << e.DumpToString());
         goto error_label;
     }
 
@@ -305,13 +312,19 @@ bool InstallerService::processAppUninstall(MessageBuffer &buffer, MessageBuffer 
             m_privilegeDb.UpdateAppPrivileges(appId, std::vector<std::string>());
             m_privilegeDb.RemoveApplication(appId, removePkg);
             m_privilegeDb.GetPkgPrivileges(pkgId, newPkgPrivileges);
-            // TODO: configure Cynara rules based on oldPkgPrivileges and newPkgPrivileges
+            CynaraAdmin::UpdatePackagePolicy(pkgId,
+                CYNARA_ADMIN_WILDCARD, /* TODO: pass proper user identifier */
+                oldPkgPrivileges, newPkgPrivileges);
             m_privilegeDb.CommitTransaction();
             LogDebug("Application uninstallation commited to database");
         }
     } catch (const PrivilegeDb::Exception::InternalError &e) {
         m_privilegeDb.RollbackTransaction();
         LogError("Error while removing application info from database: " << e.DumpToString());
+        goto error_label;
+    } catch (const CynaraException::Base &e) {
+        m_privilegeDb.RollbackTransaction();
+        LogError("Error while setting Cynara rules for application: " << e.DumpToString());
         goto error_label;
     }
 

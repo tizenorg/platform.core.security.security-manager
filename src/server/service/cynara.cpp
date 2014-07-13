@@ -127,4 +127,53 @@ void CynaraAdmin::SetPolicies(const std::vector<CynaraAdminPolicy> &policies)
         "Error while updating Cynara policy.");
 }
 
+void CynaraAdmin::UpdatePackagePolicy(
+    const std::string &pkg,
+    const std::string &user,
+    const std::vector<std::string> &oldPrivileges,
+    const std::vector<std::string> &newPrivileges)
+{
+    CynaraAdmin cynaraAdmin;
+    std::vector<CynaraAdminPolicy> policies;
+
+    // Perform sort-merge join on oldPrivileges and newPrivileges.
+    // Assume that they are already sorted and without duplicates.
+    auto oldIter = oldPrivileges.begin();
+    auto newIter = newPrivileges.begin();
+    do {
+        int compar;
+        /*
+         * Calculate value of compar as follows:
+         *  0 - *oldIter == *newIter, privilege stays unchanged
+         * <0 - *oldIter is an old privilege to be removed
+         * >0 - *newIter is a new privilege to be added
+         */
+        if (oldIter == oldPrivileges.end()) { // Old privileges finished?
+            if (newIter == newPrivileges.end()) // New privileges finished?
+                break; // No more privileges to process
+            else
+                compar = 1; // There are still some new privileges
+        } else {
+            if (newIter == newPrivileges.end()) // New privileges finished?
+                compar = -1; // There are still some old privileges
+            else
+                compar = oldIter->compare(*newIter); // Compare them
+        }
+
+        if (compar < 0) {
+            policies.push_back(CynaraAdminPolicy(pkg, user, *oldIter++,
+                CynaraAdminPolicy::Operation::Delete));
+        } else if (compar > 0) {
+            policies.push_back(CynaraAdminPolicy(pkg, user, *newIter++,
+                CynaraAdminPolicy::Operation::Allow));
+        } else {
+            ++newIter;
+            ++oldIter;
+        }
+    } while (true);
+
+    cynaraAdmin.SetPolicies(policies);
+}
+
+
 } // namespace SecurityManager

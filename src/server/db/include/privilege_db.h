@@ -61,7 +61,7 @@ class PrivilegeDb {
 private:
     SecurityManager::DB::SqlConnection *mSqlConnection;
     const std::map<QueryType, const char * const > Queries = {
-        { QueryType::EGetPkgPrivileges, "SELECT privilege_name FROM app_privilege_view WHERE pkg_name=?"},
+        { QueryType::EGetPkgPrivileges, "SELECT DISTINCT privilege_name FROM app_privilege_view WHERE pkg_name=? ORDER BY privilege_name"},
         { QueryType::EAddApplication, "INSERT INTO app_pkg_view (app_name, pkg_name) VALUES (?, ?)" },
         { QueryType::ERemoveApplication, "DELETE FROM app_pkg_view WHERE app_name=?" },
         { QueryType::EAddAppPrivileges, "INSERT INTO app_privilege_view (app_name, privilege_name) VALUES (?, ?)" },
