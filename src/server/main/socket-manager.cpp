@@ -305,7 +305,7 @@ void SocketManager::ReadyForWriteBuffer(int sock) {
             break;
         case EPIPE:
         default:
-            LogDebug("Error during write: " << strerror(err));
+            LogError("Error during write: " << strerror(err));
             CloseSocket(sock);
             break;
         }

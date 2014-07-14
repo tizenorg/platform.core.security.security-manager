@@ -110,8 +110,6 @@ int security_manager_app_install(const app_inst_req *p_req)
     using namespace SecurityManager;
     MessageBuffer send, recv;
 
-    LogDebug("app_install() called");
-
     return try_catch([&] {
         //checking parameters
         if (!p_req)
@@ -147,8 +145,6 @@ int security_manager_app_uninstall(const app_inst_req *p_req)
 {
     using namespace SecurityManager;
     MessageBuffer send, recv;
-
-    LogDebug("app_uninstall() called");
 
     return try_catch([&] {
         //checking parameters

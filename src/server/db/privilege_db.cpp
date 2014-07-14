@@ -102,11 +102,11 @@ bool PrivilegeDb::PkgIdExists(const std::string &pkgId)
                         Queries.at(QueryType::EPkgIdExists));
         command->BindString(1, pkgId.c_str());
         if (command->Step()) {
-            LogPedantic("PkgId: " << pkgId << " found in database");
-            command->Reset();
+            // pkgId found in the database
             return true;
         };
 
+        // pkgId not found in the database
         return false;
     });
 }
@@ -123,7 +123,9 @@ bool PrivilegeDb::GetAppPkgId(const std::string &appId, std::string &pkgId)
             return false;
         }
 
+        // application package found in the database, get it
         pkgId = command->GetColumnString(0);
+
         return true;
     });
 }
@@ -142,12 +144,12 @@ void PrivilegeDb::AddApplication(const std::string &appId,
         command->BindString(2, pkgId.c_str());
 
         if (command->Step()) {
-            LogPedantic("Unexpected SQLITE_ROW answer to query: " <<
+            LogDebug("Unexpected SQLITE_ROW answer to query: " <<
                     Queries.at(QueryType::EAddApplication));
         };
 
         command->Reset();
-        LogPedantic( "Added appId: " << appId << ", pkgId: " << pkgId);
+        LogDebug("Added appId: " << appId << ", pkgId: " << pkgId);
     });
 }
 
@@ -168,12 +170,12 @@ void PrivilegeDb::RemoveApplication(const std::string &appId,
         command->BindString(1, appId.c_str());
 
         if (command->Step()) {
-            LogPedantic("Unexpected SQLITE_ROW answer to query: " <<
+            LogDebug("Unexpected SQLITE_ROW answer to query: " <<
                     Queries.at(QueryType::ERemoveApplication));
         };
 
         command->Reset();
-        LogPedantic( "Removed appId: " << appId);
+        LogDebug("Removed appId: " << appId);
 
         pkgIdIsNoMore = !(this->PkgIdExists(pkgId));
     });
@@ -190,7 +192,7 @@ void PrivilegeDb::GetPkgPrivileges(const std::string &pkgId,
 
         while (command->Step()) {
             std::string privilege = command->GetColumnString(0);
-            LogPedantic ("Got privilege: "<< privilege);
+            LogDebug("Got privilege: " << privilege);
             currentPrivileges.push_back(privilege);
         };
     });
@@ -203,7 +205,12 @@ void PrivilegeDb::RemoveAppPrivileges(const std::string &appId)
             mSqlConnection->PrepareDataCommand(Queries.at(QueryType::ERemoveAppPrivileges));
 
         command->BindString(1, appId.c_str());
-        command->Step();
+        if (command->Step()) {
+            LogDebug("Unexpected SQLITE_ROW answer to query: " <<
+                    Queries.at(QueryType::ERemoveAppPrivileges));
+        }
+
+        LogDebug("Removed all privileges for appId: " << appId);
     });
 }
 
@@ -221,6 +228,7 @@ void PrivilegeDb::UpdateAppPrivileges(const std::string &appId,
             command->BindString(2, privilege.c_str());
             command->Step();
             command->Reset();
+            LogDebug("Added privilege: " << privilege << " to appId: " << appId);
         }
     });
 }
