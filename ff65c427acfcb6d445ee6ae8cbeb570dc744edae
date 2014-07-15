@@ -1,0 +1,9 @@
+Code-Review+1: Marcin Lis <m.lis@samsung.com>
+Verified+1: Marcin Lis <m.lis@samsung.com>
+Code-Review+2: Lukasz Wojciechowski <l.wojciechow@partner.samsung.com>
+Code-Review+1: Build Bot <b.bot@partner.samsung.com>
+Submitted-by: Rafal Krypa <r.krypa@samsung.com>
+Submitted-at: Tue, 15 Jul 2014 06:26:53 -0700
+Reviewed-on: https://review.tizen.org/gerrit/23846
+Project: platform/core/security/security-manager
+Branch: refs/heads/tizen
