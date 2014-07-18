@@ -27,6 +27,8 @@
 #include <dpl/serialization.h>
 
 #include <privilege-control.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "installer.h"
 #include "protocols.h"
@@ -88,6 +90,19 @@ void InstallerService::close(const CloseEvent &event)
     m_connectionInfoMap.erase(event.connectionID.counter);
 }
 
+static bool getPeerUserID(int sock, uid_t *uid) {
+    struct ucred cr;
+    socklen_t len = sizeof (cr);
+    if(!uid) {
+        return -1;
+    }
+    if ( !getsockopt(sock, SOL_SOCKET, SO_PEERCRED, &cr, &len)) {
+        *uid = cr.uid;
+        return true;
+    }
+    return false;
+}
+
 bool InstallerService::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                                   InterfaceID interfaceID)
 {
@@ -101,6 +116,14 @@ bool InstallerService::processOne(const ConnectionID &conn, MessageBuffer &buffe
     MessageBuffer send;
     bool retval = false;
 
+    uid_t uid;
+
+    if(!getPeerUserID(conn.sock, &uid)) {
+        LogError("Closing socket because of error: unable to get peer's uid");
+        m_serviceManager->Close(conn);
+        return false;
+    }
+
     if (INSTALLER_IFACE == interfaceID) {
         Try {
             // deserialize API call type
@@ -110,10 +133,10 @@ bool InstallerService::processOne(const ConnectionID &conn, MessageBuffer &buffe
 
             switch (call_type) {
                 case SecurityModuleCall::APP_INSTALL:
-                    processAppInstall(buffer, send);
+                    processAppInstall(buffer, send, uid);
                     break;
                 case SecurityModuleCall::APP_UNINSTALL:
-                    processAppUninstall(buffer, send);
+                    processAppUninstall(buffer, send, uid);
                     break;
                 default:
                     LogError("Invalid call: " << call_type_int);
@@ -146,7 +169,19 @@ bool InstallerService::processOne(const ConnectionID &conn, MessageBuffer &buffe
     return retval;
 }
 
-bool InstallerService::processAppInstall(MessageBuffer &buffer, MessageBuffer &send)
+static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
+{
+    for (const auto &appPath : req.appPaths) {
+        app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
+        if (pathType == SECURITY_MANAGER_PATH_PUBLIC && uid != 0) {
+            LogDebug("Only root can register SECURITY_MANAGER_PATH_PUBLIC path");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool InstallerService::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
 {
     bool pkgIdIsNew = false;
     std::vector<std::string> addedPermissions;
@@ -161,6 +196,12 @@ bool InstallerService::processAppInstall(MessageBuffer &buffer, MessageBuffer &s
 
     LogDebug("appId: " << req.appId);
     LogDebug("pkgId: " << req.pkgId);
+
+    if(!installRequestAuthCheck(req, uid)) {
+        LogError("Request from uid " << uid << " for app installation denied");
+        Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED);
+        return false;
+    }
 
     std::string smackLabel;
     if (!generateAppLabel(req.pkgId, smackLabel)) {
@@ -207,7 +248,7 @@ bool InstallerService::processAppInstall(MessageBuffer &buffer, MessageBuffer &s
 
         m_privilegeDb.BeginTransaction();
         m_privilegeDb.GetPkgPrivileges(req.pkgId, oldPkgPrivileges);
-        m_privilegeDb.AddApplication(req.appId, req.pkgId, pkgIdIsNew);
+        m_privilegeDb.AddApplication(req.appId, req.pkgId, pkgIdIsNew, uid);
         m_privilegeDb.UpdateAppPrivileges(req.appId, req.privileges);
         m_privilegeDb.GetPkgPrivileges(req.pkgId, newPkgPrivileges);
         // TODO: configure Cynara rules based on oldPkgPrivileges and newPkgPrivileges
@@ -264,7 +305,7 @@ error_label:
     return false;
 }
 
-bool InstallerService::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send)
+bool InstallerService::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
 {
     // deserialize request data
     std::string appId;
@@ -303,7 +344,7 @@ bool InstallerService::processAppUninstall(MessageBuffer &buffer, MessageBuffer 
 
             m_privilegeDb.GetPkgPrivileges(pkgId, oldPkgPrivileges);
             m_privilegeDb.UpdateAppPrivileges(appId, std::vector<std::string>());
-            m_privilegeDb.RemoveApplication(appId, removePkg);
+            m_privilegeDb.RemoveApplication(appId, removePkg, uid);
             m_privilegeDb.GetPkgPrivileges(pkgId, newPkgPrivileges);
             // TODO: configure Cynara rules based on oldPkgPrivileges and newPkgPrivileges
             m_privilegeDb.CommitTransaction();

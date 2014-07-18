@@ -62,8 +62,8 @@ private:
     SecurityManager::DB::SqlConnection *mSqlConnection;
     const std::map<QueryType, const char * const > Queries = {
         { QueryType::EGetPkgPrivileges, "SELECT privilege_name FROM app_privilege_view WHERE pkg_name=?"},
-        { QueryType::EAddApplication, "INSERT INTO app_pkg_view (app_name, pkg_name) VALUES (?, ?)" },
-        { QueryType::ERemoveApplication, "DELETE FROM app_pkg_view WHERE app_name=?" },
+        { QueryType::EAddApplication, "INSERT INTO app_pkg_view (app_name, pkg_name, uid) VALUES (?, ?, ?)" },
+        { QueryType::ERemoveApplication, "DELETE FROM app_pkg_view WHERE app_name=? AND uid=?" },
         { QueryType::EAddAppPrivileges, "INSERT INTO app_privilege_view (app_name, privilege_name) VALUES (?, ?)" },
         { QueryType::ERemoveAppPrivileges, "DELETE FROM app_privilege_view WHERE app_name=?" },
         { QueryType::EPkgIdExists, "SELECT * FROM pkg WHERE name=?" },
@@ -145,10 +145,11 @@ public:
      * @param appId - application identifier
      * @param pkgId - package identifier
      * @param[out] pkgIdIsNew - return info if pkgId is new to the database
+     * @param uid - user identifier for whom application is going to be installed
      * @exception DB::SqlConnection::Exception::InternalError on internal error
      */
     void AddApplication(const std::string &appId, const std::string &pkgId,
-            bool &pkgIdIsNew);
+            bool &pkgIdIsNew, int uid);
 
     /**
      * Remove an application from the database
@@ -157,7 +158,7 @@ public:
      * @param[out] pkgIdIsNoMore - return info if pkgId is in the database
      * @exception DB::SqlConnection::Exception::InternalError on internal error
      */
-    void RemoveApplication(const std::string &appId, bool &pkgIdIsNoMore);
+    void RemoveApplication(const std::string &appId, bool &pkgIdIsNoMore, int uid);
 
     /**
      * Remove privileges assigned to application
