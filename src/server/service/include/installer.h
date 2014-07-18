@@ -79,7 +79,7 @@ private:
      * @param  send   Raw data buffer to be sent
      * @return        true on success
      */
-    bool processAppInstall(MessageBuffer &buffer, MessageBuffer &send);
+    bool processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
     /**
      * Process libprivilege-control action and store result in a bufer
@@ -88,7 +88,7 @@ private:
      * @param  send   Raw data buffer to be sent
      * @return        true on success
      */
-    bool processAppUninstall(MessageBuffer &buffer, MessageBuffer &send);
+    bool processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 };
 
 } // namespace SecurityManager
