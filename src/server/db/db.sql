@@ -15,8 +15,9 @@ UNIQUE (name)
 CREATE TABLE IF NOT EXISTS app (
 app_id INTEGER PRIMARY KEY,
 pkg_id INTEGER NOT NULL,
+uid INTEGER NOT NULL,
 name VARCHAR NOT NULL ,
-UNIQUE (name),
+UNIQUE (name, uid),
 FOREIGN KEY (pkg_id) REFERENCES pkg (pkg_id)
 );
 
@@ -61,6 +62,7 @@ SELECT
     app.app_id,
     app.name as app_name,
     app.pkg_id,
+    app.uid,
     pkg.name as pkg_name
 FROM app
 LEFT JOIN pkg USING (pkg_id);
@@ -87,14 +89,14 @@ CREATE TRIGGER app_pkg_view_insert_trigger
 INSTEAD OF INSERT ON app_pkg_view
 BEGIN
     INSERT OR IGNORE INTO pkg(name) VALUES (NEW.pkg_name);
-    INSERT OR IGNORE INTO app(pkg_id, name) VALUES ((SELECT pkg_id FROM pkg WHERE name=NEW.pkg_name), NEW.app_name);
+    INSERT OR IGNORE INTO app(pkg_id, name, uid) VALUES ((SELECT pkg_id FROM pkg WHERE name=NEW.pkg_name), NEW.app_name, NEW.uid);
 END;
 
 DROP TRIGGER IF EXISTS app_pkg_view_delete_trigger;
 CREATE TRIGGER app_pkg_view_delete_trigger
 INSTEAD OF DELETE ON app_pkg_view
 BEGIN
-    DELETE FROM app WHERE app_id=OLD.app_id;
+    DELETE FROM app WHERE app_id=OLD.app_id AND uid=OLD.uid;
     DELETE FROM pkg WHERE pkg_id NOT IN (SELECT DISTINCT pkg_id from app);
 END;
 
