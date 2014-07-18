@@ -36,7 +36,7 @@
 
 #include <message-buffer.h>
 
-#include <security-manager.h>
+#include "protocols.h"
 
 IMPLEMENT_SAFE_SINGLETON(SecurityManager::Log::LogSystem);
 
