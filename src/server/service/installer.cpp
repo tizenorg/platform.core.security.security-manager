@@ -29,6 +29,7 @@
 #include <privilege-control.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <pwd.h>
 
 #include "installer.h"
 #include "protocols.h"
@@ -171,12 +172,32 @@ bool InstallerService::processOne(const ConnectionID &conn, MessageBuffer &buffe
 
 static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
 {
+    struct passwd *pwd;
+    errno = 0;
+    pwd = getpwuid(uid);
+
+    std::string home(pwd->pw_dir);
+
     for (const auto &appPath : req.appPaths) {
-        app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
-        if (pathType == SECURITY_MANAGER_PATH_PUBLIC && uid != 0) {
-            LogDebug("Only root can register SECURITY_MANAGER_PATH_PUBLIC path");
-            return false;
+
+        if(uid != 0) {
+            char *real_path = realpath(appPath.first.c_str(), NULL);
+            const std::string path(real_path);
+            free(real_path);
+            LogDebug("Requested path is '" << path << "'. User's HOME is '" << home << "'");
+            if (path.compare(0, home.length(), home)!=0) {
+                LogWarning("User's apps may have registered folders only in user's home dir");
+                return false;
+            }
+
+            app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
+            if (pathType == SECURITY_MANAGER_PATH_PUBLIC) {
+                LogWarning("Only root can register SECURITY_MANAGER_PATH_PUBLIC path");
+                return false;
+            }
         }
+
+
     }
     return true;
 }
