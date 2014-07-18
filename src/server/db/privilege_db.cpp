@@ -129,7 +129,7 @@ bool PrivilegeDb::GetAppPkgId(const std::string &appId, std::string &pkgId)
 }
 
 void PrivilegeDb::AddApplication(const std::string &appId,
-        const std::string &pkgId, bool &pkgIdIsNew)
+        const std::string &pkgId, uid_t uid, bool &pkgIdIsNew)
 {
     pkgIdIsNew = !(this->PkgIdExists(pkgId));
 
@@ -140,6 +140,7 @@ void PrivilegeDb::AddApplication(const std::string &appId,
 
         command->BindString(1, appId.c_str());
         command->BindString(2, pkgId.c_str());
+        command->BindInteger(3, static_cast<unsigned int>(uid));
 
         if (command->Step()) {
             LogPedantic("Unexpected SQLITE_ROW answer to query: " <<
@@ -151,7 +152,7 @@ void PrivilegeDb::AddApplication(const std::string &appId,
     });
 }
 
-void PrivilegeDb::RemoveApplication(const std::string &appId,
+void PrivilegeDb::RemoveApplication(const std::string &appId, uid_t uid,
         bool &pkgIdIsNoMore)
 {
     try_catch<void>([&] {
@@ -166,6 +167,7 @@ void PrivilegeDb::RemoveApplication(const std::string &appId,
                         Queries.at(QueryType::ERemoveApplication));
 
         command->BindString(1, appId.c_str());
+        command->BindInteger(2, static_cast<unsigned int>(uid));
 
         if (command->Step()) {
             LogPedantic("Unexpected SQLITE_ROW answer to query: " <<
