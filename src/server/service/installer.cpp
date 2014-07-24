@@ -281,15 +281,15 @@ bool InstallerService::processAppInstall(MessageBuffer &buffer, MessageBuffer &s
 
     try {
         std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
+        std::string uidstr = std::to_string(static_cast<unsigned int>(uid));
 
         m_privilegeDb.BeginTransaction();
         m_privilegeDb.GetPkgPrivileges(req.pkgId, uid, oldPkgPrivileges);
         m_privilegeDb.AddApplication(req.appId, req.pkgId, uid, pkgIdIsNew);
         m_privilegeDb.UpdateAppPrivileges(req.appId, uid, req.privileges);
         m_privilegeDb.GetPkgPrivileges(req.pkgId, uid, newPkgPrivileges);
-        CynaraAdmin::UpdatePackagePolicy(req.pkgId,
-                    CYNARA_ADMIN_WILDCARD, /* TODO: pass proper user identifier */
-                    oldPkgPrivileges, newPkgPrivileges);
+        CynaraAdmin::UpdatePackagePolicy(req.pkgId, uidstr, oldPkgPrivileges,
+                                         newPkgPrivileges);
         m_privilegeDb.CommitTransaction();
         LogDebug("Application installation commited to database");
     } catch (const PrivilegeDb::Exception::InternalError &e) {
@@ -389,13 +389,14 @@ bool InstallerService::processAppUninstall(MessageBuffer &buffer, MessageBuffer 
             LogDebug("Unnstall parameters: appId: " << appId << ", pkgId: " << pkgId
                     << ", generated smack label: " << smackLabel);
 
+            std::string uidstr = std::to_string(static_cast<unsigned int>(uid));
+
             m_privilegeDb.GetPkgPrivileges(pkgId, uid, oldPkgPrivileges);
             m_privilegeDb.UpdateAppPrivileges(appId, uid, std::vector<std::string>());
             m_privilegeDb.RemoveApplication(appId, uid, removePkg);
             m_privilegeDb.GetPkgPrivileges(pkgId, uid, newPkgPrivileges);
-            CynaraAdmin::UpdatePackagePolicy(pkgId,
-                            CYNARA_ADMIN_WILDCARD, /* TODO: pass proper user identifier */
-                            oldPkgPrivileges, newPkgPrivileges);
+            CynaraAdmin::UpdatePackagePolicy(pkgId, uidstr, oldPkgPrivileges,
+                                             newPkgPrivileges);
             m_privilegeDb.CommitTransaction();
             LogDebug("Application uninstallation commited to database");
         }
