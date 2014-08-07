@@ -1,0 +1,9 @@
+Code-Review+2: Casey Schaufler <casey.schaufler@intel.com>
+Verified+1: Marcin Niesluchowski <m.niesluchow@samsung.com>
+Code-Review+2: Zofia Abramowska <z.abramowska@samsung.com>
+Code-Review+1: Lukasz Wojciechowski <l.wojciechow@partner.samsung.com>
+Submitted-by: Marcin Niesluchowski <m.niesluchow@samsung.com>
+Submitted-at: Thu, 07 Aug 2014 09:54:01 -0700
+Reviewed-on: https://review.tizen.org/gerrit/25656
+Project: platform/core/security/security-manager
+Branch: refs/heads/tizen
