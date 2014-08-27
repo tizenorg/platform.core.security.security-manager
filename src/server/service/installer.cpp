@@ -181,6 +181,7 @@ bool InstallerService::processOne(const ConnectionID &conn, MessageBuffer &buffe
 static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
 {
     struct passwd *pwd;
+    size_t home_dir_len;
     char buffer[PATH_MAX];
     do {
         errno = 0;
@@ -190,6 +191,7 @@ static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
             return false;
         }
     } while (!pwd);
+    home_dir_len = strlen(pwd->pw_dir);
 
     for (const auto &appPath : req.appPaths) {
 
@@ -202,7 +204,8 @@ static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
             }
             LogDebug("Requested path is '" << appPath.first.c_str()
                     << "'. User's HOME is '" << pwd->pw_dir << "'");
-            if (strncmp(pwd->pw_dir, real_path, strlen(pwd->pw_dir))!=0) {
+            if (strncmp(pwd->pw_dir, real_path, home_dir_len)!=0 ||
+              (real_path[home_dir_len]!='/' && real_path[home_dir_len]!='\0')) {
                 LogWarning("User's apps may have registered folders only in user's home dir");
                 return false;
             }
