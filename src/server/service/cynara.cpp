@@ -208,5 +208,42 @@ void CynaraAdmin::UpdatePackagePolicy(
     cynaraAdmin.SetPolicies(policies);
 }
 
+static bool checkCynaraError(int result, const std::string &msg)
+{
+    switch (result) {
+        case CYNARA_API_SUCCESS:
+            return true;
+        case CYNARA_API_ACCESS_DENIED:
+            return false;
+        case CYNARA_API_OUT_OF_MEMORY:
+            ThrowMsg(CynaraException::OutOfMemory, msg);
+        case CYNARA_API_INVALID_PARAM:
+            ThrowMsg(CynaraException::InvalidParam, msg);
+        case CYNARA_API_SERVICE_NOT_AVAILABLE:
+            ThrowMsg(CynaraException::ServiceNotAvailable, msg);
+        default:
+            ThrowMsg(CynaraException::UnknownError, msg);
+    }
+}
+
+Cynara::Cynara()
+{
+    checkCynaraError(
+        cynara_initialize(&m_Cynara, nullptr),
+        "Cannot connect to Cynara policy interface.");
+}
+
+Cynara::~Cynara()
+{
+    cynara_finish(m_Cynara);
+}
+
+bool Cynara::check(const std::string &pkg, const std::string &user,
+        const std::string &privilege)
+{
+    return checkCynaraError(
+        cynara_check(m_Cynara, pkg.c_str(), nullptr, user.c_str(), privilege.c_str()),
+        "Cannot check permission with Cynara.");
+}
 
 } // namespace SecurityManager
