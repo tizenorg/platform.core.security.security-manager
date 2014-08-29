@@ -238,4 +238,23 @@ void PrivilegeDb::UpdateAppPrivileges(const std::string &appId, uid_t uid,
         }
     });
 }
+
+void PrivilegeDb::GetPrivilegeGids(const std::string &privilege,
+        std::vector<gid_t> &gids)
+{
+   try_catch<void>([&] {
+        DB::SqlConnection::DataCommandAutoPtr command =
+                mSqlConnection->PrepareDataCommand(
+                        Queries.at(QueryType::EGetPrivilegeGids));
+        command->BindString(1, privilege.c_str());
+
+        while (command->Step()) {
+            gid_t gid = command->GetColumnInteger(0);
+            LogDebug("Got gid: " << gid);
+            gids.push_back(gid);
+        };
+    });
+}
+
+
 } //namespace SecurityManager
