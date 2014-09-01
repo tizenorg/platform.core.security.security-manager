@@ -147,6 +147,8 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::APP_GET_PKGID:
                     processGetPkgId(buffer, send);
                     break;
+                case SecurityModuleCall::APP_GET_GROUPS:
+                    processGetAppGroups(buffer, send, uid);
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -436,5 +438,65 @@ bool Service::processGetPkgId(MessageBuffer &buffer, MessageBuffer &send)
     Serialization::Serialize(send, pkgId);
     return true;
 }
+
+bool Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
+{
+    std::vector<gid_t> gids;
+
+    try {
+        std::string appId;
+        std::string pkgId;
+        std::string smackLabel;
+        std::string uidstr = std::to_string(static_cast<unsigned int>(uid));
+
+        Deserialization::Deserialize(buffer, appId);
+        LogDebug("appId: " << appId);
+
+        if (!m_privilegeDb.GetAppPkgId(appId, pkgId)) {
+            LogWarning("Application " << appId << " not found in database");
+            Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT);
+            return false;
+        }
+        LogDebug("pkgId: " << pkgId);
+
+        if (!generateAppLabel(pkgId, smackLabel)) {
+             LogError("Cannot generate Smack label for package: " << pkgId);
+            Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT);
+            return false;
+        }
+        LogDebug("smack label: " << smackLabel);
+
+        Cynara cynara;
+        std::vector<std::string> privileges;
+        m_privilegeDb.GetPkgPrivileges(pkgId, uid, privileges);
+        for (const auto &privilege : privileges) {
+            std::vector<gid_t> gidsTmp;
+            m_privilegeDb.GetPrivilegeGids(privilege, gidsTmp);
+            if (!gidsTmp.empty() && cynara.check(smackLabel, uidstr, privilege))
+                gids.insert(gids.end(), gidsTmp.begin(), gidsTmp.end());
+        }
+    } catch (const PrivilegeDb::Exception::InternalError &e) {
+        LogError("Database error: " << e.DumpToString());
+        Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_SERVER_ERROR);
+        return false;
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while querying Cynara for permissions: " << e.DumpToString());
+        Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_SERVER_ERROR);
+        return false;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation failed: " << e.what());
+        Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY);
+        return false;
+    }
+
+    // success
+    Serialization::Serialize(send, SECURITY_MANAGER_API_SUCCESS);
+    Serialization::Serialize(send, gids.size());
+    for (const auto &gid : gids) {
+        Serialization::Serialize(send, gid);
+    }
+    return true;
+}
+
 
 } // namespace SecurityManager
