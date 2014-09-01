@@ -25,6 +25,7 @@
 #define _SECURITY_MANAGER_CYNARA_
 
 #include <cynara-admin.h>
+#include <cynara-admin-error.h>
 #include <dpl/exception.h>
 #include <string>
 
