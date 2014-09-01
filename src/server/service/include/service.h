@@ -100,6 +100,16 @@ private:
      * @return        true on success
      */
     bool processGetPkgId(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process getting permitted group ids for app id
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    User's identifier for whom application will be launched
+     * @return        true on success
+     */
+    bool processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 };
 
 } // namespace SecurityManager
