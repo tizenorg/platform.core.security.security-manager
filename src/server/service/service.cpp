@@ -25,6 +25,7 @@
 
 #include <dpl/log/log.h>
 #include <dpl/serialization.h>
+#include <tzplatform_config.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -45,6 +46,7 @@ namespace SecurityManager {
 
 const InterfaceID IFACE = 1;
 
+static uid_t uidGlobalApp = tzplatform_getuid(TZ_SYS_GLOBALAPP_USER);
 
 Service::Service()
 {
@@ -191,9 +193,6 @@ static inline bool isSubDir(const char *parent, const char *subdir)
 
 static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
 {
-    if (uid == 0)
-        return true;
-
     struct passwd *pwd;
     do {
         errno = 0;
@@ -276,7 +275,7 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
 
     try {
         std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
-        std::string uidstr = uid ? std::to_string(static_cast<unsigned int>(uid))
+        std::string uidstr = uid != uidGlobalApp ? std::to_string(static_cast<unsigned int>(uid))
                              : CYNARA_ADMIN_WILDCARD;
 
         LogDebug("Install parameters: appId: " << req.appId << ", pkgId: " << req.pkgId
@@ -361,7 +360,7 @@ bool Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
 
             }
 
-            std::string uidstr = uid ? std::to_string(static_cast<unsigned int>(uid))
+            std::string uidstr = uid != uidGlobalApp ? std::to_string(static_cast<unsigned int>(uid))
                                  : CYNARA_ADMIN_WILDCARD;
 
             LogDebug("Uninstall parameters: appId: " << appId << ", pkgId: " << pkgId
