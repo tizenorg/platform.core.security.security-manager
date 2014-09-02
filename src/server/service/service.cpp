@@ -285,7 +285,7 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
         m_privilegeDb.AddApplication(req.appId, req.pkgId, uid, pkgIdIsNew);
         m_privilegeDb.UpdateAppPrivileges(req.appId, uid, req.privileges);
         m_privilegeDb.GetPkgPrivileges(req.pkgId, uid, newPkgPrivileges);
-        CynaraAdmin::UpdatePackagePolicy(req.pkgId, uidstr, oldPkgPrivileges,
+        CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
                                          newPkgPrivileges);
         m_privilegeDb.CommitTransaction();
         LogDebug("Application installation commited to database");
