@@ -1,4 +1,14 @@
 Code-Review+1: José Bollo <jose.bollo@open.eurogiciel.org>
+Code-Review+2: Jan Cybulski <j.cybulski@samsung.com>
+Verified+1: Jan Cybulski <j.cybulski@samsung.com>
+Code-Review+1: Lukasz Wojciechowski <l.wojciechow@partner.samsung.com>
+Submitted-by: Rafal Krypa <r.krypa@samsung.com>
+Submitted-at: Fri, 05 Sep 2014 01:19:32 -0700
+Reviewed-on: https://review.tizen.org/gerrit/26680
+Project: platform/core/security/security-manager
+Branch: refs/heads/tizen
+
+Code-Review+1: José Bollo <jose.bollo@open.eurogiciel.org>
 Code-Review+1: Jan Cybulski <j.cybulski@samsung.com>
 Verified+1: Jan Cybulski <j.cybulski@samsung.com>
 Code-Review+1: Lukasz Wojciechowski <l.wojciechow@partner.samsung.com>
