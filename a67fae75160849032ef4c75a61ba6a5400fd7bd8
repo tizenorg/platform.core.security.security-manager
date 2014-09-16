@@ -1,0 +1,8 @@
+Code-Review+2: Casey Schaufler <casey.schaufler@intel.com>
+Verified+1: José Bollo <jose.bollo@open.eurogiciel.org>
+Code-Review+1: Build Bot <b.bot@partner.samsung.com>
+Submitted-by: Casey Schaufler <casey.schaufler@intel.com>
+Submitted-at: Tue, 16 Sep 2014 12:10:26 -0700
+Reviewed-on: https://review.tizen.org/gerrit/27615
+Project: platform/core/security/security-manager
+Branch: refs/heads/tizen
