@@ -8,6 +8,8 @@ PKG_CHECK_MODULES(SERVER_DEP
     db-util
     cynara-admin
     cynara-client
+    glib-2.0
+    gio-unix-2.0
     )
 
 FIND_PACKAGE(Boost REQUIRED)

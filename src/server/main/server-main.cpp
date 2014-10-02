@@ -30,6 +30,7 @@
 
 #include <socket-manager.h>
 
+#include <thread>
 #include <service.h>
 
 IMPLEMENT_SAFE_SINGLETON(SecurityManager::Log::LogSystem);
@@ -60,6 +61,56 @@ void registerSocketService(SecurityManager::SocketManager &manager, const std::s
         delete service;
 }
 
+#include <gio/gio.h>
+
+
+void on_user_delete (GDBusConnection *connection,
+ const gchar *sender_name,
+ const gchar *object_path,
+ const gchar *interface_name,
+ const gchar *signal_name,
+ GVariant *parameters,
+ gpointer user_data)
+{
+ (void) connection;
+ (void) sender_name;
+ (void) object_path;
+ (void) interface_name;
+ (void) signal_name;
+ (void) user_data;
+ GVariant *gv_uid;
+ gv_uid = g_variant_get_child_value (parameters, 0);
+ guint32 uid = g_variant_get_uint32 (gv_uid);
+
+
+ LogDebug("Dbus handler: User " << static_cast<unsigned int>(uid) << " is going to be deleted from db and cynara");
+//TODO do something!
+}
+
+
+void dbusLoop(GMainLoop *loop) {
+
+    GDBusConnection *connection;
+    //loop = g_main_loop_new (NULL, FALSE);
+    connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
+    (void)//we do not need to unsubscribe as for now
+    g_dbus_connection_signal_subscribe (connection,
+        "org.tizen.SecurityAccounts.gUserManagement",
+        "org.tizen.SecurityAccounts.gUserManagement.UserService",
+        "userDeleted",
+        "/org/tizen/SecurityAccounts/gUserManagement/User",
+        NULL,
+        G_DBUS_SIGNAL_FLAGS_NONE,
+        on_user_delete,
+        NULL,
+        NULL);
+
+    LogError("Dbus Context created, attached to socket manager");
+
+    g_main_loop_run(loop);
+
+}
+
 int main(void) {
 
     UNHANDLED_EXCEPTION_HANDLER_BEGIN
@@ -77,10 +128,15 @@ int main(void) {
 
         LogInfo("Start!");
         SecurityManager::SocketManager manager;
+        GMainLoop *loop;
+        loop = g_main_loop_new (NULL, FALSE);
+        std::thread dbusThread(dbusLoop, loop);
 
         REGISTER_SOCKET_SERVICE(manager, SecurityManager::Service);
 
         manager.MainLoop();
+        g_main_loop_quit (loop);
+        dbusThread.join();
     }
     UNHANDLED_EXCEPTION_HANDLER_END
     return 0;
