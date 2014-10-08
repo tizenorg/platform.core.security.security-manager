@@ -37,6 +37,8 @@
 
 namespace SecurityManager {
 
+const char *const PRIVILEGE_DB_PATH = tzplatform_mkpath(TZ_SYS_DB, ".security-manager.db");
+
 /* Common code for handling SqlConnection exceptions */
 template <typename T>
 T try_catch(const std::function<T()> &func)
@@ -256,5 +258,38 @@ void PrivilegeDb::GetPrivilegeGids(const std::string &privilege,
     });
 }
 
+bool PrivilegeDb::GetAppIdByName(const std::string &inName, std::string &outId)
+{
+   return try_catch<bool>([&] {
+        DB::SqlConnection::DataCommandAutoPtr command =
+                mSqlConnection->PrepareDataCommand(
+                        Queries.at(QueryType::EGetAppIdByName));
+        command->BindString(1, inName.c_str());
+
+        if (!command->Step())
+            return false;
+
+        outId = command->GetColumnString(0);
+        LogDebug("appId: " << outId << " for app name: " << inName);
+        return true;
+    });
+}
+
+bool PrivilegeDb::GetPkgIdByName(const std::string &inName, std::string &outId)
+{
+   return try_catch<bool>([&] {
+        DB::SqlConnection::DataCommandAutoPtr command =
+                mSqlConnection->PrepareDataCommand(
+                        Queries.at(QueryType::EGetPkgIdByName));
+        command->BindString(1, inName.c_str());
+
+        if (!command->Step())
+            return false;
+
+        outId = command->GetColumnString(0);
+        LogDebug("pkgId: " << outId << " for pkg name: " << inName);
+        return true;
+    });
+}
 
 } //namespace SecurityManager

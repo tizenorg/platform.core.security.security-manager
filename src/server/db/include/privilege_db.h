@@ -41,7 +41,7 @@
 
 namespace SecurityManager {
 
-const char *const PRIVILEGE_DB_PATH = tzplatform_mkpath(TZ_SYS_DB, ".security-manager.db");
+extern const char *const PRIVILEGE_DB_PATH;
 
 enum class QueryType {
     EGetPkgPrivileges,
@@ -52,6 +52,8 @@ enum class QueryType {
     EPkgIdExists,
     EGetPkgId,
     EGetPrivilegeGids,
+    EGetAppIdByName,
+    EGetPkgIdByName,
 };
 
 class PrivilegeDb {
@@ -70,6 +72,8 @@ private:
         { QueryType::EPkgIdExists, "SELECT * FROM pkg WHERE name=?" },
         { QueryType::EGetPkgId, " SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
         { QueryType::EGetPrivilegeGids, " SELECT gid FROM privilege_gid_view WHERE privilege_name = ?" },
+        { QueryType::EGetAppIdByName, " SELECT app_id FROM app WHERE name = ?" },
+        { QueryType::EGetPkgIdByName, " SELECT pkg_id FROM pkg WHERE name = ?" },
     };
 
     /**
@@ -194,6 +198,26 @@ public:
      */
     void GetPrivilegeGids(const std::string &privilege,
         std::vector<gid_t> &gids);
+
+    /**
+     * Retrieve application id by name
+     *
+     * @param[in] inName - application name
+     * @param[out] outId - application id for given name
+     * @return true if application id found for given name, false otherwise
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    bool GetAppIdByName(const std::string &inName, std::string &outId);
+
+    /**
+     * Retrieve package id by name
+     *
+     * @param[in] inName - package name
+     * @param[out] outId - package id for given name
+     * @return true if package id found for given name, false otherwise
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    bool GetPkgIdByName(const std::string &inName, std::string &outId);
 
 };
 
