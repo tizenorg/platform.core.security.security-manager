@@ -633,6 +633,9 @@ void SqlConnection::Connect(const std::string &address,
         ThrowMsg(Exception::ConnectionBroken, address);
     }
 
+    // Lock for exclusive use (will work after first write)
+    LockExclusive();
+
     // Enable foreign keys
     TurnOnForeignKeys();
 }
@@ -837,6 +840,11 @@ SqlConnection::RowID SqlConnection::GetLastInsertRowID() const
     return static_cast<RowID>(sqlite3_last_insert_rowid(m_connection));
 }
 
+void SqlConnection::LockExclusive()
+{
+    ExecCommand("PRAGMA locking_mode = EXCLUSIVE;");
+}
+
 void SqlConnection::TurnOnForeignKeys()
 {
     ExecCommand("PRAGMA foreign_keys = ON;");
@@ -844,7 +852,7 @@ void SqlConnection::TurnOnForeignKeys()
 
 void SqlConnection::BeginTransaction()
 {
-    ExecCommand("BEGIN;");
+    ExecCommand("BEGIN EXCLUSIVE;");
 }
 
 void SqlConnection::RollbackTransaction()

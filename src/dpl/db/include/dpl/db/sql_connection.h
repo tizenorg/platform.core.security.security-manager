@@ -428,6 +428,8 @@ class SqlConnection
                          Flag::Type = Flag::None, Flag::Option = Flag::RO);
     virtual void Disconnect();
 
+    void LockExclusive();
+
     void TurnOnForeignKeys();
 
     static SynchronizationObject *AllocDefaultSynchronizationObject();

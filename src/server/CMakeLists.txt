@@ -8,6 +8,7 @@ PKG_CHECK_MODULES(SERVER_DEP
     db-util
     cynara-admin
     cynara-client
+    cynara-offline-admin
     )
 
 FIND_PACKAGE(Boost REQUIRED)

@@ -26,8 +26,10 @@
 
 #include <cynara-client.h>
 #include <cynara-admin.h>
+#include <cynara/cynara-offline-admin.h>
 #include <dpl/exception.h>
 #include <string>
+#include <vector>
 
 namespace SecurityManager {
 
@@ -70,7 +72,13 @@ struct CynaraAdminPolicy : cynara_admin_policy
 class CynaraAdmin
 {
 public:
+    enum class Mode {
+        Normal,
+        Offline,
+    };
+
     CynaraAdmin();
+    CynaraAdmin(Mode mode);
     virtual ~CynaraAdmin();
 
     /**
@@ -104,7 +112,11 @@ public:
         const std::vector<std::string> &newPrivileges);
 
 private:
+    void CynaraAdminInitialize();
+
     struct cynara_admin *m_CynaraAdmin;
+    struct cynara_offline_admin *m_CynaraOfflineAdmin;
+    Mode m_mode;
 };
 
 class Cynara

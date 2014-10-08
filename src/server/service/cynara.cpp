@@ -119,16 +119,36 @@ static void checkCynaraAdminError(int result, const std::string &msg)
     }
 }
 
-CynaraAdmin::CynaraAdmin()
+void CynaraAdmin::CynaraAdminInitialize()
 {
-    checkCynaraAdminError(
-        cynara_admin_initialize(&m_CynaraAdmin),
-        "Cannot connect to Cynara administrative interface.");
+    if (m_mode != Mode::Normal)
+        checkCynaraAdminError(
+            cynara_offline_admin_initialize(&m_CynaraOfflineAdmin),
+            "Cannot connect to Cynara offline administrative interface.");
+    else
+        checkCynaraAdminError(
+            cynara_admin_initialize(&m_CynaraAdmin),
+            "Cannot connect to Cynara administrative interface.");
+}
+
+CynaraAdmin::CynaraAdmin()
+    :m_mode(Mode::Normal)
+{
+    CynaraAdminInitialize();
+}
+
+CynaraAdmin::CynaraAdmin(Mode mode)
+{
+    m_mode = mode;
+    CynaraAdminInitialize();
 }
 
 CynaraAdmin::~CynaraAdmin()
 {
-    cynara_admin_finish(m_CynaraAdmin);
+    if (m_mode != Mode::Normal)
+        cynara_offline_admin_finish(m_CynaraOfflineAdmin);
+    else
+        cynara_admin_finish(m_CynaraAdmin);
 }
 
 void CynaraAdmin::SetPolicies(const std::vector<CynaraAdminPolicy> &policies)

@@ -16,6 +16,8 @@ INCLUDE_DIRECTORIES(
     ${CLIENT_PATH}/include
     ${DPL_PATH}/core/include
     ${DPL_PATH}/log/include
+    ${DPL_PATH}/db/include
+    ${SERVER_PATH}/db/include
     )
 
 SET(CLIENT_SOURCES

@@ -101,6 +101,8 @@
 
 
 struct app_inst_req {
+    bool offlineMode;
+    unsigned int uid;
     std::string appId;
     std::string pkgId;
     std::vector<std::string> privileges;

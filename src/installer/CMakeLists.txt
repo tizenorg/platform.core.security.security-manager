@@ -1,0 +1,37 @@
+PKG_CHECK_MODULES(INSTALLER_DEP
+    REQUIRED
+    libsmack
+    db-util
+    cynara-admin
+    cynara-client
+    cynara-offline-admin
+    )
+
+INCLUDE_DIRECTORIES(
+    ${INCLUDE_PATH}
+    ${COMMON_PATH}/include
+    ${INSTALLER_DEP_INCLUDE_DIRS}
+    ${SERVER_PATH}/include
+    ${SERVER_PATH}/db/include
+    ${DPL_PATH}/core/include
+    ${DPL_PATH}/log/include
+    ${DPL_PATH}/db/include
+)
+
+SET(INSTALLER_SOURCES
+    ${INSTALLER_PATH}/sm-installer.cpp
+    )
+
+ADD_EXECUTABLE(${TARGET_INSTALLER} ${INSTALLER_SOURCES})
+
+SET_TARGET_PROPERTIES(${TARGET_INSTALLER}
+    PROPERTIES
+        COMPILE_FLAGS "-D_GNU_SOURCE -fvisibility=hidden")
+
+    TARGET_LINK_LIBRARIES(${TARGET_INSTALLER}
+    ${TARGET_COMMON}
+    ${TARGET_CLIENT}
+    ${INSTALLER_DEP_LIBRARIES}
+    )
+
+INSTALL(TARGETS ${TARGET_INSTALLER} DESTINATION ${BIN_INSTALL_DIR})
