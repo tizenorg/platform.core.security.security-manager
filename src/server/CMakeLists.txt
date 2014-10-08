@@ -1,12 +1,8 @@
 PKG_CHECK_MODULES(SERVER_DEP
     REQUIRED
     libcap
-    libsmack
     libsystemd-daemon
-    libtzplatform-config
-    sqlite3
     db-util
-    cynara-admin
     cynara-client
     )
 
@@ -22,7 +18,6 @@ INCLUDE_DIRECTORIES(SYSTEM
 INCLUDE_DIRECTORIES(
     ${INCLUDE_PATH}
     ${COMMON_PATH}/include
-    ${SERVER_PATH}/include
     ${SERVER_PATH}/main/include
     ${SERVER_PATH}/service/include
     ${SERVER_PATH}/db/include
@@ -32,24 +27,25 @@ INCLUDE_DIRECTORIES(
     )
 
 SET(SERVER_SOURCES
-    ${SERVER_PATH}/smack-check.cpp
     ${SERVER_PATH}/main/generic-socket-manager.cpp
     ${SERVER_PATH}/main/socket-manager.cpp
     ${SERVER_PATH}/main/server-main.cpp
     ${SERVER_PATH}/service/service.cpp
-    ${SERVER_PATH}/service/smack-rules.cpp
-    ${SERVER_PATH}/service/smack-labels.cpp
-    ${SERVER_PATH}/service/cynara.cpp
-    ${SERVER_PATH}/db/privilege_db.cpp
     ${DPL_PATH}/core/src/errno_string.cpp
     ${DPL_PATH}/core/src/string.cpp
     ${DPL_PATH}/db/src/naive_synchronization_object.cpp
     ${DPL_PATH}/db/src/sql_connection.cpp
     )
 
+SET(CMD_SOURCES
+    ${SERVER_PATH}/cmd/security-manager-cmd.cpp
+    )
+
 ADD_EXECUTABLE(${TARGET_SERVER} ${SERVER_SOURCES})
 
-SET_TARGET_PROPERTIES(${TARGET_SERVER}
+ADD_EXECUTABLE(${TARGET_CMD} ${CMD_SOURCES})
+
+SET_TARGET_PROPERTIES(${TARGET_SERVER} ${TARGET_CMD}
     PROPERTIES
         COMPILE_FLAGS "-D_GNU_SOURCE -fvisibility=hidden")
 
@@ -57,6 +53,14 @@ TARGET_LINK_LIBRARIES(${TARGET_SERVER}
     ${TARGET_COMMON}
     ${CMAKE_THREAD_LIBS_INIT}
     ${SERVER_DEP_LIBRARIES}
+    )
+
+TARGET_LINK_LIBRARIES(${TARGET_CMD}
+    ${TARGET_COMMON}
+    ${TARGET_CLIENT}
+    ${CMAKE_THREAD_LIBS_INIT}
+	${CMD_DEP_LIBRARIES}
+    -lboost_program_options
     )
 
 ADD_CUSTOM_COMMAND(
@@ -68,5 +72,6 @@ ADD_CUSTOM_COMMAND(
 ADD_CUSTOM_TARGET(DB ALL DEPENDS ${TARGET_DB})
 
 INSTALL(TARGETS ${TARGET_SERVER} DESTINATION ${BIN_INSTALL_DIR})
+INSTALL(TARGETS ${TARGET_CMD} DESTINATION ${BIN_INSTALL_DIR})
 INSTALL(FILES ${TARGET_DB} DESTINATION ${DB_INSTALL_DIR})
 INSTALL(FILES ${TARGET_DB}-journal DESTINATION ${DB_INSTALL_DIR})
