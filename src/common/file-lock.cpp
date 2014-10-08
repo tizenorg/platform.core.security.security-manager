@@ -26,6 +26,10 @@
 #include <fstream>
 #include <dpl/log/log.h>
 
+#include <boost/interprocess/sync/file_lock.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 #include "file-lock.h"
 
 namespace SecurityManager {
@@ -34,18 +38,11 @@ char const * const SERVICE_LOCK_FILE = tzplatform_mkpath3(TZ_SYS_RUN,
                                                          "lock",
                                                          "security-manager.lock");
 
-FileLocker::FileLocker(const std::string &lockFile, bool blocking)
+FileLocker::FileLocker(const std::string &lockFile, bool canWait)
 {
-    if (lockFile.empty()) {
-        LogError("File name can not be empty.");
-        ThrowMsg(FileLocker::Exception::LockFailed,
-                 "File name can not be empty.");
-    }
     try {
-        m_locked = false;
-        m_blocking = blocking;
-        m_lockFile = lockFile;
-        Lock();
+        m_canWait = canWait;
+        Lock(lockFile);
     } catch (FileLocker::Exception::Base &e) {
         LogError("Failed to lock " << lockFile << " file: "
                  << e.DumpToString());
@@ -62,44 +59,59 @@ FileLocker::~FileLocker()
 
 bool FileLocker::Locked()
 {
-    return m_locked;
+    return m_lock;
 }
 
-void FileLocker::Lock()
+void FileLocker::Lock(const std::string &lockFile)
 {
-    if (m_locked)
-        return;
     try {
+        if (lockFile.empty()) {
+            ThrowMsg(FileLocker::Exception::LockFailed,
+                     "File name can not be empty.");
+        }
+        m_lockFile = lockFile;
         if (!std::ifstream(m_lockFile).good())
             std::ofstream(m_lockFile.c_str());
+        else {
+            if (!m_canWait) {
+                ThrowMsg(FileLocker::Exception::LockFailed,
+                         "Lock file already exists.");
+            }
+        }
         m_flock = boost::interprocess::file_lock(m_lockFile.c_str());
-        if (m_blocking) {
-            m_flock.lock();
-            m_locked = true;
-        } else
-            m_locked = m_flock.try_lock();
+        if (m_canWait) {
+            m_lock = boost::interprocess::scoped_lock
+                     <boost::interprocess::file_lock>(m_flock);
+        } else {
+            m_lock = boost::interprocess::scoped_lock
+                     <boost::interprocess::file_lock>(m_flock,
+                                                      boost::interprocess::try_to_lock);
+        }
+        /*
+        boost::posix_time::ptime to = boost::posix_time::second_clock::universal_time()
+                                    + boost::posix_time::seconds(1);
+        //boost::posix_time::ptime to = boost::posix_time::second_clock::universal_time()
+        //                            + boost::posix_time::milliseconds(200);
+        m_lock = boost::interprocess::scoped_lock
+                 <boost::interprocess::file_lock>(m_flock, to);
+        */
     } catch (const std::exception &e) {
             ThrowMsg(FileLocker::Exception::LockFailed,
                      "Error while locking a file.");
     }
-    if (m_locked) {
+    if (m_lock) {
         LogDebug("We have a lock on " << m_lockFile << " file.");
     } else {
-        if (m_blocking) {
-            ThrowMsg(FileLocker::Exception::LockFailed,
-                     "Unable to lock file.");
-        } else {
-            LogDebug("Impossible to lock a file now.");
-        }
+        ThrowMsg(FileLocker::Exception::LockFailed,
+                 "Unable to lock file.");
     }
 }
 
 void FileLocker::Unlock()
 {
-    if (m_locked) {
-        m_flock.unlock();
-        LogDebug("Lock released.");
-    }
+    if (m_lock)
+        m_lock.unlock();
+    std::remove(m_lockFile.c_str());
 }
 
 } // namespace SecurityManager

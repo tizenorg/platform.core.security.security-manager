@@ -8,6 +8,7 @@ SET(TARGET_SERVER "security-manager")
 SET(TARGET_CLIENT "security-manager-client")
 SET(TARGET_COMMON "security-manager-commons")
 SET(TARGET_DB ".security-manager.db")
+SET(TARGET_CMD "security-manager-cmd")
 
 ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(common)

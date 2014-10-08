@@ -102,6 +102,7 @@
 
 
 struct app_inst_req {
+    uid_t uid;
     std::string appId;
     std::string pkgId;
     std::vector<std::string> privileges;

@@ -77,6 +77,19 @@ int security_manager_app_inst_req_new(app_inst_req **pp_req);
 void security_manager_app_inst_req_free(app_inst_req *p_req);
 
 /*
+ * This function is used to set up user identifier in app_inst_req structure.
+ * It was needed by offline mode when uid cannot be 'guessed' and must be
+ * passed explicitly. It should be used both in offline and online modes before
+ * passing app_inst_req structure to AppInstall function.
+ *
+ * \param[in] Pointer handling app_inst_req structure
+ * \param[in] Pointer to uid (user identifier)
+ * \return API return code or error code
+ */
+int security_manager_app_inst_req_set_uid(app_inst_req *p_req,
+                                          const uid_t *p_uid);
+
+/*
  * This function is used to set up application identifier in app_inst_req structure
  *
  * \param[in] Pointer handling app_inst_req structure

@@ -66,6 +66,11 @@ int main(void) {
     UNHANDLED_EXCEPTION_HANDLER_BEGIN
     {
         SecurityManager::Singleton<SecurityManager::Log::LogSystem>::Instance().SetTag("SECURITY_MANAGER");
+        SecurityManager::FileLocker serviceLock(SecurityManager::SERVICE_LOCK_FILE);
+        if (!serviceLock.Locked()) {
+            LogError("Unable to get a lock. Exiting.");
+            return EXIT_FAILURE;
+        }
 
         SecurityManager::FileLocker serviceLock(SecurityManager::SERVICE_LOCK_FILE,
                                                 true);
@@ -85,9 +90,7 @@ int main(void) {
         REGISTER_SOCKET_SERVICE(manager, SecurityManager::Service);
 
         manager.MainLoop();
-    } catch (const SecurityManager::FileLocker::Exception::Base &e) {
-        LogError("Unable to get a file lock. Exiting.");
-        return EXIT_FAILURE;
+        serviceLock.Unlock();
     }
     UNHANDLED_EXCEPTION_HANDLER_END
     return 0;

@@ -26,7 +26,8 @@
 #pragma once
 
 #include <boost/interprocess/sync/file_lock.hpp>
-
+#include <boost/interprocess/sync/scoped_lock.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <dpl/exception.h>
 #include <dpl/noncopyable.h>
 #include <tzplatform_config.h>
@@ -46,20 +47,19 @@ public:
         DECLARE_EXCEPTION_TYPE(Base, LockFailed)
     };
 
-    FileLocker(const std::string &lockFile, bool blocking = false);
+    FileLocker(const std::string &lockFile, bool canWait = false);
     ~FileLocker();
 
     bool Locked();
-
-protected:
-    void Lock();
     void Unlock();
 
 private:
     std::string m_lockFile;
     boost::interprocess::file_lock m_flock;
-    bool m_blocking;
-    bool m_locked;
+    boost::interprocess::scoped_lock<boost::interprocess::file_lock> m_lock;
+    bool m_canWait;
+
+    void Lock(const std::string &lockFile);
 };
 
 } // namespace SecurityManager

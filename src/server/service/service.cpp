@@ -30,7 +30,11 @@
 
 #include "protocols.h"
 #include "service.h"
-#include "service_impl.h"
+#include "smack-common.h"
+#include "smack-rules.h"
+#include "smack-labels.h"
+#include "privilege_db.h"
+#include "service-common.h"
 
 namespace SecurityManager {
 
@@ -172,16 +176,20 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
     return retval;
 }
 
-void Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
+bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
 {
+    int ret;
     app_inst_req req;
-
+    // deserialize request data
+    Deserialization::Deserialize(buffer, req.uid);
     Deserialization::Deserialize(buffer, req.appId);
     Deserialization::Deserialize(buffer, req.pkgId);
     Deserialization::Deserialize(buffer, req.privileges);
     Deserialization::Deserialize(buffer, req.appPaths);
-    Deserialization::Deserialize(buffer, req.uid);
-    Serialization::Serialize(send, ServiceImpl::appInstall(req, uid));
+    req.uid = uid;
+    ret = AppInstall(&m_privilegeDb, req);
+    Serialization::Serialize(send, ret);
+    return ret == SECURITY_MANAGER_API_SUCCESS;
 }
 
 void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)

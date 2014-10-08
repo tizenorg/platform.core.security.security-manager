@@ -37,20 +37,15 @@ SET(COMMON_SOURCES
     ${DPL_PATH}/core/src/noncopyable.cpp
     ${DPL_PATH}/core/src/serialization.cpp
     ${DPL_PATH}/core/src/singleton.cpp
+    ${DPL_PATH}/db/src/naive_synchronization_object.cpp
     ${DPL_PATH}/core/src/errno_string.cpp
     ${DPL_PATH}/core/src/string.cpp
-    ${DPL_PATH}/db/src/naive_synchronization_object.cpp
     ${DPL_PATH}/db/src/sql_connection.cpp
-    ${COMMON_PATH}/cynara.cpp
-    ${COMMON_PATH}/file-lock.cpp
-    ${COMMON_PATH}/protocols.cpp
-    ${COMMON_PATH}/message-buffer.cpp
     ${COMMON_PATH}/privilege_db.cpp
-    ${COMMON_PATH}/smack-common.cpp
     ${COMMON_PATH}/smack-labels.cpp
     ${COMMON_PATH}/smack-rules.cpp
     ${COMMON_PATH}/smack-check.cpp
-    ${COMMON_PATH}/service_impl.cpp
+    ${COMMON_PATH}/cynara.cpp
     )
 
 ADD_LIBRARY(${TARGET_COMMON} SHARED ${COMMON_SOURCES})
