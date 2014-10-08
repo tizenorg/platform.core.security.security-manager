@@ -77,6 +77,26 @@ int security_manager_app_inst_req_new(app_inst_req **pp_req);
 void security_manager_app_inst_req_free(app_inst_req *p_req);
 
 /*
+ * This function is used to set up offlineMode in app_inst_req structure
+ *
+ * \param[in] Pointer handling app_inst_req structure
+ * \param[in] offline mode : set 0 for normal operation or other value otherwise
+ * \return API return code or error code
+ */
+int security_manager_app_inst_req_set_offline_mode(app_inst_req *p_req,
+                                                   const int *offline_mode);
+
+/*
+ * This function is used to set up uid in app_inst_req structure
+ *
+ * \param[in] Pointer handling app_inst_req structure
+ * \param[in] Pointer to uid (user identifier)
+ * \return API return code or error code
+ */
+int security_manager_app_inst_req_set_uid(app_inst_req *p_req,
+                                          const unsigned int *p_uid);
+
+/*
  * This function is used to set up application identifier in app_inst_req structure
  *
  * \param[in] Pointer handling app_inst_req structure

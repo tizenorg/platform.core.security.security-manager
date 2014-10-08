@@ -44,6 +44,15 @@ Requires:   libsecurity-manager-client = %{version}-%{release}
 %description -n libsecurity-manager-client-devel
 Development files needed for using the security manager client
 
+%package -n security-manager-installer
+Summary:    Security manager (offline) installer
+Group:      Security/Development
+Requires:   security-manager = %{version}-%{release}
+
+%description -n security-manager-installer
+Offline tool for managing applications installations when no security-manager
+services are running.
+
 %prep
 %setup -q
 cp %{SOURCE1} .
@@ -143,3 +152,8 @@ fi
 %{_libdir}/libsecurity-manager-commons.so
 %{_includedir}/security-manager/security-manager.h
 %{_libdir}/pkgconfig/security-manager.pc
+
+%files -n security-manager-installer
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_bindir}/security-manager-installer

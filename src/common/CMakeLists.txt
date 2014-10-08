@@ -4,22 +4,35 @@ SET(COMMON_VERSION ${COMMON_VERSION_MAJOR}.1.0)
 PKG_CHECK_MODULES(COMMON_DEP
     REQUIRED
     libsystemd-journal
+    db-util
+    cynara-admin
+    cynara-offline-admin
     )
 
+FIND_PACKAGE(Boost REQUIRED)
+
 INCLUDE_DIRECTORIES(SYSTEM
+    ${INCLUDE_PATH}
     ${COMMON_DEP_INCLUDE_DIRS}
+    ${DPL_PATH}/db/include
+    ${SERVER_PATH}/include
+    ${SERVER_PATH}/db/include
+    ${SERVER_PATH}/service/include
     )
 
 INCLUDE_DIRECTORIES(
     ${COMMON_PATH}/include
     ${DPL_PATH}/core/include
     ${DPL_PATH}/log/include
+    ${Boost_INCLUDE_DIRS}
     )
 
 SET(COMMON_SOURCES
     ${COMMON_PATH}/protocols.cpp
     ${COMMON_PATH}/message-buffer.cpp
     ${COMMON_PATH}/smack-common.cpp
+    ${COMMON_PATH}/file-lock.cpp
+    ${COMMON_PATH}/service-common.cpp
     ${DPL_PATH}/log/src/abstract_log_provider.cpp
     ${DPL_PATH}/log/src/sd_journal_provider.cpp
     ${DPL_PATH}/log/src/log.cpp
@@ -31,6 +44,15 @@ SET(COMMON_SOURCES
     ${DPL_PATH}/core/src/noncopyable.cpp
     ${DPL_PATH}/core/src/serialization.cpp
     ${DPL_PATH}/core/src/singleton.cpp
+    ${DPL_PATH}/db/src/naive_synchronization_object.cpp
+    ${DPL_PATH}/core/src/errno_string.cpp
+    ${DPL_PATH}/core/src/string.cpp
+    ${DPL_PATH}/db/src/sql_connection.cpp
+    ${SERVER_PATH}/db/privilege_db.cpp
+    ${SERVER_PATH}/service/smack-labels.cpp
+    ${SERVER_PATH}/service/smack-rules.cpp
+    ${SERVER_PATH}/smack-check.cpp
+    ${SERVER_PATH}/service/cynara.cpp
     )
 
 ADD_LIBRARY(${TARGET_COMMON} SHARED ${COMMON_SOURCES})
