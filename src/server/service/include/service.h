@@ -113,6 +113,21 @@ private:
      * @return        true on success
      */
     bool processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
+
+    /**
+     * Uninstall given user application.
+     * @param uid user identifier
+     * @param appId application identifier (name)
+     */
+    bool appUninstall(uid_t uid, const std::string &appId);
+
+    /**
+     * Uninstalls all applications of a given user
+     *
+     * @param uid user identifier
+     * @return true on success, false on error.
+     */
+    bool removeAppsOfUser(uid_t uid);
 };
 
 } // namespace SecurityManager
