@@ -349,16 +349,11 @@ error_label:
     return false;
 }
 
-bool Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
-{
-    // deserialize request data
-    std::string appId;
+bool Service::appUninstall(uid_t uid, const std::string &appId) {
     std::string pkgId;
     std::string smackLabel;
     bool appExists = true;
     bool removePkg = false;
-
-    Deserialization::Deserialize(buffer, appId);
 
     try {
         std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
@@ -372,7 +367,7 @@ bool Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
         } else {
             if (!generateAppLabel(pkgId, smackLabel)) {
                 LogError("Cannot generate Smack label for package: " << pkgId);
-                goto error_label;
+                return false;
             }
 
             std::string uidstr = isGlobalUser(uid) ? CYNARA_ADMIN_WILDCARD
@@ -393,35 +388,40 @@ bool Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
     } catch (const PrivilegeDb::Exception::InternalError &e) {
         m_privilegeDb.RollbackTransaction();
         LogError("Error while removing application info from database: " << e.DumpToString());
-        goto error_label;
+        return false;
     } catch (const CynaraException::Base &e) {
         m_privilegeDb.RollbackTransaction();
         LogError("Error while setting Cynara rules for application: " << e.DumpToString());
-        goto error_label;
+        return false;
     } catch (const std::bad_alloc &e) {
         m_privilegeDb.RollbackTransaction();
         LogError("Memory allocation while setting Cynara rules for application: " << e.what());
-        goto error_label;
+        return false;
     }
 
-    if (appExists) {
-
-        if (removePkg) {
-            LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
-            if (!SmackRules::uninstallPackageRules(pkgId)) {
-                LogError("Error on uninstallation of package-specific smack rules");
-                goto error_label;
-            }
+    if (appExists && removePkg) {
+        LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
+        if (!SmackRules::uninstallPackageRules(pkgId)) {
+            LogError("Error on uninstallation of package-specific smack rules");
+            return false;
         }
     }
-
-    // success
-    Serialization::Serialize(send, SECURITY_MANAGER_API_SUCCESS);
     return true;
+}
 
-error_label:
-    Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_SERVER_ERROR);
-    return false;
+bool Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
+{
+    bool ret = false;
+    std::string appId;
+
+    Deserialization::Deserialize(buffer, appId);
+
+    ret = this->appUninstall(uid, appId);
+    if (ret == true)
+        Serialization::Serialize(send, SECURITY_MANAGER_API_SUCCESS);
+    else
+        Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_SERVER_ERROR);
+    return ret;
 }
 
 bool Service::processGetPkgId(MessageBuffer &buffer, MessageBuffer &send)
@@ -527,5 +527,20 @@ bool Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
     return true;
 }
 
+
+bool Service::removeAppsOfUser(uid_t uid)
+{//todo this will be called in future by processing request for user removal
+    bool ret = true;
+    std::vector<std::string> userApps;
+    m_privilegeDb.GetUserApps(uid, userApps);
+    for (auto &app: userApps) {
+        if (appUninstall(uid, app) == false) {
+        /*if uninstallation of this app fails, just go on trying to uninstall another ones.
+        we do not have anything special to do about that matter - user will be deleted anyway.*/
+            ret = false;
+        }
+    }
+    return ret;
+}
 
 } // namespace SecurityManager
