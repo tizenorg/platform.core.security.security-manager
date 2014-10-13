@@ -482,13 +482,16 @@ bool Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
         std::vector<std::string> privileges;
         m_privilegeDb.GetPkgPrivileges(pkgId, uid, privileges);
         for (const auto &privilege : privileges) {
-            std::vector<gid_t> gidsTmp;
-            m_privilegeDb.GetPrivilegeGids(privilege, gidsTmp);
+            std::vector<std::pair<gid_t, std::string>> gidsTmp;
+            m_privilegeDb.GetPrivilegeGroups(privilege, gidsTmp);
             if (!gidsTmp.empty()) {
                 LogDebug("Considering privilege " << privilege << " with " <<
                     gidsTmp.size() << " groups assigned");
                 if (m_cynara.check(smackLabel, privilege, uidStr, pidStr)) {
-                    gids.insert(gidsTmp.begin(), gidsTmp.end());
+                    for_each(gidsTmp.begin(), gidsTmp.end(), [&] (std::pair<gid_t, std::string> group)
+                    {
+                        gids.insert(group.first);
+                    });
                     LogDebug("Cynara allowed, adding groups");
                 } else
                     LogDebug("Cynara denied, not adding groups");
