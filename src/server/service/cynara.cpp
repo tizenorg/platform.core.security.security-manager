@@ -106,13 +106,13 @@ CynaraAdminPolicy::~CynaraAdminPolicy()
 static void checkCynaraAdminError(int result, const std::string &msg)
 {
     switch (result) {
-        case CYNARA_ADMIN_API_SUCCESS:
+        case CYNARA_API_SUCCESS:
             return;
-        case CYNARA_ADMIN_API_OUT_OF_MEMORY:
+        case CYNARA_API_OUT_OF_MEMORY:
             ThrowMsg(CynaraException::OutOfMemory, msg);
-        case CYNARA_ADMIN_API_INVALID_PARAM:
+        case CYNARA_API_INVALID_PARAM:
             ThrowMsg(CynaraException::InvalidParam, msg);
-        case CYNARA_ADMIN_API_SERVICE_NOT_AVAILABLE:
+        case CYNARA_API_SERVICE_NOT_AVAILABLE:
             ThrowMsg(CynaraException::ServiceNotAvailable, msg);
         default:
             ThrowMsg(CynaraException::UnknownError, msg);
