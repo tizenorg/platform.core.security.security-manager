@@ -262,6 +262,7 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     Deserialization::Deserialize(buffer, req.pkgId);
     Deserialization::Deserialize(buffer, req.privileges);
     Deserialization::Deserialize(buffer, req.appPaths);
+    Deserialization::Deserialize(buffer, req.uid);
 
     if(!installRequestAuthCheck(req, uid)) {
         LogError("Request from uid " << uid << " for app installation denied");
@@ -286,6 +287,9 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
         pp_permissions[i] = req.privileges[i].c_str();
     }
     pp_permissions[req.privileges.size()] = nullptr;
+
+    if ((!uid) && (req.uid))
+        uid = req.uid;
 
     try {
         std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
