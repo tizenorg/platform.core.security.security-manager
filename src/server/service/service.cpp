@@ -59,10 +59,14 @@ static uid_t getGlobalUserId(void) {
  * Unifies user data of apps installed for all users
  * @param  uid            peer's uid - may be changed during process
  * @param  cynaraUserStr  string to which cynara user parameter will be put
+ * @param  reqUid         pointer to requested uid
  */
-static void checkGlobalUser(uid_t &uid, std::string &cynaraUserStr)
+static void checkGlobalUser(uid_t &uid, std::string &cynaraUserStr,
+                            uid_t *reqUid = NULL)
 {
     static uid_t globaluid = getGlobalUserId();
+    if (reqUid && (uid == 0) && (*reqUid))
+        uid = *reqUid;
     if (uid == 0 || uid == globaluid) {
         uid = globaluid;
         cynaraUserStr = CYNARA_ADMIN_WILDCARD;
@@ -273,8 +277,9 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     Deserialization::Deserialize(buffer, req.pkgId);
     Deserialization::Deserialize(buffer, req.privileges);
     Deserialization::Deserialize(buffer, req.appPaths);
+    Deserialization::Deserialize(buffer, req.uid);
     std::string uidstr;
-    checkGlobalUser(uid, uidstr);
+    checkGlobalUser(uid, uidstr, &req.uid);
 
     if(!installRequestAuthCheck(req, uid)) {
         LogError("Request from uid " << uid << " for app installation denied");
@@ -369,6 +374,10 @@ bool Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
 
     Deserialization::Deserialize(buffer, appId);
     std::string uidstr;
+    /* TODO:
+     * Add possibility of uninstalling applications for other users by root in
+     * offline mode.
+     */
     checkGlobalUser(uid, uidstr);
 
     try {
