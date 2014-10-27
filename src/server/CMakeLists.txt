@@ -1,12 +1,8 @@
 PKG_CHECK_MODULES(SERVER_DEP
     REQUIRED
     libcap
-    libsmack
     libsystemd-daemon
-    libtzplatform-config
-    sqlite3
     db-util
-    cynara-admin
     cynara-client
     )
 
@@ -22,7 +18,6 @@ INCLUDE_DIRECTORIES(SYSTEM
 INCLUDE_DIRECTORIES(
     ${INCLUDE_PATH}
     ${COMMON_PATH}/include
-    ${SERVER_PATH}/include
     ${SERVER_PATH}/main/include
     ${SERVER_PATH}/service/include
     ${SERVER_PATH}/db/include
@@ -32,15 +27,10 @@ INCLUDE_DIRECTORIES(
     )
 
 SET(SERVER_SOURCES
-    ${SERVER_PATH}/smack-check.cpp
     ${SERVER_PATH}/main/generic-socket-manager.cpp
     ${SERVER_PATH}/main/socket-manager.cpp
     ${SERVER_PATH}/main/server-main.cpp
     ${SERVER_PATH}/service/service.cpp
-    ${SERVER_PATH}/service/smack-rules.cpp
-    ${SERVER_PATH}/service/smack-labels.cpp
-    ${SERVER_PATH}/service/cynara.cpp
-    ${SERVER_PATH}/db/privilege_db.cpp
     ${DPL_PATH}/core/src/errno_string.cpp
     ${DPL_PATH}/core/src/string.cpp
     ${DPL_PATH}/db/src/naive_synchronization_object.cpp
