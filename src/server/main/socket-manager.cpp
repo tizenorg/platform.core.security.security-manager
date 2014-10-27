@@ -45,6 +45,7 @@
 
 #include <smack-check.h>
 #include <socket-manager.h>
+#include <file-lock.h>
 
 namespace {
 
@@ -70,6 +71,8 @@ struct SignalService : public GenericSocketService {
         sigset_t mask;
         sigemptyset(&mask);
         sigaddset(&mask, SIGTERM);
+        sigaddset(&mask, SIGINT);
+        sigaddset(&mask, SIGQUIT);
         if (-1 == pthread_sigmask(SIG_BLOCK, &mask, NULL))
             return -1;
         return signalfd(-1, &mask, 0);
@@ -95,8 +98,10 @@ struct SignalService : public GenericSocketService {
 
         signalfd_siginfo *siginfo = (signalfd_siginfo*)(&(event.rawBuffer[0]));
 
-        if (siginfo->ssi_signo == SIGTERM) {
-            LogInfo("Got signal: SIGTERM");
+        if ((siginfo->ssi_signo == SIGTERM) ||
+            (siginfo->ssi_signo == SIGINT) ||
+            (siginfo->ssi_signo == SIGQUIT)) {
+            LogInfo("Got signal: " << strsignal(siginfo->ssi_signo));
             static_cast<SocketManager*>(m_serviceManager)->MainLoopStop();
             return;
         }
@@ -137,6 +142,7 @@ SocketManager::CreateDefaultReadSocketDescription(int sock, bool timeout)
 
 SocketManager::SocketManager()
   : m_counter(0)
+  , m_sigFd(-1)
 {
     FD_ZERO(&m_readSet);
     FD_ZERO(&m_writeSet);
@@ -165,6 +171,7 @@ SocketManager::SocketManager()
     } else {
         auto &desc2 = CreateDefaultReadSocketDescription(filefd, false);
         desc2.service = signalService;
+        m_sigFd = filefd;
         LogInfo("SignalService mounted on " << filefd << " descriptor");
     }
 }
@@ -341,9 +348,33 @@ void SocketManager::MainLoop() {
     sd_notify(0, "READY=1");
 
     m_working = true;
+    FileLocker serviceLock(false, SecurityManager::SERVICE_LOCK_FILE, true,
+                           1000);
+    bool locked = false;
     while(m_working) {
+        fd_set readSigSet;
+        struct timeval tv_lock_to;
+        try {
+            if (!serviceLock.Locked()) {
+                tv_lock_to.tv_sec = 1;
+                tv_lock_to.tv_usec = 0;
+                serviceLock.Lock();
+            }
+        } catch (const FileLocker::Exception::Base &e) {
+            LogDebug("Could not lock: " << e.DumpToString());
+        }
+        if ((!locked) && serviceLock.Locked()) {
+            FD_ZERO(&readSigSet);
+            locked = true;
+            LogInfo("Service has a lock.");
+        }
         fd_set readSet = m_readSet;
         fd_set writeSet = m_writeSet;
+        if (!locked) {
+            if (m_sigFd >= 0) {
+                FD_SET(m_sigFd, &readSigSet);
+            }
+        }
 
         timeval localTempTimeout;
         timeval *ptrTimeout = &localTempTimeout;
@@ -383,38 +414,47 @@ void SocketManager::MainLoop() {
 //                << " seconds. Socket: " << pqTimeout.sock);
         }
 
-        int ret = select(m_maxDesc+1, &readSet, &writeSet, NULL, ptrTimeout);
+        int ret;
+        if (locked)
+            ret = select(m_maxDesc+1, &readSet, &writeSet, NULL, ptrTimeout);
+        else
+            if (m_sigFd >= 0)
+                ret = select(m_sigFd + 1, &readSigSet, NULL, NULL, &tv_lock_to);
+            else
+                continue;
 
         if (0 == ret) { // timeout
-            Assert(!m_timeoutQueue.empty());
+            if (locked) {
+                Assert(!m_timeoutQueue.empty());
 
-            Timeout pqTimeout = m_timeoutQueue.top();
-            m_timeoutQueue.pop();
+                Timeout pqTimeout = m_timeoutQueue.top();
+                m_timeoutQueue.pop();
 
-            auto &desc = m_socketDescriptionVector[pqTimeout.sock];
+                auto &desc = m_socketDescriptionVector[pqTimeout.sock];
 
-            if (!desc.isTimeout || !desc.isOpen) {
-                // Connection was closed. Timeout is useless...
+                if (!desc.isTimeout || !desc.isOpen) {
+                    // Connection was closed. Timeout is useless...
+                    desc.isTimeout = false;
+                    continue;
+                }
+
+                if (pqTimeout.time < desc.timeout) {
+                    // Is it possible?
+                    // This socket was used after timeout. We need to update timeout.
+                    pqTimeout.time = desc.timeout;
+                    m_timeoutQueue.push(pqTimeout);
+                    continue;
+                }
+
+                // timeout from m_timeoutQueue matches with socket.timeout
+                // and connection is open. Time to close it!
+                // Putting new timeout in queue here is pointless.
                 desc.isTimeout = false;
+                CloseSocket(pqTimeout.sock);
+
+                // All done. Now we should process next select ;-)
                 continue;
             }
-
-            if (pqTimeout.time < desc.timeout) {
-                // Is it possible?
-                // This socket was used after timeout. We need to update timeout.
-                pqTimeout.time = desc.timeout;
-                m_timeoutQueue.push(pqTimeout);
-                continue;
-            }
-
-            // timeout from m_timeoutQueue matches with socket.timeout
-            // and connection is open. Time to close it!
-            // Putting new timeout in queue here is pointless.
-            desc.isTimeout = false;
-            CloseSocket(pqTimeout.sock);
-
-            // All done. Now we should process next select ;-)
-            continue;
         }
 
         if (-1 == ret) {
@@ -429,17 +469,24 @@ void SocketManager::MainLoop() {
             }
             continue;
         }
-        for(int i = 0; i<m_maxDesc+1 && ret; ++i) {
-            if (FD_ISSET(i, &readSet)) {
-                ReadyForRead(i);
-                --ret;
+        if (locked) {
+            for(int i = 0; i<m_maxDesc+1 && ret; ++i) {
+                if (FD_ISSET(i, &readSet)) {
+                    ReadyForRead(i);
+                    --ret;
+                }
+                if (FD_ISSET(i, &writeSet)) {
+                    ReadyForWrite(i);
+                    --ret;
+                }
             }
-            if (FD_ISSET(i, &writeSet)) {
-                ReadyForWrite(i);
+            ProcessQueue();
+        } else {
+            if ((m_sigFd >= 0) && FD_ISSET(m_sigFd, &readSigSet)) {
+                ReadyForRead(m_sigFd);
                 --ret;
             }
         }
-        ProcessQueue();
     }
 }
 

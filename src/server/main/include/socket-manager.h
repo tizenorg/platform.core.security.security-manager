@@ -128,6 +128,7 @@ protected:
     int m_notifyMe[2];
     int m_counter;
     std::priority_queue<Timeout> m_timeoutQueue;
+    int m_sigFd;
 };
 
 } // namespace SecurityManager

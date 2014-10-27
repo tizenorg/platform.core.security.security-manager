@@ -65,11 +65,12 @@ int main(void) {
     UNHANDLED_EXCEPTION_HANDLER_BEGIN
     {
         SecurityManager::Singleton<SecurityManager::Log::LogSystem>::Instance().SetTag("SECURITY_MANAGER");
-
         sigset_t mask;
         sigemptyset(&mask);
         sigaddset(&mask, SIGTERM);
         sigaddset(&mask, SIGPIPE);
+        sigaddset(&mask, SIGINT);
+        sigaddset(&mask, SIGQUIT);
         if (-1 == pthread_sigmask(SIG_BLOCK, &mask, NULL)) {
             LogError("Error in pthread_sigmask");
             return 1;
