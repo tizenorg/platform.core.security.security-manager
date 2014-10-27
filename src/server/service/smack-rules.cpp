@@ -25,6 +25,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <sys/smack.h>
 #include <fcntl.h>
@@ -205,7 +206,8 @@ std::string SmackRules::getPackageRulesFilePath(const std::string &pkgId)
     return path;
 }
 
-bool SmackRules::installPackageRules(const std::string &pkgId) {
+bool SmackRules::installPackageRules(const std::string &pkgId)
+{
     try {
          SmackRules smackRules;
          std::string path = getPackageRulesFilePath(pkgId);
@@ -232,7 +234,36 @@ bool SmackRules::installPackageRules(const std::string &pkgId) {
      }
 }
 
-bool SmackRules::uninstallPackageRules(const std::string &pkgId) {
+/* FIXME: Remove this function if real pkgId instead of "User" label will be used
+ * in generateAppLabel(). */
+bool SmackRules::addMissingRulesFix()
+{
+    DIR *dir;
+    struct dirent *ent;
+    SmackRules rules;
+    std::string path(tzplatform_mkpath(TZ_SYS_SMACK, "accesses.d"));
+    std::string path2(tzplatform_mkpath(TZ_SYS_SMACK, "accesses.d/"));
+
+    dir = opendir(path.c_str());
+    if (dir != NULL) {
+        while ((ent = readdir(dir))) {
+            if (ent->d_type == DT_REG) {
+                if (rules.loadFromFile((path2 + std::string(ent->d_name)).c_str()))
+                    // Do not check error here. If this fails we can't do anything anyway.
+                    rules.apply();
+            }
+        }
+    }
+    else
+        return false;
+
+    closedir(dir);
+
+    return true;
+}
+
+bool SmackRules::uninstallPackageRules(const std::string &pkgId)
+{
     std::string path = getPackageRulesFilePath(pkgId);
     if (access(path.c_str(), F_OK) == -1) {
         if (errno == ENOENT) {
@@ -260,6 +291,9 @@ bool SmackRules::uninstallPackageRules(const std::string &pkgId) {
             LogError("Failed to remove smack rules file: " << path);
             return false;
         }
+
+        // FIXME: Reloading all rules:
+        SmackRules::addMissingRulesFix();
 
         return true;
     } catch (const std::bad_alloc &e) {
