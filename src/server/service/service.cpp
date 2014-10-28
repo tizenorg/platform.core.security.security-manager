@@ -481,8 +481,33 @@ bool Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
         }
         LogDebug("smack label: " << smackLabel);
 
+        std::vector<std::string> privileges1;
+        std::vector<std::string> privileges2;
         std::vector<std::string> privileges;
-        m_privilegeDb.GetPkgPrivileges(pkgId, uid, privileges);
+
+        m_privilegeDb.GetPkgPrivileges(pkgId, uid, privileges1);
+        /*there is also a need of checking, if privilege is granted to all users*/
+        m_privilegeDb.GetPkgPrivileges(pkgId, 0, privileges2);
+
+        std::vector<std::string>::iterator it1 = privileges1.begin();
+        std::vector<std::string>::iterator it2 = privileges2.begin();
+        while (it1 != privileges1.end() && it2 != privileges2.end()) {
+            if (*it1 < *it2)
+                privileges.push_back(*it1++);
+            else if (*it1 > *it2)
+                privileges.push_back(*it2++);
+            else {
+                privileges.push_back(*it2++);
+                it1++;
+            }
+        }
+        while (it1 != privileges1.end()) {
+            privileges.push_back(*it1++);
+        }
+        while (it2 != privileges2.end()) {
+            privileges.push_back(*it2++);
+        }
+
         for (const auto &privilege : privileges) {
             std::vector<std::string> gidsTmp;
             m_privilegeDb.GetPrivilegeGroups(privilege, gidsTmp);
