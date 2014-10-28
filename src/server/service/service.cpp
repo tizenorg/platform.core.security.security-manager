@@ -297,7 +297,7 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
 
         m_privilegeDb.BeginTransaction();
         m_privilegeDb.GetPkgPrivileges(req.pkgId, uid, oldPkgPrivileges);
-        m_privilegeDb.AddApplication(req.appId, req.pkgId, uid, pkgIdIsNew);
+        m_privilegeDb.AddApplication(req.appId, req.pkgId, uid, pkgIdIsNew);//uid can be 0 here, which means "for all users", right?
         m_privilegeDb.UpdateAppPrivileges(req.appId, uid, req.privileges);
         m_privilegeDb.GetPkgPrivileges(req.pkgId, uid, newPkgPrivileges);
         CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
@@ -480,6 +480,9 @@ bool Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
         LogDebug("smack label: " << smackLabel);
 
         std::vector<std::string> privileges;
+
+        //this uses only user id, sometimes during installation apps for all users uid is 0,
+        //so there is possiblity that not all pkg privileges are obtained this way? Am i wrong?
         m_privilegeDb.GetPkgPrivileges(pkgId, uid, privileges);
         for (const auto &privilege : privileges) {
             std::vector<gid_t> gidsTmp;
