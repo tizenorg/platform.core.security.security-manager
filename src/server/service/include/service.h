@@ -31,6 +31,7 @@
 #include <connection-info.h>
 #include <privilege_db.h>
 #include <cynara.h>
+#include <sys/types.h>
 
 namespace SecurityManager {
 
@@ -60,9 +61,17 @@ public:
     void close(const CloseEvent &event);
 
 private:
+    uid_t m_globaluid;
     ConnectionInfoMap m_connectionInfoMap;
     PrivilegeDb m_privilegeDb;
     Cynara m_cynara;
+
+    /**
+     * Unifies user data of apps installed for all users
+     * @param  uid            peer's uid - may be changed during process
+     * @param  cynaraUserStr  string to which cynara user parameter will be put
+     */
+    void checkGlobalUser(uid_t &uid, std::string &cynaraUserStr);
 
     /**
      * Handle request from a client
