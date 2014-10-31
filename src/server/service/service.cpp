@@ -48,15 +48,24 @@ namespace SecurityManager {
 
 const InterfaceID IFACE = 1;
 
-static inline bool isGlobalUser(uid_t uid) {
-    static uid_t uidGlobalApp = 0;
-    if (!uidGlobalApp) {
-        // As long as the recorded global user id is root, recheck.
-        uid_t id = tzplatform_getuid(TZ_SYS_GLOBALAPP_USER);
-        if (id != (uid_t)-1)
-            uidGlobalApp = id;
+void checkGlobalUser(uid_t &uid, std::string &cynaraUserStr)
+{
+    bool isGlobalUser = false;
+
+    if (uid == 0) {
+        isGlobalUser = true;
+    } else {
+        uid_t globalUid = tzplatform_getuid(TZ_SYS_GLOBALAPP_USER);
+        if (globalUid != ((uid_t) -1) && globalUid == uid)
+            isGlobalUser = true;
     }
-    return uidGlobalApp == uid || !uid; // FIXME: is root authorized?
+
+    if (isGlobalUser) {
+        uid = 0;
+        cynaraUserStr = CYNARA_ADMIN_WILDCARD;
+    } else {
+        cynaraUserStr = std::to_string(static_cast<unsigned int>(uid));
+    }
 }
 
 Service::Service()
@@ -291,8 +300,8 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
 
     try {
         std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
-        std::string uidstr = isGlobalUser(uid) ? CYNARA_ADMIN_WILDCARD
-                             : std::to_string(static_cast<unsigned int>(uid));
+        std::string uidstr;
+        checkGlobalUser(uid, uidstr);
 
         LogDebug("Install parameters: appId: " << req.appId << ", pkgId: " << req.pkgId
                  << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
@@ -370,16 +379,17 @@ bool Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
             m_privilegeDb.RollbackTransaction();
             appExists = false;
         } else {
+            std::string uidstr;
+            std::string uidstr;
+            checkGlobalUser(uid, uidstr);
+
+            LogDebug("Uninstall parameters: appId: " << appId << ", pkgId: " << pkgId
+                     << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
+
             if (!generateAppLabel(pkgId, smackLabel)) {
                 LogError("Cannot generate Smack label for package: " << pkgId);
                 goto error_label;
             }
-
-            std::string uidstr = isGlobalUser(uid) ? CYNARA_ADMIN_WILDCARD
-                                 : std::to_string(static_cast<unsigned int>(uid));
-
-            LogDebug("Uninstall parameters: appId: " << appId << ", pkgId: " << pkgId
-                     << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
 
             m_privilegeDb.GetPkgPrivileges(pkgId, uid, oldPkgPrivileges);
             m_privilegeDb.UpdateAppPrivileges(appId, uid, std::vector<std::string>());
