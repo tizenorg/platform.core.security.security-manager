@@ -34,6 +34,10 @@ char const * const SERVICE_LOCK_FILE = tzplatform_mkpath3(TZ_SYS_RUN,
                                                          "lock",
                                                          "security-manager.lock");
 
+char const * const MASTER_SERVICE_LOCK_FILE = tzplatform_mkpath3(TZ_SYS_RUN,
+                                                                 "lock",
+                                                                 "security-manager-master.lock");
+
 FileLocker::FileLocker(const std::string &lockFile, bool blocking)
 {
     if (lockFile.empty()) {

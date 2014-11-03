@@ -34,6 +34,7 @@
 namespace SecurityManager {
 
 extern char const * const SERVICE_LOCK_FILE;
+extern char const * const MASTER_SERVICE_LOCK_FILE;
 
 class FileLocker :
     public Noncopyable
