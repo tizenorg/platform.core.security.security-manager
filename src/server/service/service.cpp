@@ -50,7 +50,8 @@ namespace SecurityManager {
 
 const InterfaceID IFACE = 1;
 
-Service::Service()
+Service::Service(const bool& isSlave):
+        m_isSlave(isSlave)
 {
 }
 
@@ -59,56 +60,6 @@ GenericSocketService::ServiceDescriptionVector Service::GetServiceDescription()
     return ServiceDescriptionVector {
         {SERVICE_SOCKET, "security-manager", IFACE},
     };
-}
-
-void Service::accept(const AcceptEvent &event)
-{
-    LogDebug("Accept event. ConnectionID.sock: " << event.connectionID.sock <<
-             " ConnectionID.counter: " << event.connectionID.counter <<
-             " ServiceID: " << event.interfaceID);
-
-    auto &info = m_connectionInfoMap[event.connectionID.counter];
-    info.interfaceID = event.interfaceID;
-}
-
-void Service::write(const WriteEvent &event)
-{
-    LogDebug("WriteEvent. ConnectionID: " << event.connectionID.sock <<
-             " Size: " << event.size <<
-             " Left: " << event.left);
-
-    if (event.left == 0)
-        m_serviceManager->Close(event.connectionID);
-}
-
-void Service::process(const ReadEvent &event)
-{
-    LogDebug("Read event for counter: " << event.connectionID.counter);
-    auto &info = m_connectionInfoMap[event.connectionID.counter];
-    info.buffer.Push(event.rawBuffer);
-
-    // We can get several requests in one package.
-    // Extract and process them all
-    while (processOne(event.connectionID, info.buffer, info.interfaceID));
-}
-
-void Service::close(const CloseEvent &event)
-{
-    LogDebug("CloseEvent. ConnectionID: " << event.connectionID.sock);
-    m_connectionInfoMap.erase(event.connectionID.counter);
-}
-
-static bool getPeerID(int sock, uid_t &uid, pid_t &pid) {
-    struct ucred cr;
-    socklen_t len = sizeof(cr);
-
-    if (!getsockopt(sock, SOL_SOCKET, SO_PEERCRED, &cr, &len)) {
-        uid = cr.uid;
-        pid = cr.pid;
-        return true;
-    }
-
-    return false;
 }
 
 bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
@@ -165,7 +116,7 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
             LogError("Broken protocol.");
         } Catch (ServiceException::Base) {
             LogError("Broken protocol.");
-        } catch (std::exception &e) {
+        } catch (const std::exception &e) {
             LogError("STD exception " << e.what());
         } catch (...) {
             LogError("Unknown exception");

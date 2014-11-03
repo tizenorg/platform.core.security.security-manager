@@ -35,6 +35,8 @@
 #include <smack-rules.h>
 #include <smack-check.h>
 
+#include <sys/socket.h>
+
 #include "service-common.h"
 
 namespace SecurityManager {
@@ -62,6 +64,20 @@ static inline bool isSubDir(const char *parent, const char *subdir)
             return false;
 
     return (*subdir == '/');
+}
+
+bool getPeerID(int sock, uid_t &uid, pid_t &pid)
+{
+    struct ucred cr;
+    socklen_t len = sizeof(cr);
+
+    if (!getsockopt(sock, SOL_SOCKET, SO_PEERCRED, &cr, &len)) {
+        uid = cr.uid;
+        pid = cr.pid;
+        return true;
+    }
+
+    return false;
 }
 
 static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)

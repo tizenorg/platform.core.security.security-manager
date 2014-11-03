@@ -41,6 +41,8 @@ uid_t getGlobalUserId(void);
  */
 void checkGlobalUser(uid_t &uid, std::string &cynaraUserStr);
 
+bool getPeerID(int sock, uid_t &uid, pid_t &pid);
+
 /*
  * This function is used to install applications.
  *
