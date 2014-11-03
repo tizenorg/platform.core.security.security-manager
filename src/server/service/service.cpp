@@ -197,7 +197,69 @@ void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
     std::string appId;
 
     Deserialization::Deserialize(buffer, appId);
-    Serialization::Serialize(send, ServiceImpl::appUninstall(appId, uid));
+
+    try {
+        std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
+
+        m_privilegeDb.BeginTransaction();
+        if (!m_privilegeDb.GetAppPkgId(appId, pkgId)) {
+            LogWarning("Application " << appId <<
+                " not found in database while uninstalling");
+            m_privilegeDb.RollbackTransaction();
+            appExists = false;
+        } else {
+            if (!generateAppIdLabel(appId, smackLabel)) {
+                LogError("Cannot generate Smack label for package: " << appId);
+                goto error_label;
+            }
+
+            std::string uidstr = isGlobalUser(uid) ? CYNARA_ADMIN_WILDCARD
+                                 : std::to_string(static_cast<unsigned int>(uid));
+
+            LogDebug("Uninstall parameters: appId: " << appId << ", pkgId: " << pkgId
+                     << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
+
+            m_privilegeDb.GetPkgPrivileges(pkgId, uid, oldPkgPrivileges);
+            m_privilegeDb.UpdateAppPrivileges(appId, uid, std::vector<std::string>());
+            m_privilegeDb.RemoveApplication(appId, uid, removePkg);
+            m_privilegeDb.GetPkgPrivileges(pkgId, uid, newPkgPrivileges);
+            CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
+                                             newPkgPrivileges);
+            m_privilegeDb.CommitTransaction();
+            LogDebug("Application uninstallation commited to database");
+        }
+    } catch (const PrivilegeDb::Exception::InternalError &e) {
+        m_privilegeDb.RollbackTransaction();
+        LogError("Error while removing application info from database: " << e.DumpToString());
+        goto error_label;
+    } catch (const CynaraException::Base &e) {
+        m_privilegeDb.RollbackTransaction();
+        LogError("Error while setting Cynara rules for application: " << e.DumpToString());
+        goto error_label;
+    } catch (const std::bad_alloc &e) {
+        m_privilegeDb.RollbackTransaction();
+        LogError("Memory allocation while setting Cynara rules for application: " << e.what());
+        goto error_label;
+    }
+
+    if (appExists) {
+
+        if (removePkg) {
+            LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
+            if (!SmackRules::uninstallPackageRules(pkgId)) {
+                LogError("Error on uninstallation of package-specific smack rules");
+                goto error_label;
+            }
+        }
+    }
+
+    // success
+    Serialization::Serialize(send, SECURITY_MANAGER_API_SUCCESS);
+    return true;
+
+error_label:
+    Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_SERVER_ERROR);
+    return false;
 }
 
 void Service::processGetPkgId(MessageBuffer &buffer, MessageBuffer &send)
@@ -219,13 +281,52 @@ void Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
     std::unordered_set<gid_t> gids;
     int ret;
 
-    Deserialization::Deserialize(buffer, appId);
-    ret = ServiceImpl::getAppGroups(appId, uid, pid, gids);
-    Serialization::Serialize(send, ret);
-    if (ret == SECURITY_MANAGER_API_SUCCESS) {
-        Serialization::Serialize(send, static_cast<int>(gids.size()));
-        for (const auto &gid : gids) {
-            Serialization::Serialize(send, gid);
+    try {
+        std::string appId;
+        std::string pkgId;
+        std::string smackLabel;
+        std::string uidStr = std::to_string(uid);
+        std::string pidStr = std::to_string(pid);
+
+        Deserialization::Deserialize(buffer, appId);
+        LogDebug("appId: " << appId);
+
+        if (!m_privilegeDb.GetAppPkgId(appId, pkgId)) {
+            LogWarning("Application " << appId << " not found in database");
+            Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT);
+            return false;
+        }
+        LogDebug("pkgId: " << pkgId);
+
+        if (!generateAppIdLabel(appId, smackLabel)) {
+             LogError("Cannot generate Smack label for app: " << appId);
+            Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT);
+            return false;
+        }
+        LogDebug("smack label: " << smackLabel);
+
+        std::vector<std::string> privileges;
+        m_privilegeDb.GetPkgPrivileges(pkgId, uid, privileges);
+        for (const auto &privilege : privileges) {
+            std::vector<std::string> gidsTmp;
+            m_privilegeDb.GetPrivilegeGroups(privilege, gidsTmp);
+            if (!gidsTmp.empty()) {
+                LogDebug("Considering privilege " << privilege << " with " <<
+                    gidsTmp.size() << " groups assigned");
+                if (m_cynara.check(smackLabel, privilege, uidStr, pidStr)) {
+                    for_each(gidsTmp.begin(), gidsTmp.end(), [&] (std::string group)
+                    {
+                        struct group *grp = getgrnam(group.c_str());
+                        if (grp == NULL) {
+                                LogError("No such group: " << group.c_str());
+                                return;
+                        }
+                        gids.insert(grp->gr_gid);
+                    });
+                    LogDebug("Cynara allowed, adding groups");
+                } else
+                    LogDebug("Cynara denied, not adding groups");
+            }
         }
     }
 }

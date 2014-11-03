@@ -158,7 +158,7 @@ static bool labelDir(const std::string &path, const std::string &label,
     return ret;
 }
 
-bool setupPath(const std::string &pkgId, const std::string &path,
+bool setupPath(const std::string &appId, const std::string &path,
     app_install_path_type pathType)
 {
     std::string label;
@@ -166,7 +166,7 @@ bool setupPath(const std::string &pkgId, const std::string &path,
 
     switch (pathType) {
     case SECURITY_MANAGER_PATH_PRIVATE:
-        if (!generateAppLabel(pkgId, label))
+        if (!generateAppIdLabel(appId, label))
             return false;
         label_executables = true;
         label_transmute = false;
