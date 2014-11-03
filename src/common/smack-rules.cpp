@@ -177,14 +177,14 @@ bool SmackRules::addFromTemplate(const std::vector<std::string> &templateRules,
         }
 
         if (subjectIsTemplate) {
-            if (!generateAppLabel(pkgId, subject)) {
+            if (!generatePkgIdLabel(pkgId, subject)) {
                 LogError("Failed to generate app label from pkgid: " << pkgId);
                 return false;
             }
         }
 
         if (objectIsTemplate) {
-            if (!generateAppLabel(pkgId, object)) {
+            if (!generatePkgIdLabel(pkgId, object)) {
                 LogError("Failed to generate app label from pkgid: " << pkgId);
                 return false;
             }
