@@ -37,6 +37,7 @@ SET(SERVER_SOURCES
     ${SERVER_PATH}/main/socket-manager.cpp
     ${SERVER_PATH}/main/server-main.cpp
     ${SERVER_PATH}/service/service.cpp
+    ${SERVER_PATH}/service/master-service.cpp
     ${SERVER_PATH}/service/smack-rules.cpp
     ${SERVER_PATH}/service/smack-labels.cpp
     ${SERVER_PATH}/service/cynara.cpp

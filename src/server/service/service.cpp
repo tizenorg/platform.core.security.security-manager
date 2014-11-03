@@ -59,7 +59,8 @@ static inline bool isGlobalUser(uid_t uid) {
     return uidGlobalApp == uid || !uid; // FIXME: is root authorized?
 }
 
-Service::Service()
+Service::Service(const bool& isSlave):
+        m_isSlave(isSlave)
 {
 }
 
