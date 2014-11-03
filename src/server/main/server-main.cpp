@@ -33,7 +33,7 @@
 
 #include <service.h>
 
-IMPLEMENT_SAFE_SINGLETON(SecurityManager::Log::LogSystem);
+// IMPLEMENT_SAFE_SINGLETON(SecurityManager::Log::LogSystem);
 
 #define REGISTER_SOCKET_SERVICE(manager, service) \
     registerSocketService<service>(manager, #service)

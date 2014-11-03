@@ -1,6 +1,24 @@
-System ~APP~ rwx
-~APP~ System wx
-~APP~ System::Shared rx
-~APP~ System::Run rwxat
-~APP~ System::Log rwxa
-~APP~ _ l
+System	~APP~ 			rwx
+~APP~ 	System 			wx
+~APP~ 	System::Shared 		rx
+~APP~ 	System::Run 		rwxat
+~APP~ 	System::Log 		rwxa
+~APP~ 	_ 			l
+
+#
+# Below rules added as per PSDAC-657
+# 
+User 	~APP~ 			rwxa
+User 	~PKG~ 			rwxat
+~APP~ 	User 			wx
+~APP~ 	User::Home 		rxl
+~APP~ 	User::App::Shared	rwxat
+~APP~ 	~PKG~ 			rwxat
+
+#
+# Below rule marks the relationship between all
+# applications in one package. This is actualy 
+# a loop that will create cross-relationship
+# within a package
+#
+~APP~ 	~PKG_APPS~ 		rwxa

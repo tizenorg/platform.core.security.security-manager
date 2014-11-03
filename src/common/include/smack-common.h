@@ -33,14 +33,24 @@ namespace SecurityManager {
     const char *const XATTR_NAME_TIZENEXEC =  XATTR_SECURITY_PREFIX "TIZEN_EXEC_LABEL";
 
     /**
-     * Generates label for application with package identifier
-     * read from @ref pkgId and assigns it to @ref label.
+     * Generates label for an application with a specific application ID
+     * read from @ref appId and assigns it to @ref label.
      *
-     * @param[in] pkgId application's package identifier
+     * @param[in] appId application's identifier
      * @param[out] label string in which application's label will be stored
      * @return true on success, false on error.
     */
-    bool generateAppLabel(const std::string &pkgId, std::string &label);
+    bool generateAppIdLabel(const std::string &pkgId, std::string &label);
+    
+    /**
+     * Generates label for an application with a package ID
+     * read from @ref appPkgId and assigns it to @ref label.
+     *
+     * @param[in] appPkgId
+     * @param[out] lanel
+     * @return true on success, false on error.
+     */
+    bool generatePkgIdLabel(const std::string &appPkgId, std::string &label);
 }
 
 #endif /* _SMACK_COMMON_H_ */
