@@ -220,8 +220,8 @@ bool Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
             m_privilegeDb.RollbackTransaction();
             appExists = false;
         } else {
-            if (!generateAppLabel(pkgId, smackLabel)) {
-                LogError("Cannot generate Smack label for package: " << pkgId);
+            if (!generateAppIdLabel(appId, smackLabel)) {
+                LogError("Cannot generate Smack label for package: " << appId);
                 goto error_label;
             }
 
@@ -324,8 +324,8 @@ bool Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
         }
         LogDebug("pkgId: " << pkgId);
 
-        if (!generateAppLabel(pkgId, smackLabel)) {
-             LogError("Cannot generate Smack label for package: " << pkgId);
+        if (!generateAppIdLabel(appId, smackLabel)) {
+             LogError("Cannot generate Smack label for app: " << appId);
             Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT);
             return false;
         }

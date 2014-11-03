@@ -29,7 +29,6 @@
 #include "protocols.h"
 #include <smack-common.h>
 #include <security-manager.h>
-#include <cynara-admin-types.h>
 #include <cynara.h>
 #include <smack-labels.h>
 #include <smack-rules.h>
@@ -126,8 +125,8 @@ int AppInstall(PrivilegeDb *pdb, const app_inst_req &req)
     }
 
     std::string smackLabel;
-    if (!generateAppLabel(req.pkgId, smackLabel)) {
-        LogError("Cannot generate Smack label for package: " << req.pkgId);
+    if (!generateAppIdLabel(req.appId, smackLabel)) {
+        LogError("Cannot generate Smack label for app: " << req.appId);
         return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
     }
 
@@ -182,7 +181,7 @@ int AppInstall(PrivilegeDb *pdb, const app_inst_req &req)
         for (const auto &appPath : req.appPaths) {
             const std::string &path = appPath.first;
             app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
-            int result = setupPath(req.pkgId, path, pathType);
+            int result = setupPath(req.appId, path, pathType);
 
             if (!result) {
                 LogError("setupPath() failed");
