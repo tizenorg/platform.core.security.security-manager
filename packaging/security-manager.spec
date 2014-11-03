@@ -126,6 +126,7 @@ fi
 %attr(-,root,root) %{_unitdir}/security-manager.target
 %attr(-,root,root) %{_unitdir}/sockets.target.wants/security-manager.socket
 %attr(-,root,root) %{_unitdir}/security-manager.socket
+%attr(-,root,root) %{_unitdir}/security-manager-master.socket
 %attr(-,root,root) %{TZ_SYS_SMACK}/app-rules-template.smack
 %config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db
 %config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db-journal

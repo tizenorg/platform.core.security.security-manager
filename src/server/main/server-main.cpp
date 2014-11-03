@@ -28,22 +28,30 @@
 #include <dpl/singleton.h>
 #include <dpl/singleton_safe_impl.h>
 
+#include <boost/program_options.hpp>
+#include <iostream>
+
 #include <socket-manager.h>
 #include <file-lock.h>
 
 #include <service.h>
+#include <master-service.h>
+
+namespace po = boost::program_options;
 
 IMPLEMENT_SAFE_SINGLETON(SecurityManager::Log::LogSystem);
 
-#define REGISTER_SOCKET_SERVICE(manager, service) \
-    registerSocketService<service>(manager, #service)
+#define REGISTER_SOCKET_SERVICE(manager, service, allocator) \
+    registerSocketService<service>(manager, #service, allocator)
 
 template<typename T>
-void registerSocketService(SecurityManager::SocketManager &manager, const std::string& serviceName)
+void registerSocketService(SecurityManager::SocketManager &manager,
+                           const std::string& serviceName,
+                           const std::function<T*(void)>& serviceAllocator)
 {
     T *service = NULL;
     try {
-        service = new T();
+        service = serviceAllocator();
         service->Create();
         manager.RegisterSocketService(service);
         service = NULL;
@@ -61,11 +69,58 @@ void registerSocketService(SecurityManager::SocketManager &manager, const std::s
         delete service;
 }
 
-int main(void) {
-
+int main(int argc, char* argv[])
+{
     UNHANDLED_EXCEPTION_HANDLER_BEGIN
     {
+        // initialize logging
         SecurityManager::Singleton<SecurityManager::Log::LogSystem>::Instance().SetTag("SECURITY_MANAGER");
+
+        // parse arguments
+        bool masterMode = false, slaveMode = false;
+        po::options_description optDesc("Allowed options");
+
+        optDesc.add_options()
+        ("help,h", "Print this help message")
+        ("master,m", "Enable master mode")
+        ("slave,s", "Enable slave mode")
+        ;
+
+        po::variables_map vm;
+        po::basic_parsed_options<char> parsed =
+                po::command_line_parser(argc, argv).options(optDesc).allow_unregistered().run();
+
+        std::vector<std::string> unrecognizedOptions =
+             po::collect_unrecognized(parsed.options, po::include_positional);
+
+        if (!unrecognizedOptions.empty()) {
+            std::cerr << "Unrecognized options: ";
+
+            for (auto& uo : unrecognizedOptions) {
+                std::cerr << ' ' << uo;
+            }
+
+            std::cerr << std::endl << std::endl;
+            std::cerr << optDesc << std::endl;
+
+            return EXIT_FAILURE;
+        }
+
+        po::store(parsed, vm);
+        po::notify(vm);
+
+        if (vm.count("help")) {
+            std::cout << optDesc << std::endl;
+            return EXIT_SUCCESS;
+        }
+
+        masterMode = vm.count("master") > 0;
+        slaveMode = vm.count("slave") > 0;
+
+        if (masterMode && slaveMode) {
+            LogError("Cannot be both master and slave!");
+            return EXIT_FAILURE;
+        }
 
         SecurityManager::FileLocker serviceLock(SecurityManager::SERVICE_LOCK_FILE,
                                                 true);
@@ -76,13 +131,23 @@ int main(void) {
         sigaddset(&mask, SIGPIPE);
         if (-1 == pthread_sigmask(SIG_BLOCK, &mask, NULL)) {
             LogError("Error in pthread_sigmask");
-            return 1;
+            return EXIT_FAILURE;
         }
 
         LogInfo("Start!");
         SecurityManager::SocketManager manager;
 
-        REGISTER_SOCKET_SERVICE(manager, SecurityManager::Service);
+        if (masterMode) {
+            auto allocator = []() -> SecurityManager::MasterService* {
+                return new SecurityManager::MasterService();
+            };
+            REGISTER_SOCKET_SERVICE(manager, SecurityManager::MasterService, allocator);
+        } else {
+            auto allocator = [&slaveMode]() -> SecurityManager::Service* {
+                return new SecurityManager::Service(slaveMode);
+            };
+            REGISTER_SOCKET_SERVICE(manager, SecurityManager::Service, allocator);
+        }
 
         manager.MainLoop();
     } catch (const SecurityManager::FileLocker::Exception::Base &e) {
@@ -91,5 +156,5 @@ int main(void) {
         return EXIT_FAILURE;
     }
     UNHANDLED_EXCEPTION_HANDLER_END
-    return 0;
+    return EXIT_SUCCESS;
 }

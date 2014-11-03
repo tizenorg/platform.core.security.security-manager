@@ -49,7 +49,8 @@ namespace SecurityManager {
 
 const InterfaceID IFACE = 1;
 
-Service::Service()
+Service::Service(const bool& isSlave):
+        m_isSlave(isSlave)
 {
 }
 
@@ -95,19 +96,6 @@ void Service::close(const CloseEvent &event)
 {
     LogDebug("CloseEvent. ConnectionID: " << event.connectionID.sock);
     m_connectionInfoMap.erase(event.connectionID.counter);
-}
-
-static bool getPeerID(int sock, uid_t &uid, pid_t &pid) {
-    struct ucred cr;
-    socklen_t len = sizeof(cr);
-
-    if (!getsockopt(sock, SOL_SOCKET, SO_PEERCRED, &cr, &len)) {
-        uid = cr.uid;
-        pid = cr.pid;
-        return true;
-    }
-
-    return false;
 }
 
 bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
@@ -164,7 +152,7 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
             LogError("Broken protocol.");
         } Catch (ServiceException::Base) {
             LogError("Broken protocol.");
-        } catch (std::exception &e) {
+        } catch (const std::exception &e) {
             LogError("STD exception " << e.what());
         } catch (...) {
             LogError("Unknown exception");

@@ -16,14 +16,14 @@
  *  limitations under the License
  */
 /*
- * @file        service.h
- * @author      Michal Witanowski <m.witanowski@samsung.com>
+ * @file        master-service.h
+ * @author      Lukasz Kostyra <l.kostyra@samsung.com>
  * @author      Rafal Krypa <r.krypa@samsung.com>
- * @brief       Implementation of security-manager service
+ * @brief       Implementation of security-manager master service
  */
 
-#ifndef _SECURITY_MANAGER_SERVICE_
-#define _SECURITY_MANAGER_SERVICE_
+#ifndef _SECURITY_MANAGER_MASTER_SERVICE_
+#define _SECURITY_MANAGER_MASTER_SERVICE_
 
 #include <service-thread.h>
 #include <generic-socket-manager.h>
@@ -34,19 +34,19 @@
 
 namespace SecurityManager {
 
-class ServiceException
+class MasterServiceException
 {
 public:
     DECLARE_EXCEPTION_TYPE(SecurityManager::Exception, Base)
     DECLARE_EXCEPTION_TYPE(Base, InvalidAction)
 };
 
-class Service :
+class MasterService :
     public SecurityManager::GenericSocketService,
-    public SecurityManager::ServiceThread<Service>
+    public SecurityManager::ServiceThread<MasterService>
 {
 public:
-    Service(const bool& isSlave);
+    MasterService();
     ServiceDescriptionVector GetServiceDescription();
 
     DECLARE_THREAD_EVENT(AcceptEvent, accept)
@@ -61,9 +61,6 @@ public:
 
 private:
     ConnectionInfoMap m_connectionInfoMap;
-    PrivilegeDb m_privilegeDb;
-    Cynara m_cynara;
-    const bool m_isSlave;
 
     /**
      * Handle request from a client
@@ -74,48 +71,8 @@ private:
      * @return             true on success
      */
     bool processOne(const ConnectionID &conn, MessageBuffer &buffer, InterfaceID interfaceID);
-
-    /**
-     * Process application installation
-     *
-     * @param  buffer Raw received data buffer
-     * @param  send   Raw data buffer to be sent
-     * @param  uid    User's identifier for whom application will be installed
-     * @return        true on success
-     */
-    bool processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
-
-    /**
-     * Process application uninstallation
-     *
-     * @param  buffer Raw received data buffer
-     * @param  send   Raw data buffer to be sent
-     * @param  uid    User's identifier for whom application will be uninstalled
-     * @return        true on success
-     */
-    bool processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
-
-    /**
-     * Process getting package id from app id
-     *
-     * @param  buffer Raw received data buffer
-     * @param  send   Raw data buffer to be sent
-     * @return        true on success
-     */
-    bool processGetPkgId(MessageBuffer &buffer, MessageBuffer &send);
-
-    /**
-     * Process getting permitted group ids for app id
-     *
-     * @param  buffer Raw received data buffer
-     * @param  send   Raw data buffer to be sent
-     * @param  uid    User's identifier for whom application will be launched
-     * @param  pid    Process id in which application will be launched
-     * @return        true on success
-     */
-    bool processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
 };
 
 } // namespace SecurityManager
 
-#endif // _SECURITY_MANAGER_SERVICE_
+#endif // _SECURITY_MANAGER_MASTER_SERVICE_

@@ -4,6 +4,7 @@ INSTALL(FILES
     security-manager.service
     security-manager.target
     security-manager.socket
+    security-manager-master.socket
     DESTINATION
     ${SYSTEMD_INSTALL_DIR}
 )

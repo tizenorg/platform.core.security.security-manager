@@ -34,6 +34,8 @@ namespace SecurityManager {
 
 bool isGlobalUser(uid_t uid);
 
+bool getPeerID(int sock, uid_t &uid, pid_t &pid);
+
 /*
  * This function is used to install applications.
  *
