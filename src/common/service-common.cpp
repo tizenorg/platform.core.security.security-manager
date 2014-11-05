@@ -107,13 +107,19 @@ static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
     return true;
 }
 
-int AppInstall(PrivilegeDb &pdb, const app_inst_req &req)
+int AppInstall(PrivilegeDb *pdb, const app_inst_req &req)
 {
     int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    bool offlineMode = pdb == nullptr;
+
+    LogDebug("AppInstall");
     bool pkgIdIsNew = false;
     std::vector<std::string> addedPermissions;
     std::vector<std::string> removedPermissions;
 
+    if (offlineMode) {
+        LogDebug("Offline mode request.");
+    }
     if(!installRequestAuthCheck(req, req.uid)) {
         LogError("Request from uid " << req.uid << " for app installation denied");
         return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
@@ -126,7 +132,7 @@ int AppInstall(PrivilegeDb &pdb, const app_inst_req &req)
     }
 
     LogDebug("Install parameters: appId: " << req.appId << ", pkgId: " << req.pkgId
-             << ", generated smack label: " << smackLabel);
+             << ", generated smack label: " << smackLabel << ", uid: " << req.uid);
 
     // create null terminated array of strings for permissions
     std::unique_ptr<const char *[]> pp_permissions(new const char* [req.privileges.size() + 1]);
@@ -136,6 +142,9 @@ int AppInstall(PrivilegeDb &pdb, const app_inst_req &req)
     }
     pp_permissions[req.privileges.size()] = nullptr;
 
+    bool have_smack = SecurityManager::smack_check() != 0;
+    if (offlineMode)
+        pdb = new PrivilegeDb();
     try {
         std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
         std::string uidstr = isGlobalUser(req.uid) ? CYNARA_ADMIN_WILDCARD
@@ -144,42 +153,44 @@ int AppInstall(PrivilegeDb &pdb, const app_inst_req &req)
         LogDebug("Install parameters: appId: " << req.appId << ", pkgId: " << req.pkgId
                  << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
 
-        pdb.BeginTransaction();
-        pdb.GetPkgPrivileges(req.pkgId, req.uid, oldPkgPrivileges);
-        pdb.AddApplication(req.appId, req.pkgId, req.uid, pkgIdIsNew);
-        pdb.UpdateAppPrivileges(req.appId, req.uid, req.privileges);
-        pdb.GetPkgPrivileges(req.pkgId, req.uid, newPkgPrivileges);
+        pdb->BeginTransaction();
+        pdb->GetPkgPrivileges(req.pkgId, req.uid, oldPkgPrivileges);
+        pdb->AddApplication(req.appId, req.pkgId, req.uid, pkgIdIsNew);
+        pdb->UpdateAppPrivileges(req.appId, req.uid, req.privileges);
+        pdb->GetPkgPrivileges(req.pkgId, req.uid, newPkgPrivileges);
         CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
                                          newPkgPrivileges);
-        pdb.CommitTransaction();
+        pdb->CommitTransaction();
         LogDebug("Application installation commited to database");
     } catch (const PrivilegeDb::Exception::InternalError &e) {
-        pdb.RollbackTransaction();
+        pdb->RollbackTransaction();
         LogError("Error while saving application info to database: " << e.DumpToString());
         goto out;
     } catch (const CynaraException::Base &e) {
-        pdb.RollbackTransaction();
+        pdb->RollbackTransaction();
         LogError("Error while setting Cynara rules for application: " << e.DumpToString());
         goto out;
     } catch (const std::bad_alloc &e) {
-        pdb.RollbackTransaction();
+        pdb->RollbackTransaction();
         LogError("Memory allocation while setting Cynara rules for application: " << e.what());
         goto out;
     }
 
-    // register paths
-    for (const auto &appPath : req.appPaths) {
-        const std::string &path = appPath.first;
-        app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
-        int result = setupPath(req.pkgId, path, pathType);
+    if (have_smack) {
+        // register paths
+        for (const auto &appPath : req.appPaths) {
+            const std::string &path = appPath.first;
+            app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
+            int result = setupPath(req.pkgId, path, pathType);
 
-        if (!result) {
-            LogError("setupPath() failed");
-            goto out;
+            if (!result) {
+                LogError("setupPath() failed");
+                goto out;
+            }
         }
     }
 
-    if (pkgIdIsNew) {
+    if (pkgIdIsNew && have_smack) {
         LogDebug("Adding Smack rules for new pkgId " << req.pkgId);
         if (!SmackRules::installPackageRules(req.pkgId)) {
             LogError("Failed to apply package-specific smack rules");
@@ -190,6 +201,8 @@ int AppInstall(PrivilegeDb &pdb, const app_inst_req &req)
     // success
     ret = SECURITY_MANAGER_API_SUCCESS;
 out:
+    if (offlineMode)
+        delete pdb;
     return ret;
 }
 

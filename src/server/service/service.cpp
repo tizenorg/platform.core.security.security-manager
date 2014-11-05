@@ -199,7 +199,7 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     if (!((!uid) && (req.uid)))
         req.uid = uid;
 
-    ret = AppInstall(m_privilegeDb, req);
+    ret = AppInstall(&m_privilegeDb, req);
     Serialization::Serialize(send, ret);
     return ret == SECURITY_MANAGER_API_SUCCESS;
 }
