@@ -196,7 +196,7 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     Deserialization::Deserialize(buffer, req.appPaths);
     Deserialization::Deserialize(buffer, req.uid);
 
-    ret = AppInstall(m_privilegeDb, req, uid);
+    ret = AppInstall(&m_privilegeDb, req, uid);
     Serialization::Serialize(send, ret);
     return ret == SECURITY_MANAGER_API_SUCCESS;
 }
