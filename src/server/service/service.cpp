@@ -202,7 +202,7 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
                  " is denied to install application for user " << req.uid);
         ret = SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
     } else
-        ret = AppInstall(m_privilegeDb, req);
+        ret = AppInstall(&m_privilegeDb, req);
 
     Serialization::Serialize(send, ret);
     return ret == SECURITY_MANAGER_API_SUCCESS;

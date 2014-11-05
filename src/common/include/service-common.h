@@ -44,11 +44,11 @@ void checkGlobalUser(uid_t &uid, std::string &cynaraUserStr);
 /*
  * This function is used to install applications.
  *
- * \param[in] Reference to a db object
+ * \param[in] Pointer to a db object
  * \param[in] Reference to app_inst_req structure
  * \return API return code or error code
  */
-int AppInstall(PrivilegeDb &pdb, const app_inst_req &req);
+int AppInstall(PrivilegeDb *pdb, const app_inst_req &req);
 
 } // namespace SecurityManager
 
