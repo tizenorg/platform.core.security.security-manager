@@ -181,7 +181,15 @@ void Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     Deserialization::Deserialize(buffer, req.privileges);
     Deserialization::Deserialize(buffer, req.appPaths);
     Deserialization::Deserialize(buffer, req.uid);
-    Serialization::Serialize(send, ServiceImpl::appInstall(req, uid));
+
+    int ret;
+    if (uid && (uid != req.uid)) {
+        LogError("User " << uid <<
+                 " is denied to install application for user " << req.uid);
+        ret = SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+    } else
+        ret = ServiceImpl::appInstall(req, uid);
+    Serialization::Serialize(send, ret);
 }
 
 void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
