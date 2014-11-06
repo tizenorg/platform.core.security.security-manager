@@ -483,6 +483,9 @@ bool Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
 
         std::vector<std::string> privileges;
         m_privilegeDb.GetPkgPrivileges(pkgId, uid, privileges);
+        /*there is also a need of checking, if privilege is granted to all users*/
+        m_privilegeDb.GetPkgPrivileges(pkgId, m_globaluid, privileges);
+
         for (const auto &privilege : privileges) {
             std::vector<std::string> gidsTmp;
             m_privilegeDb.GetPrivilegeGroups(privilege, gidsTmp);
