@@ -146,7 +146,7 @@ int AppInstall(PrivilegeDb *pdb, const app_inst_req &req)
         pdb = new PrivilegeDb();
     }
     try {
-        std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
+        std::vector<std::string> oldAppPrivileges;
         std::string uidstr = isGlobalUser(req.uid) ? CYNARA_ADMIN_WILDCARD
                              : std::to_string(static_cast<unsigned int>(req.uid));
 
@@ -154,12 +154,14 @@ int AppInstall(PrivilegeDb *pdb, const app_inst_req &req)
                  << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
 
         pdb->BeginTransaction();
-        pdb->GetPkgPrivileges(req.pkgId, req.uid, oldPkgPrivileges);
+        pdb->GetAppPrivileges(req.pkgId, req.uid, oldAppPrivileges);
         pdb->AddApplication(req.appId, req.pkgId, req.uid, pkgIdIsNew);
         pdb->UpdateAppPrivileges(req.appId, req.uid, req.privileges);
-        pdb->GetPkgPrivileges(req.pkgId, req.uid, newPkgPrivileges);
-        CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
-                                         newPkgPrivileges);
+
+        // Since req.privileges already contains a list of current(new) privileges
+        // we don't need to fetch it from the DB
+        CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldAppPrivileges,
+                                         req.privileges);
         pdb->CommitTransaction();
         LogDebug("Application installation commited to database");
     } catch (const PrivilegeDb::Exception::InternalError &e) {
