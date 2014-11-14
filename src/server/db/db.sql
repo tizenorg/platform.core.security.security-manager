@@ -110,4 +110,13 @@ SELECT
 FROM privilege_group
 LEFT JOIN privilege USING (privilege_id);
 
+CREATE TABLE IF NOT EXISTS policy (
+/* *_id=-1 means ALL */
+user_id INTEGER NOT NULL,
+user_type_id INTEGER NOT NULL,
+app_id INTEGER NOT NULL,
+privilege_id INTEGER NOT NULL,
+PRIMARY KEY (user_id, user_type_id, app_id, privilege_id)
+);
+
 COMMIT TRANSACTION;
