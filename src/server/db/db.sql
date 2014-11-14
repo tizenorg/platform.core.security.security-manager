@@ -110,4 +110,35 @@ SELECT
 FROM privilege_group
 LEFT JOIN privilege USING (privilege_id);
 
+CREATE TABLE IF NOT EXISTS policy (
+user_id INTEGER NOT NULL,
+user_type_id INTEGER NOT NULL,
+app_id INTEGER NOT NULL,
+privilege_id INTEGER NOT NULL,
+allow BOOLEAN NOT NULL DEFAULT FALSE,
+source INTEGER NOT NULL,
+PRIMARY KEY (user_id, user_type_id, app_id, privilege_id, source)
+);
+
+DROP VIEW IF EXISTS policy_usertypes_view;
+CREATE VIEW policy_usertypes_view AS
+SELECT
+    user_type_id,
+    app_id,
+    privilege_id,
+    allow
+FROM policy
+WHERE user_id = -1 AND
+      user_type_id != -1;
+
+DROP VIEW IF EXISTS policy_users_view;
+CREATE VIEW policy_admin_view AS
+SELECT
+    user_id,
+    app_id,
+    privilege_id,
+    allow
+FROM policy
+WHERE user_id != -1;
+
 COMMIT TRANSACTION;
