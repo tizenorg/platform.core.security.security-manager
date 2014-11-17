@@ -28,6 +28,7 @@
 #include <dpl/log/log.h>
 #include <dpl/serialization.h>
 
+#include "connection.h"
 #include "protocols.h"
 #include "service.h"
 #include "service_impl.h"
@@ -69,6 +70,8 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
         m_serviceManager->Close(conn);
         return false;
     }
+
+    LogDebug("Processing request");
 
     if (IFACE == interfaceID) {
         Try {
@@ -132,7 +135,23 @@ void Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     Deserialization::Deserialize(buffer, req.privileges);
     Deserialization::Deserialize(buffer, req.appPaths);
     Deserialization::Deserialize(buffer, req.uid);
-    Serialization::Serialize(send, ServiceImpl::appInstall(req, uid));
+
+    if (m_isSlave) {
+        LogDebug("slave mode active - delegating app install to master");
+
+        MessageBuffer masterSend;
+        Serialization::Serialize(masterSend, (int)SecurityModuleCall::APP_INSTALL);
+        Serialization::Serialize(masterSend, req.appId);
+        Serialization::Serialize(masterSend, req.pkgId);
+        Serialization::Serialize(masterSend, req.privileges);
+        Serialization::Serialize(masterSend, req.appPaths);
+        Serialization::Serialize(masterSend, req.uid);
+
+        // we can reuse buffer "send", since it will contain code to return anyway
+        sendToServer(MASTER_SERVICE_SOCKET, masterSend.Pop(), send);
+    } else {
+        Serialization::Serialize(send, ServiceImpl::appInstall(req, uid));
+    }
 }
 
 void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
@@ -140,35 +159,75 @@ void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
     std::string appId;
 
     Deserialization::Deserialize(buffer, appId);
-    Serialization::Serialize(send, ServiceImpl::appUninstall(appId, uid));
+
+    if (m_isSlave) {
+        LogDebug("slave mode active - delegating app uninstall to master");
+
+        MessageBuffer masterSend;
+        Serialization::Serialize(masterSend, (int)SecurityModuleCall::APP_UNINSTALL);
+        Serialization::Serialize(masterSend, appId);
+
+        // we can reuse buffer "send", since it will contain code to return anyway
+        sendToServer(MASTER_SERVICE_SOCKET, masterSend.Pop(), send);
+    } else {
+        Serialization::Serialize(send, ServiceImpl::appUninstall(appId, uid));
+    }
 }
 
 void Service::processGetPkgId(MessageBuffer &buffer, MessageBuffer &send)
 {
+    int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
     std::string appId;
     std::string pkgId;
-    int ret;
 
     Deserialization::Deserialize(buffer, appId);
-    ret = ServiceImpl::getPkgId(appId, pkgId);
-    Serialization::Serialize(send, ret);
-    if (ret == SECURITY_MANAGER_API_SUCCESS)
-        Serialization::Serialize(send, pkgId);
+
+    if (m_isSlave) {
+        LogDebug("slave mode active - delegating package ID acquisition to master");
+
+        MessageBuffer masterSend;
+        Serialization::Serialize(masterSend, (int)SecurityModuleCall::APP_GET_PKGID);
+        Serialization::Serialize(masterSend, appId);
+
+        // we can reuse buffer "send", since it will contain all needed return data from master
+        sendToServer(MASTER_SERVICE_SOCKET, masterSend.Pop(), send);
+    } else {
+        ret = ServiceImpl::getPkgId(appId, pkgId);
+
+        Serialization::Serialize(send, ret);
+        if (ret == SECURITY_MANAGER_API_SUCCESS) {
+            Serialization::Serialize(send, pkgId);
+        }
+    }
 }
 
 void Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid)
 {
+    int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
     std::string appId;
     std::unordered_set<gid_t> gids;
-    int ret;
 
     Deserialization::Deserialize(buffer, appId);
-    ret = ServiceImpl::getAppGroups(appId, uid, pid, gids);
-    Serialization::Serialize(send, ret);
-    if (ret == SECURITY_MANAGER_API_SUCCESS) {
-        Serialization::Serialize(send, static_cast<int>(gids.size()));
-        for (const auto &gid : gids) {
-            Serialization::Serialize(send, gid);
+
+    if (m_isSlave) {
+        LogDebug("slave mode active - delegating app GID acquisition to master");
+
+        MessageBuffer masterSend;
+        Serialization::Serialize(masterSend, (int)SecurityModuleCall::APP_GET_GROUPS);
+        Serialization::Serialize(masterSend, appId);
+
+        // we can reuse buffer "send", since it will contain all needed return data from master
+        ret = sendToServer(MASTER_SERVICE_SOCKET, masterSend.Pop(), send);
+    } else {
+        ret = ServiceImpl::getAppGroups(appId, uid, pid, gids);
+
+        // success
+        Serialization::Serialize(send, ret);
+        if (ret == SECURITY_MANAGER_API_SUCCESS) {
+            Serialization::Serialize(send, static_cast<int>(gids.size()));
+            for (const auto &gid : gids) {
+                Serialization::Serialize(send, gid);
+            }
         }
     }
 }

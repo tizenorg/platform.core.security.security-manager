@@ -76,6 +76,22 @@ bool MasterService::processOne(const ConnectionID &conn, MessageBuffer &buffer,
             SecurityModuleCall call_type = static_cast<SecurityModuleCall>(call_type_int);
 
             switch (call_type) {
+                case SecurityModuleCall::APP_INSTALL:
+                    LogDebug("call_type: SecurityModuleCall::APP_INSTALL");
+                    processAppInstall(buffer, send, uid);
+                    break;
+                case SecurityModuleCall::APP_UNINSTALL:
+                    LogDebug("call_type: SecurityModuleCall::APP_UNINSTALL");
+                    processAppUninstall(buffer, send, uid);
+                    break;
+                case SecurityModuleCall::APP_GET_PKGID:
+                    LogDebug("call_type: SecurityModuleCall::APP_GET_PKGID");
+                    processGetPkgId(buffer, send);
+                    break;
+                case SecurityModuleCall::APP_GET_GROUPS:
+                    LogDebug("call_type: SecurityModuleCall::APP_GET_GROUPS");
+                    processGetAppGroups(buffer, send, uid, pid);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(MasterServiceException::InvalidAction);
@@ -105,6 +121,59 @@ bool MasterService::processOne(const ConnectionID &conn, MessageBuffer &buffer,
     }
 
     return retval;
+}
+
+void MasterService::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
+{
+    app_inst_req req;
+    // deserialize request data
+    Deserialization::Deserialize(buffer, req.appId);
+    Deserialization::Deserialize(buffer, req.pkgId);
+    Deserialization::Deserialize(buffer, req.privileges);
+    Deserialization::Deserialize(buffer, req.appPaths);
+    Deserialization::Deserialize(buffer, req.uid);
+    Serialization::Serialize(send, ServiceImpl::appInstall(req, uid));
+}
+
+void MasterService::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
+{
+    std::string appId;
+    Deserialization::Deserialize(buffer, appId);
+    Serialization::Serialize(send, ServiceImpl::appUninstall(appId, uid));
+}
+
+void MasterService::processGetPkgId(MessageBuffer &buffer, MessageBuffer &send)
+{
+    // deserialize request data
+    int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    std::string appId;
+    std::string pkgId;
+
+    Deserialization::Deserialize(buffer, appId);
+    ret = ServiceImpl::getPkgId(appId, pkgId);
+
+    Serialization::Serialize(send, ret);
+    if (ret == SECURITY_MANAGER_API_SUCCESS)
+        Serialization::Serialize(send, pkgId);
+}
+
+void MasterService::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid)
+{
+    int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    std::string appId;
+    std::unordered_set<gid_t> gids;
+
+    Deserialization::Deserialize(buffer, appId);
+    ret = ServiceImpl::getAppGroups(appId, uid, pid, gids);
+
+    // success
+    Serialization::Serialize(send, ret);
+    if (ret == SECURITY_MANAGER_API_SUCCESS) {
+        Serialization::Serialize(send, static_cast<int>(gids.size()));
+        for (const auto &gid : gids) {
+            Serialization::Serialize(send, gid);
+        }
+    }
 }
 
 

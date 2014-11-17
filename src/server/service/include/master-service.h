@@ -25,12 +25,7 @@
 #ifndef _SECURITY_MANAGER_MASTER_SERVICE_
 #define _SECURITY_MANAGER_MASTER_SERVICE_
 
-#include <service-thread.h>
-#include <generic-socket-manager.h>
 #include <message-buffer.h>
-#include <connection-info.h>
-#include <privilege_db.h>
-#include <cynara.h>
 #include "base-service.h"
 
 namespace SecurityManager {
@@ -60,6 +55,42 @@ private:
      * @return             true on success
      */
     bool processOne(const ConnectionID &conn, MessageBuffer &buffer, InterfaceID interfaceID);
+
+    /**
+     * Process application installation
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    User's identifier for whom application will be installed
+     */
+    void processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
+
+    /**
+     * Process application uninstallation
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    User's identifier for whom application will be uninstalled
+     */
+    void processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
+
+    /**
+     * Process getting package id from app id
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processGetPkgId(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process getting permitted group ids for app id
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    User's identifier for whom application will be launched
+     * @param  pid    Process id in which application will be launched
+     */
+    void processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
 };
 
 } // namespace SecurityManager
