@@ -45,6 +45,7 @@
 #include <protocols.h>
 #include <service_impl.h>
 #include <file-lock.h>
+#include <connection.h>
 
 #include <security-manager.h>
 
