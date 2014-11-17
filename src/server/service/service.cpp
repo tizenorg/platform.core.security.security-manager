@@ -203,13 +203,12 @@ void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
 
         m_privilegeDb.BeginTransaction();
         if (!m_privilegeDb.GetAppPkgId(appId, pkgId)) {
-            LogWarning("Application " << appId <<
-                " not found in database while uninstalling");
+            LogWarning("Application " << appId << " not found in database while uninstalling");
             m_privilegeDb.RollbackTransaction();
             appExists = false;
         } else {
             if (!generateAppIdLabel(appId, smackLabel)) {
-                LogError("Cannot generate Smack label for package: " << appId);
+                LogError("Cannot generate Smack label for application: " << appId);
                 goto error_label;
             }
 
@@ -219,10 +218,15 @@ void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
             LogDebug("Uninstall parameters: appId: " << appId << ", pkgId: " << pkgId
                      << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
 
+            /* Before we remove the app from the database, let's fetch all apps in the package
+                that this app belongs to, this will allow us to remove all rules withing the
+                package that the app appears in */
+            m_privilegeDb.GetAppIdsForPkgId(pkgId, appsInPkg);
             m_privilegeDb.GetPkgPrivileges(pkgId, uid, oldPkgPrivileges);
             m_privilegeDb.UpdateAppPrivileges(appId, uid, std::vector<std::string>());
             m_privilegeDb.RemoveApplication(appId, uid, removePkg);
             m_privilegeDb.GetPkgPrivileges(pkgId, uid, newPkgPrivileges);
+
             CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
                                              newPkgPrivileges);
             m_privilegeDb.CommitTransaction();
@@ -243,11 +247,16 @@ void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
     }
 
     if (appExists) {
-
         if (removePkg) {
             LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
             if (!SmackRules::uninstallPackageRules(pkgId)) {
                 LogError("Error on uninstallation of package-specific smack rules");
+                goto error_label;
+            }
+        } else {
+            LogDebug ("Removing smack rules for deleted appId " << appId);
+            if (!SmackRules::uninstallApplicationRules(appId, pkgId, appsInPkg)) {
+                LogError("Error on uninistallation of application-specific smack rules");
                 goto error_label;
             }
         }

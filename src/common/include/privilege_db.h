@@ -82,7 +82,7 @@ private:
         { QueryType::EGetPkgId, " SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
         { QueryType::EGetPrivilegeGroups, " SELECT name FROM privilege_group_view WHERE privilege_name = ?" },
         { QueryType::EGetPrivilegeGids, " SELECT gid FROM privilege_gid_view WHERE privilege_name = ?" },
-        { QueryType::EGetAppsInPkg, " SELECT app_id FROM app_pkg_view WHERE pkg_id = ?" },
+        { QueryType::EGetAppsInPkg, " SELECT app_name FROM app_pkg_view WHERE pkg_name = ?" },
     };
 
     /**

@@ -289,10 +289,8 @@ void PrivilegeDb::GetAppIdsForPkgId (const std::string &pkgId,
                         Queries.at(QueryType::EGetAppsInPkg));
         command->BindString(1, pkgId.c_str());
 
-        LogDebug ("Package Id: " << pkgId << " contains appIds:");
         while (command->Step()) {
             std::string appId = command->GetColumnString (0);
-            LogDebug("\t" << appId);
             appIds.push_back(appId);
         };
     });
