@@ -28,6 +28,7 @@
 #include <dpl/log/log.h>
 #include <dpl/serialization.h>
 
+#include "connection.h"
 #include "protocols.h"
 #include "service.h"
 #include "service_impl.h"
