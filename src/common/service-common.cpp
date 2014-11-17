@@ -192,9 +192,9 @@ int AppInstall(PrivilegeDb *pdb, const app_inst_req &req)
         }
     }
 
-    if (pkgIdIsNew && have_smack) {
-        LogDebug("Adding Smack rules for new pkgId " << req.pkgId);
-        if (!SmackRules::installPackageRules(req.pkgId)) {
+    if (have_smack) {
+        LogDebug("Adding Smack rules for new appId: " << req.appId << " with pkgId: " << req.pkgId);
+        if (!SmackRules::installPackageRules(req)) {
             LogError("Failed to apply package-specific smack rules");
             goto out;
         }
