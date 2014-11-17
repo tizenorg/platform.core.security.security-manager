@@ -44,6 +44,8 @@
 #include <client-common.h>
 #include <protocols.h>
 #include <service_impl.h>
+#include <file-lock.h>
+
 #include <security-manager.h>
 #include <client-offline.h>
 
