@@ -605,3 +605,197 @@ int security_manager_user_delete(const user_req *p_req)
         }
     });
 }
+
+int security_manager_policy_update_req_new(policy_update_req **pp_req)
+{
+    if (!pp_req)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    try {
+        *pp_req = new policy_update_req;
+    } catch (std::bad_alloc& ex) {
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+void security_manager_policy_update_req_free(policy_update_req *p_req)
+{
+    delete p_req;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_add_unit(policy_update_req *p_req,
+                                     const char *user,
+                                     const security_manager_user_type user_type,
+                                     const char *app_id,
+                                     const char *privilege,
+                                     const bool allow)
+{
+    (void)p_req;
+    (void)user;
+    (void)user_type;
+    (void)app_id;
+    (void)privilege;
+    (void)allow;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_add_unit_for_self(policy_update_req *p_req,
+                                              const char *app_id,
+                                              const char *privilege,
+                                              const bool allow)
+{
+    (void)p_req;
+    (void)app_id;
+    (void)privilege;
+    (void)allow;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_req_send(policy_update_req *p_req)
+{
+    (void)p_req;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_users(char ***ppp_usernames, size_t *p_size)
+{
+    (void)ppp_usernames;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_users_of_type(const security_manager_user_type user_type,
+                                       char ***ppp_usernames,
+                                       size_t *p_size)
+{
+    (void)user_type;
+    (void)ppp_usernames;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+void security_manager_users_free(char **pp_usernames, const size_t size)
+{
+    for (size_t i = 0; i < size; i++)
+        delete [] pp_usernames[i];
+    delete [] pp_usernames;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_user_apps_policy(const char *username,
+                                          policy_entry **pp_apps_policy,
+                                          size_t *p_size)
+{
+    (void)username;
+    (void)pp_apps_policy;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_apps_policy_for_self(policy_entry **pp_apps_policy, size_t *p_size)
+{
+    (void)pp_apps_policy;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_global_apps_policy(policy_entry **pp_apps_policy, size_t *p_size)
+{
+    (void)pp_apps_policy;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_user_privs_policy(char *username,
+                                           policy_entry **pp_privs_policy,
+                                           size_t *p_size)
+{
+    (void)username;
+    (void)pp_privs_policy;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_user_app_privs_policy(char *username,
+                                               char *app_id,
+                                               policy_entry **pp_privs_policy,
+                                               size_t *p_size)
+{
+    (void)username;
+    (void)app_id;
+    (void)pp_privs_policy;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_app_privs_policy_for_self(char *app_id,
+                                                   policy_entry **pp_privs_policy,
+                                                   size_t *p_size)
+{
+    (void)app_id;
+    (void)pp_privs_policy;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_global_app_privs_policy(char *app_id,
+                                                 policy_entry **pp_privs_policy,
+                                                 size_t *p_size)
+{
+    (void)app_id;
+    (void)pp_privs_policy;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+void security_manager_statuses_free(policy_entry *p_entries, const size_t size)
+{
+    for (size_t i = 0; i < size; i++)
+        delete [] p_entries[i].name;
+    delete [] p_entries;
+}
+
+SECURITY_MANAGER_API
+bool security_manager_policy_is_allowed(const policy_entry * const entry)
+{
+    return (entry->status & PRIVILEGE_ALLOWED_MASK) == PRIVILEGE_ALLOWED_MASK;
+}
+
+SECURITY_MANAGER_API
+bool security_manager_policy_is_allowed_private(const policy_entry * const entry)
+{
+    return (entry->status & PRIVILEGE_ALLOWED_PRIVATE_MASK) == PRIVILEGE_ALLOWED_PRIVATE_MASK;
+}
+
+SECURITY_MANAGER_API
+bool security_manager_policy_is_allowed_by_admin(const policy_entry * const entry)
+{
+    return (entry->status & PRIVILEGE_ALLOWED_ADMIN_MASK) == PRIVILEGE_ALLOWED_ADMIN_MASK;
+}

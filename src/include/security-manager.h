@@ -56,10 +56,12 @@ enum app_install_path_type {
 };
 
 enum security_manager_user_type {
+    SM_USER_TYPE_ANY    = 0, /* To be used as a wildcard in policy updates */
     SM_USER_TYPE_SYSTEM = 1,
     SM_USER_TYPE_ADMIN  = 2,
     SM_USER_TYPE_GUEST  = 3,
-    SM_USER_TYPE_NORMAL = 4
+    SM_USER_TYPE_NORMAL = 4,
+    SM_USER_TYPE_ENUM_END    /* for range checks */
 };
 typedef enum security_manager_user_type security_manager_user_type;
 
@@ -72,6 +74,31 @@ typedef struct app_inst_req app_inst_req;
  * required to manage users */
 struct user_req;
 typedef struct user_req user_req;
+
+/*! \brief data structure responsible for handling policy updates
+ *  required to manage users' applications permissions */
+struct policy_update_req;
+typedef struct policy_update_req policy_update_req;
+
+/*! \brief wildcard to be used in policy update requests to match all possible values of given
+ *         field. Use it, for example when it is desired to apply policy change for all users of
+ *         chosen type or all apps for selected user. Please see documentation of the
+ *         security_manager_policy_add_unit() function for further details.
+ */
+#define SECURITY_MANAGER_ANY "#"
+
+/*! \brief structure that is used to return the result of policy checks
+ *         for applications and privileges.
+ *
+ *         The status of policy for particular entry should be checked using one of
+ *         security_manager_policy_is_allowed* functions.
+ */
+struct policy_entry {
+    char *name; /* name of corresponding application or Cynara privilege */
+    int status; /* holds the status, it is a combination of bit flags,
+                   which should not be checked directly */
+};
+
 
 /*
  * This function is responsible for initialize app_inst_req data structure
@@ -289,6 +316,355 @@ int security_manager_user_add(const user_req *p_req);
  */
 int security_manager_user_delete(const user_req *p_req);
 
+/**
+ * \brief This function is responsible for initializing policy_update_req data structure.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * policy_update_req_free() for freeing allocated resources.
+ *
+ * \param[out] pp_req Address of pointer for handle policy_update_req structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_req_new(policy_update_req **pp_req);
+
+/**
+ * \brief This function is used to free resources allocated by calling policy_update_req_new().
+ *
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ */
+void security_manager_policy_update_req_free(policy_update_req *p_req);
+
+/**
+ * \brief This generic function is used to add policy update unit to policy_update_req
+ *        structure. It allows to enable or disable a privilege for selected user, type
+ *        and app_id. It may be used more than once on the allocated policy_update_req
+ *        pointer, allowing to fill it with many units defining policy.
+ *
+ * It is allowed to use SECURITY_MANAGER_ANY and SM_USER_TYPE_ANY as arguments,
+ * which makes this function operating in various configurations.
+ *
+ * \attention This API should be used only by privileged user. This function will not return any
+ *            error when unprivileged user tries to break this rule. Although, authorization error
+ *            will be returned from the server when it receives the request in the
+ *            security_manager_policy_update_req_send() API call.
+ *
+ * Examples of use cases:
+ *  -# No wildcards, all args specified      - add unit updating policy for app belonging\n
+ *                                             to given user of specified type
+ *  -# user = SECURITY_MANAGER_ANY           - add unit updating app privilege for all users\n
+ *                                             of given type
+ *  -# user = SECURITY_MANAGER_ANY & user_type = SM_USER_TYPE_ANY - add unit updating app priv\n
+ *                                                                  for all users of all types
+ *  -# user and app_id = SECURITY_MANAGER_ANY  - add unit updating priv for all users of given\n
+ *                                               type and for all apps
+ *  -# app_id = SECURITY_MANAGER_ANY    - add unit updating privilege for all apps\n
+ *                                        belonging to given user of specified type
+ *  -# privilege = SECURITY_MANAGER_ANY - add unit updating all privileges for an app\n
+ *                                        belonging to given user of specified type
+ *
+ * \param[in] p_req     Pointer handling allocated policy_update_req structure
+ * \param[in] user      User identifier (use SECURITY_MANAGER_ANY to apply to all users)
+ * \param[in] user_type User type (use SM_USER_TYPE_ANY to apply to all user types)
+ * \param[in] app_id    Application identifier (use SECURITY_MANAGER_ANY to apply to all apps)
+ * \param[in] privilege Privilege name (use SECURITY_MANAGER_ANY to apply to all privs)
+ * \param[in] allow     Tells if privilege should be allowed or denied
+ * \return API return code or error code
+ */
+int security_manager_policy_add_unit(policy_update_req *p_req,
+                                     const char *user,
+                                     const security_manager_user_type user_type,
+                                     const char *app_id,
+                                     const char *privilege,
+                                     const bool allow);
+
+/**
+ * \brief This is a simplified version of security_manager_policy_add_unit() function.
+ *
+ * \attention It is intended to be used by Privacy Manager application, allowing to enable or
+ *            disable privileges for the current user.
+ *
+ * \attention This function does not operate on wildcards, only strict arguments are allowed.
+ *
+ * \param[in] p_req     Pointer handling allocated policy_update_req structure
+ * \param[in] app_id    Application identifier
+ * \param[in] privilege Privilege name
+ * \param[in] allow     Tells if privilege should be allowed or denied
+ * \return API return code or error code
+ */
+int security_manager_policy_add_unit_for_self(policy_update_req *p_req,
+                                              const char *app_id,
+                                              const char *privilege,
+                                              const bool allow);
+
+/**
+ * \brief This function is used to send the prepared policy update request.
+ *        The request should contain at least one policy update unit, otherwise the
+ *        SECURITY_MANAGER_ERROR_INPUT_PARAM is returned.
+ *
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_req_send(policy_update_req *p_req);
+
+/**
+ * \brief This function gets list of names of all registered users.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * users_free() for freeing allocated resources.
+ *
+ * \attention It should be called by privileged user.
+ *
+ * \param[out] ppp_usernames Address of pointer for handle usernames (c-style strings array)
+ * \param[out] p_size        Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_users(char ***ppp_usernames, size_t *p_size);
+
+/**
+ * \brief This function gets list of names of all users of given type.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * users_free() for freeing allocated resources.
+ *
+ * \attention It should be called by privileged user.
+ *
+ * \param[in]  user_type     Required user type (cannot be SECURITY_MANAGER_ANY)
+ * \param[out] ppp_usernames Address of pointer for handle users (c-style strings array)
+ * \param[out] p_size        Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_users_of_type(const security_manager_user_type user_type,
+                                       char ***ppp_usernames,
+                                       size_t *p_size);
+
+/**
+ * \brief This function is used to free resources allocated by calling one of get_users() function.
+ *
+ * \param[in] pp_usernames Pointer handling allocated users array
+ * \param[in] size         Size of the array
+ */
+void security_manager_users_free(char **pp_usernames, const size_t size);
+
+/**
+ * \brief Function gets all apps that belong to the user passed in argument along with statuses
+ *        of user permissions to execute these apps. The result is stored in the policy_entry
+ *        structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * entries_free() for freeing allocated resources.
+ *
+ * \attention It should be called by privileged user. Normal users may get the list of owned apps
+ *            policies by calling security_manager_get_apps_policy_for_self() API function.
+ *
+ * Returned policy statuses may be checked using three simple functions:
+ * - security_manager_policy_is_allowed()          - checks if execution is fully allowed
+ * - security_manager_policy_is_allowed_private()  - checks if execution is allowed in\n
+ *                                                   private settings
+ * - security_manager_policy_is_allowed_by_admin() - checks if execution is allowed in\n
+ *                                                   device administrator's settings
+ *
+ * \param[in]  username       User identifier (cannot be SECURITY_MANAGER_ANY)
+ * \param[out] pp_apps_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size         Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_user_apps_policy(const char *username,
+                                          policy_entry **pp_apps_policy,
+                                          size_t *p_size);
+
+/**
+ * \brief Function gets all apps that belong to the calling user along with statuses
+ *        of user permissions to execute these apps. The result is stored in the policy_entry
+ *        structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * entries_free() for freeing allocated resources.
+ *
+ * \attention It is intended to be used by Privacy Manager application, allowing to list owned
+ *            applications and users permissions to launch these applications.
+ *
+ * Returned policy statuses may be checked using three simple functions:
+ * - security_manager_policy_is_allowed()          - checks if execution is fully allowed
+ * - security_manager_policy_is_allowed_private()  - checks if execution is allowed in\n
+ *                                                   private settings
+ * - security_manager_policy_is_allowed_by_admin() - checks if execution is allowed in\n
+ *                                                   device administrator's settings
+ *
+ * \param[out] pp_apps_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size         Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_apps_policy_for_self(policy_entry **pp_apps_policy, size_t *p_size);
+
+/**
+ * \brief Function gets all apps that are global (installed for all users) along with statuses
+ *        of these apps' global execution permissions. Global apps may be denied for all users by
+ *        device administrator only. The result is stored in the policy_entry structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * entries_free() for freeing allocated resources.
+ *
+ * Returned policy statuses may be checked using two simple functions:
+ * - security_manager_policy_is_allowed()          - checks if execution is fully allowed
+ * - security_manager_policy_is_allowed_by_admin() - checks if execution is allowed in\n
+ *                                                   device administrator's settings
+ * - the security_manager_policy_is_allowed_private() function is not relevant in this case
+ *
+ * \param[out] pp_apps_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size         Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_global_apps_policy(policy_entry **pp_apps_policy, size_t *p_size);
+
+/**
+ * \brief Function gets all privileges assigned to the user given in argument along with their
+ *        policy statuses. Privileges are extracted from all applications that belong to the
+ *        selected user. The result is stored in the policy_entry structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * entries_free() for freeing allocated resources.
+ *
+ * \attention It should be called by privileged user. Normal users may list policy of privileges
+ *            assigned to owned application using security_manager_get_app_privs_policy_for_self()
+ *            API function.
+ *
+ * \attention This function does not operate on wildcards, only strict arguments are allowed.
+ *
+ * Returned policy statuses may be checked using two simple functions:
+ * - security_manager_policy_is_allowed()          - checks if permission is fully allowed
+ * - security_manager_policy_is_allowed_by_admin() - checks if permission is allowed in\n
+ *                                                   device administrator's settings
+ * - the security_manager_policy_is_allowed_private() function is not relevant in this case
+ *
+ * \param[in]  username        User identifier
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_user_privs_policy(char *username,
+                                           policy_entry **pp_privs_policy,
+                                           size_t *p_size);
+
+/**
+ * \brief Function gets policy of all privileges assigned to the specified application owned by
+ *        user given in argument. The result is stored in the policy_entry structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * entries_free() for freeing allocated resources.
+ *
+ * \attention It should be called by privileged user. Normal users may list policy of privileges
+ *            assigned to owned application using security_manager_get_app_privs_policy_for_self()
+ *            API function.
+ *
+ * \attention This function does not operate on wildcards, only strict arguments are allowed.
+ *
+ * Returned statuses may be checked using three simple functions:
+ * - security_manager_policy_is_allowed()          - checks if permission is fully allowed
+ * - security_manager_policy_is_allowed_private()  - checks if permission is allowed in\n
+ *                                                   private settings
+ * - security_manager_policy_is_allowed_by_admin() - checks if permission is allowed in\n
+ *                                                   device administrator's settings
+ *
+ * \param[in]  username        User identifier
+ * \param[in]  app_id          Application identifier
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_user_app_privs_policy(char *username,
+                                               char *app_id,
+                                               policy_entry **pp_privs_policy,
+                                               size_t *p_size);
+
+/**
+ * \brief Function gets policy of all privileges assigned to the specified application owned by
+ *        the calling user. The result is stored in the policy_entry structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * entries_free() for freeing allocated resources.
+ *
+ * \attention This function does not operate on wildcards, only strict arguments are allowed.
+ *
+ * Returned statuses may be checked using three simple functions:
+ * - security_manager_policy_is_allowed()          - checks if permission is fully allowed
+ * - security_manager_policy_is_allowed_private()  - checks if permission is allowed in\n
+ *                                                   private settings
+ * - security_manager_policy_is_allowed_by_admin() - checks if permission is allowed in\n
+ *                                                   device administrator's settings
+ *
+ * \param[in]  app_id          Application identifier
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_app_privs_policy_for_self(char *app_id,
+                                                   policy_entry **pp_privs_policy,
+                                                   size_t *p_size);
+
+/**
+ * \brief Function gets policy of all privileges assigned to the global application specified in
+ *        the argument. The result is stored in the policy_entry structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * entries_free() for freeing allocated resources.
+ *
+ * \attention This function does not operate on wildcards, only strict arguments are allowed.
+ *
+ * Returned statuses may be checked using two simple functions:
+ * - security_manager_policy_is_allowed()          - checks if permission is fully allowed
+ * - security_manager_policy_is_allowed_by_admin() - checks if permission is allowed in\n
+ *                                                   device administrator's settings
+ * - the security_manager_policy_is_allowed_private() function is not relevant in this case
+ *
+ * \param[in]  app_id          Application identifier
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_global_app_privs_policy(char *app_id,
+                                                 policy_entry **pp_privs_policy,
+                                                 size_t *p_size);
+
+/**
+ * \brief This function is used to free resources allocated in policy_entry structure array.
+ *
+ * \param[in] p_entries Pointer handling allocated status array
+ * \param[in] size      Size of the array
+ */
+void security_manager_policy_entries_free(policy_entry *p_entries, const size_t size);
+
+/**
+ * \brief Checks if permission is fully allowed, which means that access is granted on all levels.
+ *
+ * \param[in] entry Pointer to the structure containing policy status
+ * \return true when allowed, false otherwise
+ */
+bool security_manager_policy_is_allowed(const policy_entry * const entry);
+
+/**
+ * \brief Checks if permission is granted in user's private settings.
+ *
+ * This function may be used in user's Privacy Manager to properly display applications and
+ * privileges statuses in UI.
+ *
+ * \param[in] entry Pointer to the structure containing policy status
+ * \return true when allowed, false otherwise
+ */
+bool security_manager_policy_is_allowed_private(const policy_entry * const entry);
+
+/**
+ * \brief Checks if permission is granted in device administrator's settings.
+ *
+ * This function may be used in Device Administrator's Privilege Settings App and in user's Privacy
+ * Manager.
+ * In the first case, it should help to properly display applications and privileges statuses in UI.
+ * In the latter case, it should be used to display aplications and privileges blurred, marking
+ * that they are present but disabled by device administrator.
+ *
+ * \param[in] entry Pointer to the structure containing policy status
+ * \return true when allowed, false otherwise
+ */
+bool security_manager_policy_is_allowed_by_admin(const policy_entry * const entry);
 
 #ifdef __cplusplus
 }

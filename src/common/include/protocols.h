@@ -114,6 +114,18 @@ struct user_req {
     int utype;
 };
 
+struct policy_update_unit {
+    std::string username;
+    int user_type;
+    std::string appId;
+    std::string privilege;
+    bool allow;
+};
+
+struct policy_update_req {
+    std::vector<struct policy_update_unit> units;
+};
+
 namespace SecurityManager {
 
 extern char const * const SERVICE_SOCKET;
@@ -127,6 +139,13 @@ enum class SecurityModuleCall
     USER_ADD,
     USER_DELETE,
 };
+
+/*! \brief indicating that privilege is allowed in private settings */
+#define PRIVILEGE_ALLOWED_PRIVATE_MASK 0x01
+/*! \brief indicating that privilege is allowed in admin settings */
+#define PRIVILEGE_ALLOWED_ADMIN_MASK   0x02
+/*! \brief indicating that privilege is allowed in all layers */
+#define PRIVILEGE_ALLOWED_MASK (PRIVILEGE_ALLOWED_PRIVATE_MASK | PRIVILEGE_ALLOWED_ADMIN_MASK)
 
 } // namespace SecurityManager
 
