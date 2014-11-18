@@ -605,3 +605,195 @@ int security_manager_user_delete(const user_req *p_req)
         }
     });
 }
+
+int security_manager_policy_update_req_new(policy_update_req **pp_req)
+{
+    if (!pp_req)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    try {
+        *pp_req = new policy_update_req;
+    } catch (std::bad_alloc& ex) {
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+void security_manager_policy_update_req_free(policy_update_req *p_req)
+{
+    delete p_req;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_req_add_unit(policy_update_req *p_req,
+                                                const char *user,
+                                                const security_manager_user_type user_type,
+                                                const char *app_id,
+                                                const char *privilege,
+                                                const bool allow)
+{
+    (void)p_req;
+    (void)user;
+    (void)user_type;
+    (void)app_id;
+    (void)privilege;
+    (void)allow;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_req_add_unit_for_self(policy_update_req *p_req,
+                                                         const char *app_id,
+                                                         const char *privilege,
+                                                         const bool allow)
+{
+    (void)p_req;
+    (void)app_id;
+    (void)privilege;
+    (void)allow;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_req_send(policy_update_req *p_req)
+{
+    (void)p_req;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_users(char ***ppp_users, size_t *p_size)
+{
+    (void)ppp_users;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_users_of_type(const security_manager_user_type user_type, char ***ppp_users, size_t *p_size)
+{
+    (void)user_type;
+    (void)ppp_users;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+void security_manager_users_free(char **pp_users, size_t size)
+{
+    for (size_t i = 0; i < size; i++)
+        delete [] pp_users[i];
+    delete [] pp_users;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_user_apps(const char *user,
+                                   permission_status **pp_statuses,
+                                   size_t *p_size)
+{
+    (void)user;
+    (void)pp_statuses;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_apps_for_self(permission_status **pp_statuses, size_t *p_size)
+{
+    (void)pp_statuses;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_global_apps(permission_status **pp_statuses, size_t *p_size)
+{
+    (void)pp_statuses;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_user_privileges(char *user,
+                                         permission_status **pp_statuses,
+                                         size_t *p_size)
+{
+    (void)user;
+    (void)pp_statuses;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_user_app_privileges(char *user,
+                                             char *app_id,
+                                             permission_status **pp_statuses,
+                                             size_t *p_size)
+{
+    (void)user;
+    (void)app_id;
+    (void)pp_statuses;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_app_privileges_for_self(char *app_id,
+                                                 permission_status **pp_statuses,
+                                                 size_t *p_size)
+{
+    (void)app_id;
+    (void)pp_statuses;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_global_app_privileges(char *app_id,
+                                               permission_status **pp_statuses,
+                                               size_t *p_size)
+{
+    (void)app_id;
+    (void)pp_statuses;
+    (void)p_size;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+void security_manager_statuses_free(permission_status *p_statuses, size_t size)
+{
+    for (size_t i = 0; i < size; i++)
+        delete [] p_statuses[i].name;
+    delete [] p_statuses;
+}
+
+SECURITY_MANAGER_API
+bool security_manager_is_permission_allowed(const permission_status * const status)
+{
+    return static_cast<bool>(status->status & PRIVILEGE_ALLOWED);
+}
+
+SECURITY_MANAGER_API
+bool security_manager_is_permission_allowed_privately(const permission_status * const status)
+{
+    return static_cast<bool>(status->status & PRIVILEGE_ALLOWED_PRIVATE);
+}
+
+SECURITY_MANAGER_API
+bool security_manager_is_permission_allowed_by_admin(const permission_status * const status)
+{
+    return static_cast<bool>(status->status & PRIVILEGE_ALLOWED_ADMIN);
+}
