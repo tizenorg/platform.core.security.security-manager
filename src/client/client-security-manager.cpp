@@ -464,3 +464,50 @@ int security_manager_prepare_app(const char *app_id)
     ret = security_manager_drop_process_privileges();
     return ret;
 }
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_req_new(policy_update_req **pp_req)
+{
+    if (!pp_req)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    try {
+        *pp_req = new policy_update_req;
+    } catch (std::bad_alloc& ex) {
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+void security_manager_policy_update_req_free(policy_update_req *p_req)
+{
+    delete p_req;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_req_add_unit(policy_update_req *p_req,
+                                                const uid_t *p_uid,
+                                                const sm_user_type user_type,
+                                                const char *app_id,
+                                                const char *privilege,
+                                                const bool allow)
+{
+    (void)p_req;
+    (void)p_uid;
+    (void)user_type;
+    (void)app_id;
+    (void)privilege;
+    (void)allow;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_req_send(policy_update_req *p_req)
+{
+    (void)p_req;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}

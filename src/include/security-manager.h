@@ -55,10 +55,23 @@ enum app_install_path_type {
     SECURITY_MANAGER_ENUM_END
 };
 
+/*! \brief user types to be used for user and privileges handling */
+enum sm_user_type {
+	SMUT_ANY    = 0, /* To be used as a wildcard in policy updates */
+	SMUT_SYSTEM = 1,
+	SMUT_ADMIN  = 2,
+	SMUT_GUEST  = 3,
+	SMUT_NORMAL = 4,
+	SMUT_END         /* for range checks */
+};
+
 /*! \brief data structure responsible for handling informations
  * required to install / uninstall application */
 struct app_inst_req;
 typedef struct app_inst_req app_inst_req;
+
+struct policy_update_req;
+typedef struct policy_update_req policy_update_req;
 
 /*
  * This function is responsible for initialize app_inst_req data structure
@@ -200,6 +213,105 @@ int security_manager_drop_process_privileges(void);
  */
 int security_manager_prepare_app(const char *app_id);
 
+/**
+ * This function is responsible for initialize policy_update_req data structure.
+ * It uses dynamic allocation inside and user responsibility is to call
+ * policy_update_req_free() for freeing allocated resources.
+ *
+ * \param[in] Address of pointer for handle policy_update_req structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_req_new(policy_update_req **pp_req);
+
+/*
+ * This function is used to free resources allocated by calling app_inst_req_new().
+ *  \param[in] Pointer handling allocated policy_update_req structure
+ */
+void security_manager_policy_update_req_free(policy_update_req *p_req);
+
+/*
+ * This generic function is used to add policy update unit to policy_update_req
+ * structure. It allows to enable or disable a privilege for selected user, type
+ * and app_id. It may be used more than once on the allocated policy_update_req
+ * pointer, allowing to fill it with many units defining policy.
+ *
+ * It is allowed to use wildcards as arguments, which makes this function
+ * operating in the following configurations:
+ *
+ *  1. No wildcards, non-null arguments      - add unit updating policy for app belonging
+ *                                             to given user of specified type.
+ *  2. p_uid = NULL                          - add unit updating app privilege for all users
+ *                                             of given type
+ *  3. p_uid = NULL and user_type = SMUT_ANY - add unit updating app privilege for all users
+ *                                             of all types
+ *  4. p_uid = NULL and app_id = NULL        - add unit updating privilege for all users of
+ *                                             given type and for all apps
+ *  5. app_id = NULL                         - add unit updating privilege for all apps
+ *                                             belonging to given user of specified type
+ *
+ * \param[in] Pointer handling allocated policy_update_req structure
+ * \param[in] Pointer to uid (use NULL as a wildcard)
+ * \param[in] User type (use SMUT_ANY as a wildcard)
+ * \param[in] Application identifier (use NULL as a wildcard)
+ * \param[in] Privilege name (cannot be NULL)
+ * \param[in] Tells if privilege should be allowed or denied
+ * \return API return code or error code
+ */
+int security_manager_policy_update_req_add_unit(policy_update_req *p_req,
+                                                const uid_t *p_uid,    /* TODO: using char *user wouldn't be more convenient? */
+                                                const sm_user_type user_type,
+                                                const char *app_id,
+                                                const char *privilege,
+                                                const bool allow);
+
+/**
+ * This function is used to send prepared policy update request.
+ * The request should contain at least one policy_update_unit.
+ *
+ * \param[in] Pointer handling allocated policy_update_req structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_req_send(policy_update_req *p_req);
+
+/**
+ * Function gets all users.
+ * <doc>
+ */
+int security_manager_get_users(char **users);
+
+/**
+ * Function gets all users of given type.
+ * <doc>
+ */
+int security_manager_get_users_of_type(const sm_user_type user_type, char **users);
+
+/**
+ * Function gets all apps that belong to a user.
+ * <doc>
+ */
+int security_manager_get_user_apps(char *user, char **app_ids);
+
+/**
+ * Function gets all global apps.
+ * <doc>
+ */
+int security_manager_get_global_apps(char **app_ids);
+
+/**
+ * Function gets all privileges assigned to a user.
+ * <doc>
+ */
+int security_manager_get_user_privileges(char *user, char **privileges); /* char ** will be replaced by "privilege_status or something similar */
+
+/**
+ * <doc>
+ */
+int security_manager_get_user_app_privileges(char *user, char *app_id, char **privileges); /* char ** will be replaced by "privilege_status or something similar */
+
+/**
+ * <doc>
+ */
+int security_manager_get_global_app_privileges(char *app_id, char **privileges); /* char ** will be replaced by "privilege_status or something similar */
 
 #ifdef __cplusplus
 }

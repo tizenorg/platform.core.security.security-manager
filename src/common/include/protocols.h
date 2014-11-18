@@ -107,6 +107,18 @@ struct app_inst_req {
     std::vector<std::pair<std::string, int>> appPaths;
 };
 
+struct policy_update_req {
+    std::vector<struct policy_update_unit> units;
+};
+
+struct policy_update_unit {
+    uid_t uid;
+    int user_type;
+    std::string appId;
+    std::string privilege;
+    bool allow;
+};
+
 namespace SecurityManager {
 
 extern char const * const SERVICE_SOCKET;
