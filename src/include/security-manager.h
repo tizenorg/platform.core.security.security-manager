@@ -55,10 +55,23 @@ enum app_install_path_type {
     SECURITY_MANAGER_ENUM_END
 };
 
+enum security_manager_user_type {
+    SM_USER_TYPE_SYSTEM = 1,
+    SM_USER_TYPE_ADMIN  = 2,
+    SM_USER_TYPE_GUEST  = 3,
+    SM_USER_TYPE_NORMAL = 4
+};
+typedef enum security_manager_user_type security_manager_user_type;
+
 /*! \brief data structure responsible for handling informations
  * required to install / uninstall application */
 struct app_inst_req;
 typedef struct app_inst_req app_inst_req;
+
+/*! \brief data structure responsible for handling informations
+ * required to manage users */
+struct user_req;
+typedef struct user_req user_req;
 
 /*
  * This function is responsible for initialize app_inst_req data structure
@@ -210,6 +223,78 @@ int security_manager_drop_process_privileges(void);
  * \return API return code or error code
  */
 int security_manager_prepare_app(const char *app_id);
+
+/*
+ * This function is responsible for initialization of user_req data structure.
+ * It uses dynamic allocation inside and user responsibility is to call
+ * security_manager_user_req_free() for freeing allocated resources.
+ *
+ * @param[in] Address of pointer for handle app_inst_req structure
+ * @return API return code or error code
+ */
+int security_manager_user_req_new(user_req **pp_req);
+
+/*
+ * This function is used to free resources allocated by app_inst_req_new()
+ *
+ * @param[in] Pointer handling allocated user_req structure
+ */
+void security_manager_user_req_free(user_req *p_req);
+
+/*
+ * This function is used to set up user identifier in user_req structure.
+ *
+ * @param p_req structure containing user data filled during this function call
+ * @param uid user identifier to be set
+ * @return API return code or error code
+ */
+int security_manager_user_req_set_uid(user_req *p_req, uid_t uid);
+
+/*
+ * This function is used to set up user type in user_req structure.
+ *
+ * @param p_req structure containing user data filled during this function call
+ * @param utype user type to be requested
+ * @return API return code or error code
+ */
+int security_manager_user_req_set_user_type(user_req *p_req, security_manager_user_type utype);
+
+/*
+ * This function should be called to inform security-manager about adding new user.
+ * This function succeeds only when is called by privileged user.
+ * Otherwise it just returns SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED and does nothing.
+ *
+ * It adds all required privileges to a newly created user (defined by 'uid' parameter)
+ * according to parameter 'user_type'.
+ * @param p_req structure containing user data filled before calling this
+ * @return API return code or error code
+ */
+int security_manager_user_add(user_req *p_req);
+
+/*
+ * This function should be called to inform security-manager about removing a user.
+ * This function succeeds only when is called by privileged user.
+ * Otherwise it just returns SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED and does nothing.
+ *
+ * It removes all privileges granted to a user that has been granted previously by
+ * security_manager_user_added.
+ *
+ * @param p_req structure containing user data filled before calling this
+ * @return API return code or error code
+ */
+int security_manager_user_delete(user_req *p_req);
+
+/*
+ * This function should be called to inform security-manager about changing user type.
+ * This function succeeds only when is called by privileged user.
+ * Otherwise it just returns SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED and does nothing.
+ *
+ * It updates user's privileges according to a new user type passed as second parameter.
+ *
+ * @param p_req structure containing user data filled before calling this
+ * @return API return code or error code
+ */
+int security_manager_user_update(user_req *p_req);
 
 
 #ifdef __cplusplus
