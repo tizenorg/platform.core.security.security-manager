@@ -28,6 +28,7 @@ SET(SERVER_SOURCES
     ${SERVER_PATH}/main/socket-manager.cpp
     ${SERVER_PATH}/main/server-main.cpp
     ${SERVER_PATH}/service/service.cpp
+    ${COMMON_PATH}/service_impl.cpp
     )
 
 ADD_EXECUTABLE(${TARGET_SERVER} ${SERVER_SOURCES})
