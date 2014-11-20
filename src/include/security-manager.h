@@ -200,6 +200,52 @@ int security_manager_drop_process_privileges(void);
  */
 int security_manager_prepare_app(const char *app_id);
 
+enum security_manager_user_type {
+    SM_USER_TYPE_SYSTEM = 1,
+    SM_USER_TYPE_ADMIN  = 2,
+    SM_USER_TYPE_GUEST  = 3,
+    SM_USER_TYPE_NORMAL = 4
+};
+
+/*
+ * This function should be called to inform security-manager about adding new user.
+ * This function succeeds only when is called by privileged user.
+ * Otherwise it just returns SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED and does nothing.
+ *
+ * It adds all required privileges to a newly created user (defined by 'uid' parameter)
+ * according to parameter 'user_type'.
+ * @param uid user identifier
+ * @param user_type type of newly created user
+ * @return API return code or error code
+ */
+int security_manager_user_add(uid_t uid, enum security_manager_user_type user_type);
+
+/*
+ * This function should be called to inform security-manager about removing a user.
+ * This function succeeds only when is called by privileged user.
+ * Otherwise it just returns SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED and does nothing.
+ *
+ * It removes all privileges granted to a user that has been granted previously by
+ * security_manager_user_added.
+ *
+ * @param uid user identifier
+ * @return API return code or error code
+ */
+int security_manager_user_delete(uid_t uid);
+
+/*
+ * This function should be called to inform security-manager about changing user type.
+ * This function succeeds only when is called by privileged user.
+ * Otherwise it just returns SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED and does nothing.
+ *
+ * It updates user's privileges according to a new user type passed as second parameter.
+ *
+ * @param uid user identifier
+ * @param user_type new user type
+ * @return API return code or error code
+ */
+int security_manager_user_update(uid_t uid, enum security_manager_user_type user_type);
+
 
 #ifdef __cplusplus
 }

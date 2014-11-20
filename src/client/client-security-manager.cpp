@@ -464,3 +464,29 @@ int security_manager_prepare_app(const char *app_id)
     ret = security_manager_drop_process_privileges();
     return ret;
 }
+
+SECURITY_MANAGER_API
+int security_manager_user_add(uid_t uid, enum security_manager_user_type user_type)
+{
+    //TODO
+    (void) uid;
+    (void) user_type;
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_user_delete(uid_t uid)
+{
+    //TODO
+    (void) uid;
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_user_update(uid_t uid, enum security_manager_user_type user_type)
+{
+    //TODO
+    (void) uid;
+    (void) user_type;
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
