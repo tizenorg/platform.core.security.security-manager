@@ -130,6 +130,7 @@ fi
 %defattr(-,root,root,-)
 %attr(755,root,root) %{_bindir}/security-manager
 %attr(755,root,root) %{_bindir}/security-manager-cmd
+%attr(755,root,root) %{_bindir}/security-manager-file-lock-test
 %{_libdir}/libsecurity-manager-commons.so.*
 %attr(-,root,root) %{_unitdir}/multi-user.target.wants/security-manager.service
 %attr(-,root,root) %{_unitdir}/security-manager.service
