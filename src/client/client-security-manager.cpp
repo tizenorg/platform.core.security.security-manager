@@ -481,25 +481,93 @@ int security_manager_prepare_app(const char *app_id)
 SECURITY_MANAGER_API
 int security_manager_user_add(uid_t uid, enum security_manager_user_type user_type)
 {
-    //TODO
-    (void) uid;
-    (void) user_type;
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return try_catch([&] {
+
+        //put data into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::USER_ADD));
+
+        Serialization::Serialize(send, uid);
+        Serialization::Serialize(send, user_type);
+
+        //send buffer to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+        case SECURITY_MANAGER_API_SUCCESS:
+            return SECURITY_MANAGER_SUCCESS;
+        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        default:
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
 }
 
 SECURITY_MANAGER_API
 int security_manager_user_delete(uid_t uid)
 {
-    //TODO
-    (void) uid;
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    using namespace SecurityManager;
+     MessageBuffer send, recv;
+
+     return try_catch([&] {
+
+         //put data into buffer
+         Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::USER_DELETE));
+         Serialization::Serialize(send, uid);
+
+         //send buffer to server
+         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+         if (retval != SECURITY_MANAGER_API_SUCCESS) {
+             LogError("Error in sendToServer. Error code: " << retval);
+             return SECURITY_MANAGER_ERROR_UNKNOWN;
+         }
+
+         //receive response from server
+         Deserialization::Deserialize(recv, retval);
+         switch(retval) {
+         case SECURITY_MANAGER_API_SUCCESS:
+             return SECURITY_MANAGER_SUCCESS;
+         case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+             return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+         default:
+             return SECURITY_MANAGER_ERROR_UNKNOWN;
+         }
+     });
 }
 
 SECURITY_MANAGER_API
 int security_manager_user_update(uid_t uid, enum security_manager_user_type user_type)
 {
-    //TODO
-    (void) uid;
-    (void) user_type;
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return try_catch([&] {
+
+        //put data into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::USER_UPDATE));
+
+        Serialization::Serialize(send, uid);
+        Serialization::Serialize(send, user_type);
+
+        //send buffer to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+        case SECURITY_MANAGER_API_SUCCESS:
+            return SECURITY_MANAGER_SUCCESS;
+        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        default:
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
 }

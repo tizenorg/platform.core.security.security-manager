@@ -81,6 +81,12 @@ int getPkgId(const std::string &appId, std::string &pkgId);
  */
 int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_set<gid_t> &gids);
 
+int userAdd(uid_t uidadded, enum security_manager_user_type user_type, uid_t uid, pid_t pid);
+
+int userRemove(uid_t uidremoved, uid_t uid, pid_t pid);
+
+int userUpdate(uid_t uidupdated, enum security_manager_user_type user_type, uid_t uid, pid_t pid);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 
