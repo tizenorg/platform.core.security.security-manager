@@ -78,9 +78,8 @@ private:
      * @param  buffer Raw received data buffer
      * @param  send   Raw data buffer to be sent
      * @param  uid    User's identifier for whom application will be installed
-     * @return        true on success
      */
-    bool processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
+    void processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
     /**
      * Process application uninstallation
@@ -88,9 +87,8 @@ private:
      * @param  buffer Raw received data buffer
      * @param  send   Raw data buffer to be sent
      * @param  uid    User's identifier for whom application will be uninstalled
-     * @return        true on success
      */
-    bool processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
+    void processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
     /**
      * Process getting package id from app id
@@ -99,7 +97,7 @@ private:
      * @param  send   Raw data buffer to be sent
      * @return        true on success
      */
-    bool processGetPkgId(MessageBuffer &buffer, MessageBuffer &send);
+    void processGetPkgId(MessageBuffer &buffer, MessageBuffer &send);
 
     /**
      * Process getting permitted group ids for app id
@@ -110,7 +108,7 @@ private:
      * @param  pid    Process id in which application will be launched
      * @return        true on success
      */
-    bool processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
+    void processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
 };
 
 } // namespace SecurityManager
