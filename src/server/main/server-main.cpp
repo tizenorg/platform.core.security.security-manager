@@ -72,9 +72,6 @@ int main(void) {
             return EXIT_FAILURE;
         }
 
-        SecurityManager::FileLocker serviceLock(SecurityManager::SERVICE_LOCK_FILE,
-                                                true);
-
         sigset_t mask;
         sigemptyset(&mask);
         sigaddset(&mask, SIGTERM);

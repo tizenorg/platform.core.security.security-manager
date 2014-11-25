@@ -137,7 +137,7 @@ int security_manager_app_inst_req_add_path(app_inst_req *p_req, const char *path
  * \return API return code or error code
  */
 int security_manager_app_inst_req_set_uid(app_inst_req *p_req,
-                                          const uid_t uid);
+                                          const uid_t *p_uid);
 
 /*
  * This function is used to install application based on

@@ -113,6 +113,7 @@ private:
 class Cynara
 {
 public:
+    Cynara();
     virtual ~Cynara();
 
     static Cynara &getInstance();
@@ -130,7 +131,6 @@ public:
         const std::string &user, const std::string &session);
 
 private:
-    Cynara();
     struct cynara *m_Cynara;
 };
 

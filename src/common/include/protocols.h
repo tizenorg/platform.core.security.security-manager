@@ -107,7 +107,6 @@ struct app_inst_req {
     std::string pkgId;
     std::vector<std::string> privileges;
     std::vector<std::pair<std::string, int>> appPaths;
-    uid_t uid;
 };
 
 namespace SecurityManager {

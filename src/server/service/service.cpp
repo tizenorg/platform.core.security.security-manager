@@ -23,12 +23,22 @@
  * @brief       Implementation of security-manager service.
  */
 
+#include <grp.h>
+#include <limits.h>
+#include <pwd.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+
+#include <cstring>
+#include <unordered_set>
 
 #include <dpl/log/log.h>
 #include <dpl/serialization.h>
+#include <tzplatform_config.h>
 
+#include "privilege_db.h"
 #include "protocols.h"
+#include "security-manager.h"
 #include "service.h"
 #include "smack-common.h"
 #include "smack-rules.h"
@@ -192,9 +202,14 @@ bool Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     return ret == SECURITY_MANAGER_API_SUCCESS;
 }
 
-void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
+bool Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
 {
     std::string appId;
+    std::string pkgId;
+    std::string smackLabel;
+    std::vector<std::string> appsInPkg;
+    bool appExists = true;
+    bool removePkg = false;
 
     Deserialization::Deserialize(buffer, appId);
 
@@ -271,24 +286,38 @@ error_label:
     return false;
 }
 
-void Service::processGetPkgId(MessageBuffer &buffer, MessageBuffer &send)
+bool Service::processGetPkgId(MessageBuffer &buffer, MessageBuffer &send)
 {
+    // deserialize request data
     std::string appId;
     std::string pkgId;
-    int ret;
 
     Deserialization::Deserialize(buffer, appId);
-    ret = ServiceImpl::getPkgId(appId, pkgId);
-    Serialization::Serialize(send, ret);
-    if (ret == SECURITY_MANAGER_API_SUCCESS)
-        Serialization::Serialize(send, pkgId);
+    LogDebug("appId: " << appId);
+
+    try {
+        if (!m_privilegeDb.GetAppPkgId(appId, pkgId)) {
+            LogWarning("Application " << appId << " not found in database");
+            Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT);
+            return false;
+        } else {
+            LogDebug("pkgId: " << pkgId);
+        }
+    } catch (const PrivilegeDb::Exception::InternalError &e) {
+        LogError("Error while getting pkgId from database: " << e.DumpToString());
+        Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_SERVER_ERROR);
+        return false;
+    }
+
+     // success
+    Serialization::Serialize(send, SECURITY_MANAGER_API_SUCCESS);
+    Serialization::Serialize(send, pkgId);
+    return true;
 }
 
-void Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid)
+bool Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid)
 {
-    std::string appId;
     std::unordered_set<gid_t> gids;
-    int ret;
 
     try {
         std::string appId;
@@ -337,7 +366,27 @@ void Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
                     LogDebug("Cynara denied, not adding groups");
             }
         }
+    } catch (const PrivilegeDb::Exception::InternalError &e) {
+        LogError("Database error: " << e.DumpToString());
+        Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_SERVER_ERROR);
+        return false;
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while querying Cynara for permissions: " << e.DumpToString());
+        Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_SERVER_ERROR);
+        return false;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation failed: " << e.what());
+        Serialization::Serialize(send, SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY);
+        return false;
     }
+
+    // success
+    Serialization::Serialize(send, SECURITY_MANAGER_API_SUCCESS);
+    Serialization::Serialize(send, static_cast<int>(gids.size()));
+    for (const auto &gid : gids) {
+        Serialization::Serialize(send, gid);
+    }
+    return true;
 }
 
 

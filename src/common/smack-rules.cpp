@@ -326,9 +326,6 @@ bool SmackRules::uninstallPackageRules(const std::string &pkgId)
             return false;
         }
 
-        // FIXME: Reloading all rules:
-        SmackRules::addMissingRulesFix();
-
         return true;
     } catch (const std::bad_alloc &e) {
         LogError("Out of memory while trying to uninstall smack rules for pkgId: " << pkgId);
