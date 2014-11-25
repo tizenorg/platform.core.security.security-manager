@@ -141,6 +141,15 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::APP_GET_GROUPS:
                     processGetAppGroups(buffer, send, uid, pid);
                     break;
+                case SecurityModuleCall::USER_ADD:
+                    processUserAdd(buffer, send, uid, pid);
+                    break;
+                case SecurityModuleCall::USER_DELETE:
+                    processUserDelete(buffer, send, uid, pid);
+                    break;
+                case SecurityModuleCall::USER_UPDATE:
+                    processUserUpdate(buffer, send, uid, pid);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -222,5 +231,41 @@ void Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
     }
 }
 
+void Service::processUserAdd(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid)
+{
+    int ret;
+    uid_t uidadded;
+    int user_type;
+
+    Deserialization::Deserialize(buffer, uidadded);
+    Deserialization::Deserialize(buffer, user_type);
+
+    ret = ServiceImpl::userAdd(uidadded, user_type, uid, pid);
+    Serialization::Serialize(send, ret);
+}
+
+void Service::processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid)
+{
+    int ret;
+    uid_t uidremoved;
+
+    Deserialization::Deserialize(buffer, uidremoved);
+
+    ret = ServiceImpl::userRemove(uidremoved, uid, pid);
+    Serialization::Serialize(send, ret);
+}
+
+void Service::processUserUpdate(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid)
+{
+    int ret;
+    uid_t uidadded;
+    int user_type;
+
+    Deserialization::Deserialize(buffer, uidadded);
+    Deserialization::Deserialize(buffer, user_type);
+
+    ret = ServiceImpl::userUpdate(uidadded, user_type, uid, pid);
+    Serialization::Serialize(send, ret);
+}
 
 } // namespace SecurityManager

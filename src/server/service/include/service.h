@@ -107,6 +107,13 @@ private:
      * @param  pid    Process id in which application will be launched
      */
     void processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
+
+    void processUserAdd(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
+
+    void processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
+
+    void processUserUpdate(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
+
 };
 
 } // namespace SecurityManager
