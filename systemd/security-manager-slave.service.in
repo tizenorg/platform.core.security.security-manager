@@ -1,0 +1,13 @@
+[Unit]
+Description=Start the security manager slave
+Conflicts=security-manager.service
+ConditionVirtualization=lxc
+
+[Service]
+Type=notify
+ExecStart=@BIN_INSTALL_DIR@/security-manager --slave
+
+Sockets=security-manager-slave.socket
+
+[Install]
+WantedBy=multi-user.target

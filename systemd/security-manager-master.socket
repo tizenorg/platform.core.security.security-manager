@@ -1,0 +1,14 @@
+[Socket]
+ListenStream=/run/security-manager-master.socket
+SocketMode=0700
+SmackLabelIPIn=System
+SmackLabelIPOut=System
+Service=security-manager-master.service
+
+[Unit]
+Wants=security-manager-master.target
+Before=security-manager-master.target
+ConditionVirtualization=!lxc
+
+[Install]
+WantedBy=sockets.target
