@@ -1,5 +1,7 @@
 [Unit]
 Description=Start the security manager
+ConditionVirtualization=!lxc
+ConditionPathExists=!/var/.zone/enabled
 
 [Service]
 Type=notify
