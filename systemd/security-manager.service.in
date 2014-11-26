@@ -1,5 +1,8 @@
 [Unit]
 Description=Start the security manager
+Conflicts=security-manager-master.service security-manager-slave.service
+ConditionVirtualization=no
+ConditionPathExists=!/opt/usr/.zone/enabled
 
 [Service]
 Type=notify
