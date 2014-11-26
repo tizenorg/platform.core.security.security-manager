@@ -43,7 +43,9 @@
 namespace SecurityManager {
 
 const char *const SMACK_APP_LABEL_TEMPLATE     = "~APP~";
+const char *const SMACK_PKG_LABEL_TEMPLATE     = "~PKG~";
 const char *const APP_RULES_TEMPLATE_FILE_PATH = tzplatform_mkpath(TZ_SYS_SMACK, "app-rules-template.smack");
+const char *const SMACK_APP_IN_PACKAGE_PERMS   = "rwxat";
 
 SmackRules::SmackRules()
 {
@@ -61,6 +63,12 @@ bool SmackRules::add(const std::string &subject, const std::string &object,
         const std::string &permissions)
 {
     return 0 == smack_accesses_add(m_handle, subject.c_str(), object.c_str(), permissions.c_str());
+}
+
+bool SmackRules::addModify(const std::string &subject, const std::string &object,
+        const std::string &allowPermissions, const std::string &denyPermissions)
+{
+    return 0 == smack_accesses_add_modify(m_handle, subject.c_str(), object.c_str(), allowPermissions.c_str(), denyPermissions.c_str());
 }
 
 bool SmackRules::clear() const
@@ -130,7 +138,8 @@ bool SmackRules::saveToFile(const std::string &path) const
 }
 
 
-bool SmackRules::addFromTemplateFile(const std::string &pkgId)
+bool SmackRules::addFromTemplateFile(const std::string &appId,
+        const std::string &pkgId, const std::vector<std::string> &appsInPkg)
 {
     std::vector<std::string> templateRules;
     std::string line;
@@ -150,11 +159,11 @@ bool SmackRules::addFromTemplateFile(const std::string &pkgId)
         return false;
     }
 
-    return addFromTemplate(templateRules, pkgId);
+    return addFromTemplate(templateRules, appId, pkgId, appsInPkg);
 }
 
 bool SmackRules::addFromTemplate(const std::vector<std::string> &templateRules,
-        const std::string &pkgId)
+        const std::string &appId, const std::string &pkgId, const std::vector<std::string> &appIdsInPkg)
 {
     for (auto rule : templateRules) {
         if (rule.empty())
@@ -169,24 +178,25 @@ bool SmackRules::addFromTemplate(const std::vector<std::string> &templateRules,
             return false;
         }
 
-        bool subjectIsTemplate = (subject == SMACK_APP_LABEL_TEMPLATE);
-        bool objectIsTemplate = (object == SMACK_APP_LABEL_TEMPLATE);
-
-        if (objectIsTemplate == subjectIsTemplate) {
-            LogError("Invalid rule template. Exactly one app label template expected: " << rule);
-            return false;
-        }
+        bool subjectIsTemplate = (subject == SMACK_APP_LABEL_TEMPLATE || subject == SMACK_PKG_LABEL_TEMPLATE);
 
         if (subjectIsTemplate) {
-            if (!generateAppLabel(pkgId, subject)) {
+            if (!generatePkgIdLabel(pkgId, subject)) {
                 LogError("Failed to generate app label from pkgid: " << pkgId);
                 return false;
             }
         }
 
-        if (objectIsTemplate) {
-            if (!generateAppLabel(pkgId, object)) {
+        if (object == SMACK_PKG_LABEL_TEMPLATE) {
+            if (!generatePkgIdLabel(pkgId, object)) {
                 LogError("Failed to generate app label from pkgid: " << pkgId);
+                return false;
+            }
+        }
+
+        if (object == SMACK_APP_LABEL_TEMPLATE) {
+            if (!generateAppIdLabel(appId, object)) {
+                LogError("Failed to generate app label from appId: " << appId);
                 return false;
             }
         }
@@ -194,6 +204,43 @@ bool SmackRules::addFromTemplate(const std::vector<std::string> &templateRules,
         if (!add(subject, object, permissions)) {
             LogError("Failed to add rule: " << subject << " " << object << " " << permissions);
             return false;
+        }
+    }
+
+    if (!generatePackageCrossDeps(appIdsInPkg))
+    {
+        LogError ("Failed to create application in-package cross dependencies");
+        return false;
+    }
+
+    return true;
+}
+
+bool SmackRules::generatePackageCrossDeps(const std::vector<std::string> &appIdsInPkg)
+{
+    LogDebug ("Generating cross-package rules");
+
+    std::string subjectLabel, objectLabel;
+    std::string appsInPackagePerms = SMACK_APP_IN_PACKAGE_PERMS;
+
+    for (std::vector<std::string>::size_type sIndex = 0; sIndex < appIdsInPkg.size(); sIndex++) {
+        for (std::vector<std::string>::size_type oIndex = 0; oIndex < appIdsInPkg.size(); oIndex++) {
+            if (appIdsInPkg[sIndex] == appIdsInPkg[oIndex]) {
+                /* if the subject and object are the same, continue */
+                continue;
+            }
+
+            if (generateAppIdLabel(appIdsInPkg[oIndex], subjectLabel) && generateAppIdLabel(appIdsInPkg[sIndex], objectLabel)) {
+                LogDebug ("Trying to add rule subject: " << subjectLabel << " object: " << objectLabel << " perms: " << appsInPackagePerms);
+                if (!add (subjectLabel, objectLabel, appsInPackagePerms)) {
+                    LogError ("Can't add in-package rule for subject appId: " << appIdsInPkg[sIndex] << " and object appId: " << appIdsInPkg[oIndex]);
+                    return false;
+                }
+            }
+            else {
+                LogError ("Failed to created smack labels for subject appId: " << appIdsInPkg[sIndex] << " and object appId: " << appIdsInPkg[oIndex]);
+                return false;
+            }
         }
     }
 
@@ -206,14 +253,14 @@ std::string SmackRules::getPackageRulesFilePath(const std::string &pkgId)
     return path;
 }
 
-bool SmackRules::installPackageRules(const std::string &pkgId)
-{
+bool SmackRules::installPackageRules(const std::string &appId, const std::string &pkgId,
+        const std::vector<std::string> &appsInPkg) {
     try {
          SmackRules smackRules;
          std::string path = getPackageRulesFilePath(pkgId);
 
-         if (!smackRules.addFromTemplateFile(pkgId)) {
-             LogError("Failed to load smack rules for pkgId " << pkgId);
+         if (!smackRules.addFromTemplateFile(appId, pkgId, appsInPkg)) {
+             LogError("Failed to load smack rules for appId: " << appId << " with pkgId: " << pkgId);
              return false;
          }
 
@@ -229,7 +276,7 @@ bool SmackRules::installPackageRules(const std::string &pkgId)
 
          return true;
      } catch (const std::bad_alloc &e) {
-         LogError("Out of memory while trying to install smack rules for pkgId " << pkgId);
+         LogError("Out of memory while trying to install smack rules for appId: " << appId << "in pkgId: " << pkgId);
          return false;
      }
 }
@@ -301,5 +348,57 @@ bool SmackRules::uninstallPackageRules(const std::string &pkgId)
     }
 }
 
+bool SmackRules::uninstallApplicationRules(const std::string &appId, const std::string &pkgId, std::vector<std::string> appsInPkg)
+{
+    std::string path = getPackageRulesFilePath(pkgId);
+    if (access(path.c_str(), F_OK) == -1) {
+        if (errno == ENOENT) {
+            LogWarning("Smack rules were not installed for pkgId: " << pkgId);
+            return true;
+        }
+
+        LogWarning("Cannot access smack rules path: " << path);
+        return false;
+    }
+
+    try {
+        SmackRules rules;
+        if (rules.loadFromFile(path)) {
+            for (std::vector<std::string>::size_type sIndex = 0; sIndex < appsInPkg.size(); sIndex++) {
+                for (std::vector<std::string>::size_type oIndex = 0; oIndex < appsInPkg.size(); oIndex++) {
+                    if (appsInPkg[sIndex] == appsInPkg[oIndex]) {
+                        /* if the subject and object are the same, continue */
+                        continue;
+                    }
+
+                    /* If the removed app appears in a rule as either a subject or an object
+                        add a negated rule, so that it is removed */
+                    if (appsInPkg[oIndex] == appId || appsInPkg[sIndex] == appId) {
+                        if (!rules.addModify(appsInPkg[oIndex], appsInPkg[sIndex], std::string(), std::string (SMACK_APP_IN_PACKAGE_PERMS))) {
+                            LogWarning("Can't modify rule for appId: " << appId << " object: " << appsInPkg[oIndex] << " subject: " << appsInPkg[sIndex]);
+                        }
+                    }
+                }
+            }
+
+            /* Re-save the file with modified rules now */
+            if (!rules.saveToFile(path))
+            {
+                LogError("Unable to save rules file at path: \"" << path << "\"");
+                return false;
+            }
+            return true;
+        }
+        else
+        {
+            LogError ("Unable to load rules from path: \"" << path << "\"");
+            return false;
+        }
+        return true;
+    } catch (const std::bad_alloc &e) {
+        LogError("Out of memory while trying to uninstall smack rules for pkgId: " << pkgId);
+        return false;
+    }
+}
 } // namespace SecurityManager
 

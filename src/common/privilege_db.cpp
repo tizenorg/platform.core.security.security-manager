@@ -208,6 +208,24 @@ void PrivilegeDb::GetPkgPrivileges(const std::string &pkgId, uid_t uid,
     });
 }
 
+void PrivilegeDb::GetAppPrivileges(const std::string &appId, uid_t uid,
+        std::vector<std::string> &currentPrivileges)
+{
+    try_catch<void>([&] {
+        DB::SqlConnection::DataCommandAutoPtr command =
+                mSqlConnection->PrepareDataCommand(
+                        Queries.at(QueryType::EGetAppPrivileges));
+        command->BindString(1, appId.c_str());
+        command->BindInteger(2, static_cast<unsigned int>(uid));
+
+        while (command->Step()) {
+            std::string privilege = command->GetColumnString(0);
+            LogDebug("Got privilege: " << privilege);
+            currentPrivileges.push_back(privilege);
+        };
+    });
+}
+
 void PrivilegeDb::RemoveAppPrivileges(const std::string &appId, uid_t uid)
 {
     try_catch<void>([&] {
@@ -262,5 +280,20 @@ void PrivilegeDb::GetPrivilegeGroups(const std::string &privilege,
     });
 }
 
+void PrivilegeDb::GetAppIdsForPkgId (const std::string &pkgId,
+        std::vector<std::string> &appIds)
+{
+    try_catch<void>([&] {
+        DB::SqlConnection::DataCommandAutoPtr command =
+                mSqlConnection->PrepareDataCommand(
+                        Queries.at(QueryType::EGetAppsInPkg));
+        command->BindString(1, pkgId.c_str());
+
+        while (command->Step()) {
+            std::string appId = command->GetColumnString (0);
+            appIds.push_back(appId);
+        };
+    });
+}
 
 } //namespace SecurityManager
