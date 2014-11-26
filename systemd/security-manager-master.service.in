@@ -1,0 +1,14 @@
+[Unit]
+Description=Start the security manager master
+Conflicts=security-manager.service
+ConditionVirtualization=no
+ConditionPathExists=/opt/usr/.zone/enabled
+
+[Service]
+Type=notify
+ExecStart=@BIN_INSTALL_DIR@/security-manager --master
+
+Sockets=security-manager-master.socket
+
+[Install]
+WantedBy=multi-user.target
