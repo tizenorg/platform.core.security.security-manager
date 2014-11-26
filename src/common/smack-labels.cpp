@@ -166,7 +166,7 @@ bool setupPath(const std::string &pkgId, const std::string &path,
 
     switch (pathType) {
     case SECURITY_MANAGER_PATH_PRIVATE:
-        if (!generateAppLabel(pkgId, label))
+        if (!generatePkgLabel(pkgId, label))
             return false;
         label_executables = true;
         label_transmute = false;

@@ -27,11 +27,18 @@
 
 namespace SecurityManager {
 
-bool generateAppLabel(const std::string &appPkgId, std::string &label)
+bool generateAppLabel(const std::string &appId, std::string &label)
 {
-    (void) appPkgId; // TODO use pkgId to generate label
+    (void) appId;
     label = "User";
     return true;
+}
+
+bool generatePkgLabel(const std::string &pkgId, std::string &label)
+{
+    (void) pkgId;
+    label = "User";
+    return (true);
 }
 
 } // namespace SecurityManager
