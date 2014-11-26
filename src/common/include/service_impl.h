@@ -34,6 +34,8 @@
 namespace SecurityManager {
 namespace ServiceImpl {
 
+bool getPeerID(int sock, uid_t &uid, pid_t &pid);
+
 /**
  * Process application installation request.
  *
