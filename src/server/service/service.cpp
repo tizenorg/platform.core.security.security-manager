@@ -36,7 +36,8 @@ namespace SecurityManager {
 
 const InterfaceID IFACE = 1;
 
-Service::Service()
+Service::Service(const bool &isSlave):
+        m_isSlave(isSlave)
 {
 }
 
