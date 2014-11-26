@@ -1,5 +1,8 @@
 [Unit]
 Description=Start the security manager
+Conflicts=security-manager-master.service security-manager-slave.service
+ConditionVirtualization=!lxc
+ConditionPathExists=!/var/.zone/enabled
 
 [Service]
 Type=notify
