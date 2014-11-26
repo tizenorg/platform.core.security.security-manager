@@ -28,6 +28,8 @@
 #include <vector>
 #include <string>
 
+#include <privilege_db.h>
+
 struct smack_accesses;
 
 namespace SecurityManager {
@@ -40,24 +42,37 @@ public:
 
     bool add(const std::string &subject, const std::string &object,
             const std::string &permissions);
+    bool addModify(const std::string &subject, const std::string &object,
+            const std::string &allowPermissions, const std::string &denyPermissions);
     bool loadFromFile(const std::string &path);
-    bool addFromTemplate(const std::vector<std::string> &templateRules, const std::string &pkgId);
-    bool addFromTemplateFile(const std::string &pkgId);
+    bool addFromTemplate(const std::vector<std::string> &templateRules, const app_inst_req &req);
+    bool addFromTemplateFile(const app_inst_req &req);
 
     bool apply() const;
     bool clear() const;
     bool saveToFile(const std::string &path) const;
 
     /**
+     * Create cross dependencies for all applications in a package
+     *
+     * This is needed for all applications within a package to have
+     * correct permissions to shared data.
+     *
+     * @param[in] pkgId - package id that rules will be regenerated for
+     * @param[in] pdb - the PrivilegeDb reference
+     * @return true on success, false on error
+     */
+    bool generatePackageCrossDeps(const std::string &pkgId, PrivilegeDb &pdb);
+    /**
      * Install package-specific smack rules.
      *
      * Function creates smack rules using predefined template. Rules are applied
      * to the kernel and saved on persistent storage so they are loaded on system boot.
      *
-     * @param[in] pkgId - package identifier
+     * @param[in] req - package installation request structure
      * @return true on success, false on error
      */
-    static bool installPackageRules(const std::string &pkgId);
+    static bool installPackageRules(const app_inst_req &req);
     /**
      * Uninstall package-specific smack rules.
      *
@@ -69,11 +84,21 @@ public:
      *         false otherwise
      */
     static bool uninstallPackageRules(const std::string &pkgId);
-
     /* FIXME: Remove this function if real pkgId instead of "User" label will be used
      * in generateAppLabel(). */
     static bool addMissingRulesFix();
-
+    /**
+    * Uninstall application-specific smack rules.
+    *
+    * Function removes application specific rules from the kernel, and
+    * removes them for persisten storage.
+    *
+    * @param[in] appId - application id
+    * @param[in] pkgId - package id that the application belongs to
+    * @param[in] appsInPkg - a list of other applications in the same package id that the application belongs to
+    * @return true if smack rules have been removed false otherwise
+    */
+    static bool uninstallApplicationRules(const std::string &appId, const std::string &pkgId, std::vector<std::string> appsInPkg);
 private:
     static std::string getPackageRulesFilePath(const std::string &pkgId);
 

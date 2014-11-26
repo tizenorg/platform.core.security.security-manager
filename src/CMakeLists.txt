@@ -5,6 +5,7 @@ SET(SERVER_PATH  ${PROJECT_SOURCE_DIR}/src/server)
 SET(DPL_PATH     ${PROJECT_SOURCE_DIR}/src/dpl)
 
 SET(TARGET_SERVER "security-manager")
+SET(TARGET_CMD "security-manager-cmd")
 SET(TARGET_CLIENT "security-manager-client")
 SET(TARGET_COMMON "security-manager-commons")
 SET(TARGET_DB ".security-manager.db")
