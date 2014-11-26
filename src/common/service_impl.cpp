@@ -145,8 +145,8 @@ int appInstall(const app_inst_req &req, uid_t uid)
     }
 
     std::string smackLabel;
-    if (!generateAppLabel(req.pkgId, smackLabel)) {
-        LogError("Cannot generate Smack label for package: " << req.pkgId);
+    if (!generateAppIdLabel(req.appId, smackLabel)) {
+        LogError("Cannot generate Smack label for application: " << req.appId);
         return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
     }
 
@@ -162,18 +162,17 @@ int appInstall(const app_inst_req &req, uid_t uid)
     pp_permissions[req.privileges.size()] = nullptr;
 
     try {
-        std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
+        std::vector<std::string> oldAppPrivileges;
 
         LogDebug("Install parameters: appId: " << req.appId << ", pkgId: " << req.pkgId
                  << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
 
         PrivilegeDb::getInstance().BeginTransaction();
-        PrivilegeDb::getInstance().GetPkgPrivileges(req.pkgId, uid, oldPkgPrivileges);
-        PrivilegeDb::getInstance().AddApplication(req.appId, req.pkgId, uid, pkgIdIsNew);
-        PrivilegeDb::getInstance().UpdateAppPrivileges(req.appId, uid, req.privileges);
-        PrivilegeDb::getInstance().GetPkgPrivileges(req.pkgId, uid, newPkgPrivileges);
-        CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
-                                         newPkgPrivileges);
+        PrivilegeDb::getInstance().GetAppPrivileges(req.pkgId, req.uid, oldAppPrivileges);
+        PrivilegeDb::getInstance().AddApplication(req.appId, req.pkgId, req.uid, pkgIdIsNew);
+        PrivilegeDb::getInstance().UpdateAppPrivileges(req.appId, req.uid, req.privileges);
+        CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldAppPrivileges,
+                                         req.privileges);
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application installation commited to database");
     } catch (const PrivilegeDb::Exception::IOError &e) {
@@ -205,12 +204,10 @@ int appInstall(const app_inst_req &req, uid_t uid)
         }
     }
 
-    if (pkgIdIsNew) {
-        LogDebug("Adding Smack rules for new pkgId " << req.pkgId);
-        if (!SmackRules::installPackageRules(req.pkgId)) {
-            LogError("Failed to apply package-specific smack rules");
-            return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
-        }
+    LogDebug("Adding Smack rules for new appId: " << req.appId << " with pkgId: " << req.pkgId);
+    if (!SmackRules::installPackageRules(req)) {
+        LogError("Failed to apply package-specific smack rules");
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
     }
 
     return SECURITY_MANAGER_API_SUCCESS;
@@ -220,6 +217,7 @@ int appUninstall(const std::string &appId, uid_t uid)
 {
     std::string pkgId;
     std::string smackLabel;
+    std::vector<std::string> appsInPkg;
     bool appExists = true;
     bool removePkg = false;
     std::string uidstr;
@@ -239,11 +237,15 @@ int appUninstall(const std::string &appId, uid_t uid)
             LogDebug("Uninstall parameters: appId: " << appId << ", pkgId: " << pkgId
                      << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
 
-            if (!generateAppLabel(pkgId, smackLabel)) {
+            if (!generatePkgIdLabel(pkgId, smackLabel)) {
                 LogError("Cannot generate Smack label for package: " << pkgId);
                 return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
             }
 
+            /* Before we remove the app from the database, let's fetch all apps in the package
+                that this app belongs to, this will allow us to remove all rules withing the
+                package that the app appears in */
+            PrivilegeDb::getInstance().GetAppIdsForPkgId(pkgId, appsInPkg);
             PrivilegeDb::getInstance().GetPkgPrivileges(pkgId, uid, oldPkgPrivileges);
             PrivilegeDb::getInstance().UpdateAppPrivileges(appId, uid, std::vector<std::string>());
             PrivilegeDb::getInstance().RemoveApplication(appId, uid, removePkg);
@@ -276,6 +278,12 @@ int appUninstall(const std::string &appId, uid_t uid)
             LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
             if (!SmackRules::uninstallPackageRules(pkgId)) {
                 LogError("Error on uninstallation of package-specific smack rules");
+                return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+            }
+        } else {
+            LogDebug ("Removing smack rules for deleted appId " << appId);
+            if (!SmackRules::uninstallApplicationRules(appId, pkgId, appsInPkg)) {
+                LogError("Error on uninistallation of application-specific smack rules");
                 return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
             }
         }
@@ -319,7 +327,7 @@ int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_
         }
         LogDebug("pkgId: " << pkgId);
 
-        if (!generateAppLabel(pkgId, smackLabel)) {
+        if (!generatePkgIdLabel(pkgId, smackLabel)) {
              LogError("Cannot generate Smack label for package: " << pkgId);
             return SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT;
         }
