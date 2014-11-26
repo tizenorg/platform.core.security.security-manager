@@ -10,6 +10,7 @@ Service=security-manager.service
 [Unit]
 Wants=security-manager.target
 Before=security-manager.target
+Conflicts=security-manager-slave.socket
 
 [Install]
 WantedBy=sockets.target
