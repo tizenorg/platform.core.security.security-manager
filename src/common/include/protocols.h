@@ -136,6 +136,16 @@ enum class SecurityModuleCall
     NOOP = 0x90,
 };
 
+enum class MasterSecurityModuleCall
+{
+    CYNARA_UPDATE_POLICY,
+    CYNARA_CHECK,
+    CYNARA_USER_INIT,
+    CYNARA_USER_REMOVE,
+    SMACK_INSTALL_RULES,
+    SMACK_UNINSTALL_RULES,
+};
+
 } // namespace SecurityManager
 
 using namespace SecurityManager;

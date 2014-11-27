@@ -54,6 +54,54 @@ private:
      * @return             true on success
      */
     bool processOne(const ConnectionID &conn, MessageBuffer &buffer, InterfaceID interfaceID);
+
+    /**
+     * Process Cynara policy update during app installation/uninstallation
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processCynaraUpdatePolicy(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process Cynara check
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processCynaraCheck(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process Cynara user initialization
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processCynaraUserInit(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process Cynara user removal
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processCynaraUserRemove(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process SMACK rules installation for package
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processSmackInstallRules(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process SMACK rules uninstallation
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processSmackUninstallRules(MessageBuffer &buffer, MessageBuffer &send);
 };
 
 } // namespace SecurityManager
