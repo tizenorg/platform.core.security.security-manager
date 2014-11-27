@@ -100,12 +100,13 @@
 #define SECURITY_MANAGER_API_ERROR_UNKNOWN -255
 /** @}*/
 
+typedef std::vector<std::pair<std::string, int>> AppPathsType;
 
 struct app_inst_req {
     std::string appId;
     std::string pkgId;
     std::vector<std::string> privileges;
-    std::vector<std::pair<std::string, int>> appPaths;
+    AppPathsType appPaths;
     uid_t uid;
 };
 
@@ -120,6 +121,14 @@ enum class SecurityModuleCall
     APP_UNINSTALL,
     APP_GET_PKGID,
     APP_GET_GROUPS,
+};
+
+enum class MasterSecurityModuleCall
+{
+    CYNARA_UPDATE_POLICY,
+    CYNARA_CHECK,
+    SMACK_REGISTER_PATHS,
+    SMACK_UNINSTALL_PKG_RULES,
 };
 
 } // namespace SecurityManager

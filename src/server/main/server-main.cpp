@@ -122,6 +122,7 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
 
+        LogInfo("Trying to lock file");
         SecurityManager::FileLocker serviceLock(SecurityManager::SERVICE_LOCK_FILE,
                                                 true);
 

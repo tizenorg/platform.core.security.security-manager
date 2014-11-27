@@ -170,7 +170,7 @@ int security_manager_app_install(const app_inst_req *p_req)
             SecurityManager::FileLocker serviceLock(SecurityManager::SERVICE_LOCK_FILE);
             if ((offlineMode = serviceLock.Locked())) {
                 LogInfo("Working in offline mode.");
-                retval = SecurityManager::ServiceImpl::appInstall(*p_req, geteuid());
+                retval = SecurityManager::ServiceImpl::appInstall(*p_req, geteuid(), false);
             }
         } catch (const SecurityManager::FileLocker::Exception::Base &e) {
             offlineMode = false;

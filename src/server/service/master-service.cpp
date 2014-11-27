@@ -28,7 +28,11 @@
 #include <dpl/serialization.h>
 
 #include "protocols.h"
+#include "cynara.h"
 #include "master-service.h"
+#include "smack-common.h"
+#include "smack-rules.h"
+#include "smack-labels.h"
 #include "service_impl.h"
 
 namespace SecurityManager {
@@ -73,9 +77,25 @@ bool MasterService::processOne(const ConnectionID &conn, MessageBuffer &buffer,
             // deserialize API call type
             int call_type_int;
             Deserialization::Deserialize(buffer, call_type_int);
-            SecurityModuleCall call_type = static_cast<SecurityModuleCall>(call_type_int);
+            MasterSecurityModuleCall call_type = static_cast<MasterSecurityModuleCall>(call_type_int);
 
             switch (call_type) {
+                case MasterSecurityModuleCall::CYNARA_UPDATE_POLICY:
+                    LogDebug("call type MasterSecurityModuleCall::CYNARA_UPDATE_POLICY");
+                    processCynaraUpdatePolicy(buffer, send);
+                    break;
+                case MasterSecurityModuleCall::CYNARA_CHECK:
+                    LogDebug("call type MasterSecurityModuleCall::CYNARA_CHECK");
+                    processCynaraCheck(buffer, send);
+                    break;
+                case MasterSecurityModuleCall::SMACK_REGISTER_PATHS:
+                    LogDebug("call type MasterSecurityModuleCall::SMACK_REGISTER_PATHS");
+                    processSmackRegisterPaths(buffer, send);
+                    break;
+                case MasterSecurityModuleCall::SMACK_UNINSTALL_PKG_RULES:
+                    LogDebug("call type MasterSecurityModuleCall::SMACK_UNINSTALL_PKG_RULES");
+                    processSmackUninstallPackageRules(buffer, send);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(MasterServiceException::InvalidAction);
@@ -107,5 +127,94 @@ bool MasterService::processOne(const ConnectionID &conn, MessageBuffer &buffer,
     return retval;
 }
 
+void MasterService::processCynaraUpdatePolicy(MessageBuffer &buffer, MessageBuffer &send)
+{
+    int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    std::string smackLabel;
+    std::string uidstr;
+    std::vector<std::string> oldPkgPrivileges, newPkgPrivileges;
+
+    Deserialization::Deserialize(buffer, smackLabel);
+    Deserialization::Deserialize(buffer, uidstr);
+    Deserialization::Deserialize(buffer, oldPkgPrivileges);
+    Deserialization::Deserialize(buffer, newPkgPrivileges);
+
+    try {
+        CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
+                                         newPkgPrivileges);
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while setting Cynara rules for application: " << e.DumpToString());
+        goto out;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation while setting Cynara rules for application: " << e.what());
+        ret = SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+        goto out;
+    }
+
+    ret = SECURITY_MANAGER_API_SUCCESS;
+
+out:
+    Serialization::Serialize(send, ret);
+}
+
+void MasterService::processCynaraCheck(MessageBuffer &buffer, MessageBuffer &send)
+{
+    int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    bool allowed = false;
+    std::string smackLabel;
+    std::string privilege;
+    std::string uidStr;
+    std::string pidStr;
+
+    Deserialization::Deserialize(buffer, smackLabel);
+    Deserialization::Deserialize(buffer, privilege);
+    Deserialization::Deserialize(buffer, uidStr);
+    Deserialization::Deserialize(buffer, pidStr);
+
+    try {
+        allowed = Cynara::getInstance().check(smackLabel, privilege, uidStr, pidStr);
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while querying Cynara for permissions: " << e.DumpToString());
+        goto out;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation failed: " << e.what());
+        ret = SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+        goto out;
+    }
+
+    ret = SECURITY_MANAGER_API_SUCCESS;
+out:
+    Serialization::Serialize(send, ret);
+    Serialization::Serialize(send, allowed);
+}
+
+void MasterService::processSmackRegisterPaths(MessageBuffer &buffer, MessageBuffer &send)
+{
+    bool pkgIdIsNew = false;
+    std::string pkgId;
+    AppPathsType appPaths;
+
+    Deserialization::Deserialize(buffer, pkgId);
+    Deserialization::Deserialize(buffer, appPaths);
+    Deserialization::Deserialize(buffer, pkgIdIsNew);
+    Serialization::Serialize(send, ServiceImpl::registerPaths(pkgId, appPaths, pkgIdIsNew));
+}
+
+void MasterService::processSmackUninstallPackageRules(MessageBuffer &buffer, MessageBuffer &send)
+{
+    int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    std::string pkgId;
+
+    Deserialization::Deserialize(buffer, pkgId);
+    if (!SmackRules::uninstallPackageRules(pkgId)) {
+        LogError("Error on uninstallation of package-specific smack rules");
+        goto out;
+    }
+
+    ret = SECURITY_MANAGER_API_SUCCESS;
+
+out:
+    Serialization::Serialize(send, ret);
+}
 
 } // namespace SecurityManager

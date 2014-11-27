@@ -32,8 +32,11 @@
 #include <algorithm>
 
 #include <dpl/log/log.h>
+#include <dpl/serialization.h>
 #include <tzplatform_config.h>
 
+#include "message-buffer.h"
+#include "connection.h"
 #include "protocols.h"
 #include "privilege_db.h"
 #include "cynara.h"
@@ -135,7 +138,118 @@ static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
     return true;
 }
 
-int appInstall(const app_inst_req &req, uid_t uid)
+int registerPaths(const std::string &pkgId, const AppPathsType &appPaths, const bool &pkgIdIsNew)
+{
+    for (const auto &appPath : appPaths) {
+        const std::string &path = appPath.first;
+        app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
+        int result = setupPath(pkgId, path, pathType);
+
+        if (!result) {
+            LogError("setupPath() failed");
+            return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+        }
+    }
+
+    if (pkgIdIsNew) {
+        LogDebug("Adding Smack rules for new pkgId " << pkgId);
+        if (!SmackRules::installPackageRules(pkgId)) {
+            LogError("Failed to apply package-specific smack rules");
+            return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+        }
+    }
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+//
+// REQUESTS FOR MASTER MODE
+//
+static inline int requestMasterCynaraPolicyUpdate(const std::string &smackLabel,
+                                                  const std::string &uidstr,
+                                                  const std::vector<std::string> &oldPkgPrivileges,
+                                                  const std::vector<std::string> &newPkgPrivileges)
+{
+    int ret;
+    MessageBuffer sendBuf, retBuf;
+    Serialization::Serialize(sendBuf,
+                             static_cast<int>(MasterSecurityModuleCall::CYNARA_UPDATE_POLICY));
+    Serialization::Serialize(sendBuf, smackLabel);
+    Serialization::Serialize(sendBuf, uidstr);
+    Serialization::Serialize(sendBuf, oldPkgPrivileges);
+    Serialization::Serialize(sendBuf, newPkgPrivileges);
+    ret = sendToServer(MASTER_SERVICE_SOCKET, sendBuf.Pop(), retBuf);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    Deserialization::Deserialize(retBuf, ret);
+    return ret;
+}
+
+static inline int requestMasterCynaraCheck(const std::string &smackLabel,
+                                           const std::string &privilege,
+                                           const std::string &uidStr,
+                                           const std::string &pidStr,
+                                           bool &allowed)
+{
+    int ret;
+    MessageBuffer sendBuf, retBuf;
+    Serialization::Serialize(sendBuf,
+                             static_cast<int>(MasterSecurityModuleCall::CYNARA_CHECK));
+    Serialization::Serialize(sendBuf, smackLabel);
+    Serialization::Serialize(sendBuf, privilege);
+    Serialization::Serialize(sendBuf, uidStr);
+    Serialization::Serialize(sendBuf, pidStr);
+    ret = sendToServer(MASTER_SERVICE_SOCKET, sendBuf.Pop(), retBuf);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    Deserialization::Deserialize(retBuf, ret);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    Deserialization::Deserialize(retBuf, allowed);
+    return ret;
+}
+
+static inline int requestMasterSmackRegisterPaths(const std::string &pkgId,
+                                           const AppPathsType &appPaths,
+                                           const bool &pkgIdIsNew)
+{
+    int ret;
+    MessageBuffer sendBuf, retBuf;
+    Serialization::Serialize(sendBuf,
+                             static_cast<int>(MasterSecurityModuleCall::SMACK_REGISTER_PATHS));
+    Serialization::Serialize(sendBuf, pkgId);
+    Serialization::Serialize(sendBuf, appPaths);
+    Serialization::Serialize(sendBuf, pkgIdIsNew);
+    ret = sendToServer(MASTER_SERVICE_SOCKET, sendBuf.Pop(), retBuf);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    Deserialization::Deserialize(retBuf, ret);
+    return ret;
+}
+
+static inline int requestMasterSmackUninstallPackageRules(const std::string &pkgId)
+{
+    int ret;
+    MessageBuffer sendBuf, retBuf;
+    Serialization::Serialize(sendBuf,
+                             static_cast<int>(MasterSecurityModuleCall::SMACK_UNINSTALL_PKG_RULES));
+    Serialization::Serialize(sendBuf, pkgId);
+    ret = sendToServer(MASTER_SERVICE_SOCKET, sendBuf.Pop(), retBuf);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    Deserialization::Deserialize(retBuf, ret);
+    return ret;
+}
+
+//
+// SERVICE FUNCTIONS
+//
+int appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
 {
     bool pkgIdIsNew = false;
     std::vector<std::string> addedPermissions;
@@ -195,8 +309,20 @@ int appInstall(const app_inst_req &req, uid_t uid)
         PrivilegeDb::getInstance().AddApplication(req.appId, req.pkgId, uid, pkgIdIsNew);
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appId, uid, req.privileges);
         PrivilegeDb::getInstance().GetPkgPrivileges(req.pkgId, uid, newPkgPrivileges);
-        CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
-                                         newPkgPrivileges);
+        if (isSlave) {
+            int ret = requestMasterCynaraPolicyUpdate(smackLabel,
+                                                      uidstr,
+                                                      oldPkgPrivileges,
+                                                      newPkgPrivileges);
+            if (ret != SECURITY_MANAGER_API_SUCCESS) {
+                PrivilegeDb::getInstance().RollbackTransaction();
+                LogError("Error while processing request on master: " << ret);
+                return ret;
+            }
+        } else {
+            CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
+                                             newPkgPrivileges);
+        }
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application installation commited to database");
     } catch (const PrivilegeDb::Exception::IOError &e) {
@@ -217,29 +343,24 @@ int appInstall(const app_inst_req &req, uid_t uid)
     }
 
     // register paths
-    for (const auto &appPath : req.appPaths) {
-        const std::string &path = appPath.first;
-        app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
-        int result = setupPath(req.pkgId, path, pathType);
-
-        if (!result) {
-            LogError("setupPath() failed");
-            return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    if (isSlave) {
+        int ret = requestMasterSmackRegisterPaths(req.pkgId, req.appPaths, pkgIdIsNew);
+        if (ret != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Master failed to apply package-specific smack rules");
+            return ret;
         }
-    }
-
-    if (pkgIdIsNew) {
-        LogDebug("Adding Smack rules for new pkgId " << req.pkgId);
-        if (!SmackRules::installPackageRules(req.pkgId)) {
+    } else {
+        int ret = registerPaths(req.pkgId, req.appPaths, pkgIdIsNew);
+        if (ret != SECURITY_MANAGER_API_SUCCESS) {
             LogError("Failed to apply package-specific smack rules");
-            return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+            return ret;
         }
     }
 
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int appUninstall(const std::string &appId, uid_t uid)
+int appUninstall(const std::string &appId, uid_t uid, bool isSlave)
 {
     std::string pkgId;
     std::string smackLabel;
@@ -271,8 +392,20 @@ int appUninstall(const std::string &appId, uid_t uid)
             PrivilegeDb::getInstance().UpdateAppPrivileges(appId, uid, std::vector<std::string>());
             PrivilegeDb::getInstance().RemoveApplication(appId, uid, removePkg);
             PrivilegeDb::getInstance().GetPkgPrivileges(pkgId, uid, newPkgPrivileges);
-            CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
-                                             newPkgPrivileges);
+            if (isSlave) {
+                int ret = requestMasterCynaraPolicyUpdate(smackLabel,
+                                                          uidstr,
+                                                          oldPkgPrivileges,
+                                                          newPkgPrivileges);
+                if (ret != SECURITY_MANAGER_API_SUCCESS) {
+                    PrivilegeDb::getInstance().RollbackTransaction();
+                    LogError("Error while processing request on master: " << ret);
+                    return ret;
+                }
+            } else {
+                CynaraAdmin::UpdatePackagePolicy(smackLabel, uidstr, oldPkgPrivileges,
+                                                 newPkgPrivileges);
+            }
             PrivilegeDb::getInstance().CommitTransaction();
             LogDebug("Application uninstallation commited to database");
         }
@@ -294,12 +427,21 @@ int appUninstall(const std::string &appId, uid_t uid)
     }
 
     if (appExists) {
-
         if (removePkg) {
-            LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
-            if (!SmackRules::uninstallPackageRules(pkgId)) {
-                LogError("Error on uninstallation of package-specific smack rules");
-                return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+            if (isSlave) {
+                LogDebug("Delegating Smack rules removal for deleted pkgId " << pkgId <<
+                         " to master");
+                int ret = requestMasterSmackUninstallPackageRules(pkgId);
+                if (ret != SECURITY_MANAGER_API_SUCCESS) {
+                    LogError("Error while processing request on master: " << ret);
+                    return ret;
+                }
+            } else {
+                LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
+                if (!SmackRules::uninstallPackageRules(pkgId)) {
+                    LogError("Error on uninstallation of package-specific smack rules");
+                    return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+                }
             }
         }
     }
@@ -326,7 +468,8 @@ int getPkgId(const std::string &appId, std::string &pkgId)
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_set<gid_t> &gids)
+int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_set<gid_t> &gids,
+                 bool isSlave)
 {
     try {
         std::string pkgId;
@@ -363,7 +506,23 @@ int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_
             if (!gidsTmp.empty()) {
                 LogDebug("Considering privilege " << privilege << " with " <<
                     gidsTmp.size() << " groups assigned");
-                if (Cynara::getInstance().check(smackLabel, privilege, uidStr, pidStr)) {
+                bool allowed = false;
+
+                if (isSlave) {
+                    int ret = requestMasterCynaraCheck(smackLabel,
+                                                       privilege,
+                                                       uidStr,
+                                                       pidStr,
+                                                       allowed);
+                    if (ret != SECURITY_MANAGER_API_SUCCESS) {
+                        LogError("Master failed to check privilege in Cynara: " << ret);
+                        return ret;
+                    }
+                } else {
+                    allowed = Cynara::getInstance().check(smackLabel, privilege, uidStr, pidStr);
+                }
+
+                if (allowed) {
                     for_each(gidsTmp.begin(), gidsTmp.end(), [&] (std::string group)
                     {
                         struct group *grp = getgrnam(group.c_str());

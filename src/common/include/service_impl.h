@@ -37,24 +37,37 @@ namespace ServiceImpl {
 bool getPeerID(int sock, uid_t &uid, pid_t &pid);
 
 /**
+ * Process path registration in SMACK
+ *
+ * @param[in] pkgId ID of package to register
+ * @param[in] appPaths vector with paths for package being registered
+ * @param[in] pkgIdIsNew flag to determine if package is new
+ *
+ * @return API return code, as defined in security-manager.h
+ */
+int registerPaths(const std::string &pkgId, const AppPathsType &appPaths, const bool &pkgIdIsNew);
+
+/**
  * Process application installation request.
  *
  * @param[in] req installation request
  * @param[in] uid id of the requesting user
+ * @param[in] isSlave flag marking if function is called under slave mode
  *
  * @return API return code, as defined in security-manager.h
  */
-int appInstall(const app_inst_req &req, uid_t uid);
+int appInstall(const app_inst_req &req, uid_t uid, bool isSlave);
 
 /**
  * Process application uninstallation request.
  *
  * @param[in] req uninstallation request
  * @param[in] uid id of the requesting user
+ * @param[in] isSlave flag marking if function is called under slave mode
  *
  * @return API return code, as defined in security-manager.h
  */
-int appUninstall(const std::string &appId, uid_t uid);
+int appUninstall(const std::string &appId, uid_t uid, bool isSlave);
 
 /**
  * Process package id query.
@@ -81,7 +94,8 @@ int getPkgId(const std::string &appId, std::string &pkgId);
  *
  * @return API return code, as defined in security-manager.h
  */
-int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_set<gid_t> &gids);
+int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_set<gid_t> &gids,
+                 bool isSlave);
 
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */

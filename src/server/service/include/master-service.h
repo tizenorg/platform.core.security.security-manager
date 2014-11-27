@@ -54,6 +54,38 @@ private:
      * @return             true on success
      */
     bool processOne(const ConnectionID &conn, MessageBuffer &buffer, InterfaceID interfaceID);
+
+    /**
+     * Process Cynara policy update during app installation/uninstallation
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processCynaraUpdatePolicy(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process Cynara check
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processCynaraCheck(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process SMACK path registration during app installation
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processSmackRegisterPaths(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process SMACK package rules uninstallation
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processSmackUninstallPackageRules(MessageBuffer &buffer, MessageBuffer &send);
 };
 
 } // namespace SecurityManager
