@@ -361,5 +361,37 @@ int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
+int userAdd(uid_t uidadded, int user_type, uid_t uid)
+{
+    if (uid != 0)
+        return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+    //TODO add policy information to cynara regarding user default privileges based on user_type
+    (void) uidadded;
+    (void) user_type;
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int userDelete(uid_t uiddeleted, uid_t uid)
+{
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+    if (uid != 0)
+        return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+
+    //TODO remove policy information from cynara
+
+    /*Uninstall all user apps*/
+    std::vector<std::string> userApps;
+    PrivilegeDb::getInstance().GetUserApps(uiddeleted, userApps);
+    for (auto &app: userApps) {
+        if (appUninstall(app, uiddeleted) != SECURITY_MANAGER_API_SUCCESS) {
+        /*if uninstallation of this app fails, just go on trying to uninstall another ones.
+        we do not have anything special to do about that matter - user will be deleted anyway.*/
+            ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+        }
+    }
+
+    return ret;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
