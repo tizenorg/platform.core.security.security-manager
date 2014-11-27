@@ -30,6 +30,7 @@
 #include <cstdio>
 #include <list>
 #include <map>
+#include <unordered_map>
 #include <stdbool.h>
 #include <string>
 
@@ -78,6 +79,30 @@ private:
         { QueryType::EGetPkgId, " SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
         { QueryType::EGetPrivilegeGroups, " SELECT name FROM privilege_group_view WHERE privilege_name = ?" },
     };
+
+    /**
+     * Simple Hash wrapper, used in unordered map. It justs casts enum to int.
+     */
+    struct QueryTypeHash
+    {
+        int operator()(const QueryType &query) const {
+            return std::hash<int>()(static_cast<int>(query));
+        }
+    };
+
+    /**
+     * Container for initialized DataCommands, prepared for binding.
+     */
+    std::unordered_map<QueryType, DB::SqlConnection::DataCommandAutoPtr, QueryTypeHash> m_commands;
+
+    /**
+     * Fills empty m_commands map with sql commands prepared for binding.
+     *
+     * Because the "sqlite3_prepare_v2" function takes many cpu cycles, the PrivilegeDb
+     * is optimized to call it only once for one query type.
+     * Designed to be used in the singleton contructor.
+     */
+    void initDataCommands();
 
     /**
      * Check if pkgId is already registered in database

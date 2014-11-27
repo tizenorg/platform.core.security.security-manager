@@ -60,12 +60,20 @@ PrivilegeDb::PrivilegeDb(const std::string &path)
         mSqlConnection = new DB::SqlConnection(path,
                 DB::SqlConnection::Flag::None,
                 DB::SqlConnection::Flag::RW);
+        initDataCommands();
     } catch (DB::SqlConnection::Exception::Base &e) {
         LogError("Database initialization error: " << e.DumpToString());
         ThrowMsg(PrivilegeDb::Exception::IOError,
                 "Database initialization error:" << e.DumpToString());
 
     };
+}
+
+void PrivilegeDb::initDataCommands()
+{
+    for (auto &it : Queries) {
+        m_commands.emplace(it.first, mSqlConnection->PrepareDataCommand(it.second));
+    }
 }
 
 PrivilegeDb::~PrivilegeDb()
@@ -103,26 +111,22 @@ void PrivilegeDb::RollbackTransaction(void)
 bool PrivilegeDb::PkgIdExists(const std::string &pkgId)
 {
     return try_catch<bool>([&] {
-        DB::SqlConnection::DataCommandAutoPtr command =
-                mSqlConnection->PrepareDataCommand(
-                        Queries.at(QueryType::EPkgIdExists));
-        command->BindString(1, pkgId.c_str());
-        if (command->Step()) {
-            // pkgId found in the database
-            command->Reset();
-            return true;
-        };
+        DB::SqlConnection::DataCommandAutoPtr &command =
+            m_commands.at(QueryType::EPkgIdExists);
 
-        // pkgId not found in the database
-        return false;
+        command->Reset();
+        command->BindString(1, pkgId.c_str());
+        return command->Step();
     });
 }
 
 bool PrivilegeDb::GetAppPkgId(const std::string &appId, std::string &pkgId)
 {
     return try_catch<bool>([&] {
-        DB::SqlConnection::DataCommandAutoPtr command =
-            mSqlConnection->PrepareDataCommand(Queries.at(QueryType::EGetPkgId));
+        DB::SqlConnection::DataCommandAutoPtr &command =
+            m_commands.at(QueryType::EGetPkgId);
+
+        command->Reset();
         command->BindString(1, appId.c_str());
 
         if (!command->Step()) {
@@ -143,10 +147,10 @@ void PrivilegeDb::AddApplication(const std::string &appId,
     pkgIdIsNew = !(this->PkgIdExists(pkgId));
 
     try_catch<void>([&] {
-        DB::SqlConnection::DataCommandAutoPtr command =
-                mSqlConnection->PrepareDataCommand(
-                        Queries.at(QueryType::EAddApplication));
+        DB::SqlConnection::DataCommandAutoPtr &command =
+                m_commands.at(QueryType::EAddApplication);
 
+        command->Reset();
         command->BindString(1, appId.c_str());
         command->BindString(2, pkgId.c_str());
         command->BindInteger(3, static_cast<unsigned int>(uid));
@@ -156,7 +160,6 @@ void PrivilegeDb::AddApplication(const std::string &appId,
                     Queries.at(QueryType::EAddApplication));
         };
 
-        command->Reset();
         LogDebug("Added appId: " << appId << ", pkgId: " << pkgId);
     });
 }
@@ -171,10 +174,10 @@ void PrivilegeDb::RemoveApplication(const std::string &appId, uid_t uid,
             return;
         }
 
-        DB::SqlConnection::DataCommandAutoPtr command =
-                mSqlConnection->PrepareDataCommand(
-                        Queries.at(QueryType::ERemoveApplication));
+        DB::SqlConnection::DataCommandAutoPtr &command =
+                m_commands.at(QueryType::ERemoveApplication);
 
+        command->Reset();
         command->BindString(1, appId.c_str());
         command->BindInteger(2, static_cast<unsigned int>(uid));
 
@@ -183,7 +186,6 @@ void PrivilegeDb::RemoveApplication(const std::string &appId, uid_t uid,
                     Queries.at(QueryType::ERemoveApplication));
         };
 
-        command->Reset();
         LogDebug("Removed appId: " << appId);
 
         pkgIdIsNoMore = !(this->PkgIdExists(pkgId));
@@ -194,9 +196,10 @@ void PrivilegeDb::GetPkgPrivileges(const std::string &pkgId, uid_t uid,
         std::vector<std::string> &currentPrivileges)
 {
     try_catch<void>([&] {
-        DB::SqlConnection::DataCommandAutoPtr command =
-                mSqlConnection->PrepareDataCommand(
-                        Queries.at(QueryType::EGetPkgPrivileges));
+        DB::SqlConnection::DataCommandAutoPtr &command =
+                m_commands.at(QueryType::EGetPkgPrivileges);
+
+        command->Reset();
         command->BindString(1, pkgId.c_str());
         command->BindInteger(2, static_cast<unsigned int>(uid));
 
@@ -211,9 +214,10 @@ void PrivilegeDb::GetPkgPrivileges(const std::string &pkgId, uid_t uid,
 void PrivilegeDb::RemoveAppPrivileges(const std::string &appId, uid_t uid)
 {
     try_catch<void>([&] {
-        DB::SqlConnection::DataCommandAutoPtr command =
-            mSqlConnection->PrepareDataCommand(Queries.at(QueryType::ERemoveAppPrivileges));
+        DB::SqlConnection::DataCommandAutoPtr &command =
+            m_commands.at(QueryType::ERemoveAppPrivileges);
 
+        command->Reset();
         command->BindString(1, appId.c_str());
         command->BindInteger(2, static_cast<unsigned int>(uid));
         if (command->Step()) {
@@ -229,8 +233,10 @@ void PrivilegeDb::UpdateAppPrivileges(const std::string &appId, uid_t uid,
         const std::vector<std::string> &privileges)
 {
     try_catch<void>([&] {
-        DB::SqlConnection::DataCommandAutoPtr command =
-            mSqlConnection->PrepareDataCommand(Queries.at(QueryType::EAddAppPrivileges));
+        DB::SqlConnection::DataCommandAutoPtr &command =
+            m_commands.at(QueryType::EAddAppPrivileges);
+
+        command->Reset();
         command->BindString(1, appId.c_str());
         command->BindInteger(2, static_cast<unsigned int>(uid));
 
@@ -249,9 +255,10 @@ void PrivilegeDb::GetPrivilegeGroups(const std::string &privilege,
         std::vector<std::string> &groups)
 {
    try_catch<void>([&] {
-        DB::SqlConnection::DataCommandAutoPtr command =
-                mSqlConnection->PrepareDataCommand(
-                        Queries.at(QueryType::EGetPrivilegeGroups));
+        DB::SqlConnection::DataCommandAutoPtr &command =
+                m_commands.at(QueryType::EGetPrivilegeGroups);
+
+        command->Reset();
         command->BindString(1, privilege.c_str());
 
         while (command->Step()) {
