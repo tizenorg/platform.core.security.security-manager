@@ -28,7 +28,10 @@
 #include <dpl/serialization.h>
 
 #include "protocols.h"
+#include "cynara.h"
 #include "master-service.h"
+#include "smack-rules.h"
+#include "smack-labels.h"
 #include "service_impl.h"
 
 namespace SecurityManager {
@@ -73,9 +76,17 @@ bool MasterService::processOne(const ConnectionID &conn, MessageBuffer &buffer,
             // deserialize API call type
             int call_type_int;
             Deserialization::Deserialize(buffer, call_type_int);
-            SecurityModuleCall call_type = static_cast<SecurityModuleCall>(call_type_int);
+            MasterSecurityModuleCall call_type = static_cast<MasterSecurityModuleCall>(call_type_int);
 
             switch (call_type) {
+                case MasterSecurityModuleCall::SMACK_INSTALL_RULES:
+                    LogDebug("call type MasterSecurityModuleCall::SMACK_INSTALL_RULES");
+                    processSmackInstallRules(buffer, send);
+                    break;
+                case MasterSecurityModuleCall::SMACK_UNINSTALL_RULES:
+                    LogDebug("call type MasterSecurityModuleCall::SMACK_UNINSTALL_RULES");
+                    processSmackUninstallRules(buffer, send);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(MasterServiceException::InvalidAction);
@@ -107,5 +118,68 @@ bool MasterService::processOne(const ConnectionID &conn, MessageBuffer &buffer,
     return retval;
 }
 
+void MasterService::processSmackInstallRules(MessageBuffer &buffer, MessageBuffer &send)
+{
+    int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    std::string appId, pkgId;
+    std::vector<std::string> pkgContents;
+
+    Deserialization::Deserialize(buffer, appId);
+    Deserialization::Deserialize(buffer, pkgId);
+    Deserialization::Deserialize(buffer, pkgContents);
+
+    try {
+        LogDebug("Adding Smack rules for new appId: " << appId << " with pkgId: "
+                << pkgId << ". Applications in package: " << pkgContents.size());
+        SmackRules::installApplicationRules(appId, pkgId, pkgContents);
+    } catch (const SmackException::Base &e) {
+        LogError("Error while removing Smack rules for application: " << e.DumpToString());
+        ret = SECURITY_MANAGER_API_ERROR_SETTING_FILE_LABEL_FAILED;
+        goto out;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation error: " << e.what());
+        ret =  SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+        goto out;
+    }
+
+    ret = SECURITY_MANAGER_API_SUCCESS;
+out:
+    Serialization::Serialize(send, ret);
+}
+
+void MasterService::processSmackUninstallRules(MessageBuffer &buffer, MessageBuffer &send)
+{
+    int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    std::string appId, pkgId;
+    std::vector<std::string> pkgContents;
+    bool removePkg = false;
+
+    Deserialization::Deserialize(buffer, appId);
+    Deserialization::Deserialize(buffer, pkgId);
+    Deserialization::Deserialize(buffer, pkgContents);
+    Deserialization::Deserialize(buffer, removePkg);
+
+    try {
+        if (removePkg) {
+            LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
+            SmackRules::uninstallPackageRules(pkgId);
+        }
+
+        LogDebug ("Removing smack rules for deleted appId " << appId);
+        SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents);
+    } catch (const SmackException::Base &e) {
+        LogError("Error while removing Smack rules for application: " << e.DumpToString());
+        ret = SECURITY_MANAGER_API_ERROR_SETTING_FILE_LABEL_FAILED;
+        goto out;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation error: " << e.what());
+        ret =  SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+        goto out;
+    }
+
+    ret = SECURITY_MANAGER_API_SUCCESS;
+out:
+    Serialization::Serialize(send, ret);
+}
 
 } // namespace SecurityManager

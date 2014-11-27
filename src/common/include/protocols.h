@@ -139,6 +139,12 @@ enum class SecurityModuleCall
     NOOP = 0x90,
 };
 
+enum class MasterSecurityModuleCall
+{
+    SMACK_INSTALL_RULES,
+    SMACK_UNINSTALL_RULES,
+};
+
 } // namespace SecurityManager
 
 using namespace SecurityManager;
