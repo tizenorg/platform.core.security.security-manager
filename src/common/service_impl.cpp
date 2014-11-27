@@ -377,5 +377,43 @@ int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
+int userAdd(uid_t uidAdded, int userType, uid_t uid)
+{
+    if (uid != 0)
+        return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+    //TODO add policy information to cynara regarding user default privileges based on user_type
+    (void) uidAdded;
+    (void) userType;
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int userDelete(uid_t uidDeleted, uid_t uid)
+{
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+    if (uid != 0)
+        return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+
+    //TODO remove policy information from cynara
+
+    /*Uninstall all user apps*/
+    std::vector<std::string> userApps;
+    try {
+        PrivilegeDb::getInstance().GetUserApps(uidDeleted, userApps);
+    } catch (const PrivilegeDb::Exception::Base &e) {
+        LogError("Error while getting user apps from database: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    for (auto &app: userApps) {
+        if (appUninstall(app, uidDeleted) != SECURITY_MANAGER_API_SUCCESS) {
+        /*if uninstallation of this app fails, just go on trying to uninstall another ones.
+        we do not have anything special to do about that matter - user will be deleted anyway.*/
+            ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+        }
+    }
+
+    return ret;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
