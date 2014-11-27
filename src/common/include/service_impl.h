@@ -50,20 +50,22 @@ bool getPeerID(int sock, uid_t &uid, pid_t &pid);
  *
  * @param[in] req installation request
  * @param[in] uid id of the requesting user
+ * @param[in] isSlave Indicates if function should be called under slave mode
  *
  * @return API return code, as defined in protocols.h
  */
-int appInstall(const app_inst_req &req, uid_t uid);
+int appInstall(const app_inst_req &req, uid_t uid, bool isSlave);
 
 /**
  * Process application uninstallation request.
  *
  * @param[in] req uninstallation request
  * @param[in] uid id of the requesting user
+ * @param[in] isSlave Indicates if function should be called under slave mode
  *
  * @return API return code, as defined in protocols.h
  */
-int appUninstall(const std::string &appId, uid_t uid);
+int appUninstall(const std::string &appId, uid_t uid, bool isSlave);
 
 /**
  * Process package id query.
@@ -98,20 +100,22 @@ int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_
  * @param[in] uidAdded uid of newly created user
  * @param[in] userType type of newly created user
  * @param[in] uid uid of requesting user
+ * @param[in] isSlave Indicates if function should be called under slave mode
  *
  * @return API return code, as defined in protocols.h
  */
-int userAdd(uid_t uidAdded, int userType, uid_t uid);
+int userAdd(uid_t uidAdded, int userType, uid_t uid, bool isSlave);
 
 /**
  * Process user deletion request.
  *
  * @param[in] uidDeleted uid of removed user
  * @param[in] uid uid of requesting user
+ * @param[in] isSlave Indicates if function should be called under slave mode
  *
  * @return API return code, as defined in protocols.h
  */
-int userDelete(uid_t uidDeleted, uid_t uid);
+int userDelete(uid_t uidDeleted, uid_t uid, bool isSlave);
 
 /**
  * Update policy in Cynara - proper privilege: http://tizen.org/privilege/systemsettings.admin
