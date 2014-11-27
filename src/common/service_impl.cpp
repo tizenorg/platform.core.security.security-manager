@@ -33,8 +33,11 @@
 #include <algorithm>
 
 #include <dpl/log/log.h>
+#include <dpl/serialization.h>
 #include <tzplatform_config.h>
 
+#include "message-buffer.h"
+#include "connection.h"
 #include "protocols.h"
 #include "privilege_db.h"
 #include "cynara.h"
@@ -255,7 +258,51 @@ static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid, b
     return true;
 }
 
-int appInstall(const app_inst_req &req, uid_t uid)
+//
+// REQUESTS FOR MASTER MODE
+//
+static inline int requestMasterSmackInstallRules(const std::string &appId,
+                                                 const std::string &pkgId,
+                                                 const std::vector<std::string> &pkgContents)
+{
+    int ret;
+    MessageBuffer sendBuf, retBuf;
+    Serialization::Serialize(sendBuf,
+                             static_cast<int>(MasterSecurityModuleCall::SMACK_INSTALL_RULES));
+    Serialization::Serialize(sendBuf, appId);
+    Serialization::Serialize(sendBuf, pkgId);
+    Serialization::Serialize(sendBuf, pkgContents);
+    ret = sendToServer(MASTER_SERVICE_SOCKET, sendBuf.Pop(), retBuf);
+    if (ret == SECURITY_MANAGER_API_SUCCESS)
+        Deserialization::Deserialize(retBuf, ret);
+
+    return ret;
+}
+
+static inline int requestMasterSmackUninstallRules(const std::string &appId,
+                                                   const std::string &pkgId,
+                                                   const std::vector<std::string> &pkgContents,
+                                                   const bool removePkg)
+{
+    int ret;
+    MessageBuffer sendBuf, retBuf;
+    Serialization::Serialize(sendBuf,
+                             static_cast<int>(MasterSecurityModuleCall::SMACK_UNINSTALL_RULES));
+    Serialization::Serialize(sendBuf, appId);
+    Serialization::Serialize(sendBuf, pkgId);
+    Serialization::Serialize(sendBuf, pkgContents);
+    Serialization::Serialize(sendBuf, removePkg);
+    ret = sendToServer(MASTER_SERVICE_SOCKET, sendBuf.Pop(), retBuf);
+    if (ret == SECURITY_MANAGER_API_SUCCESS)
+        Deserialization::Deserialize(retBuf, ret);
+
+    return ret;
+}
+
+//
+// SERVICE FUNCTIONS
+//
+int appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
 {
     std::vector<std::string> addedPermissions;
     std::vector<std::string> removedPermissions;
@@ -350,9 +397,19 @@ int appInstall(const app_inst_req &req, uid_t uid)
             SmackLabels::setupPath(req.appId, path, pathType);
         }
 
-        LogDebug("Adding Smack rules for new appId: " << req.appId << " with pkgId: "
-                << req.pkgId << ". Applications in package: " << pkgContents.size());
-        SmackRules::installApplicationRules(req.appId, req.pkgId, pkgContents);
+        if (isSlave) {
+            LogDebug("Requesting master to add rules for new appId: " << req.appId << " with pkgId: "
+                    << req.pkgId << ". Applications in package: " << pkgContents.size());
+            int ret = requestMasterSmackInstallRules(req.appId, req.pkgId, pkgContents);
+            if (ret != SECURITY_MANAGER_API_SUCCESS) {
+                LogError("Master failed to apply package-specific smack rules: " << ret);
+                return ret;
+            }
+        } else {
+            LogDebug("Adding Smack rules for new appId: " << req.appId << " with pkgId: "
+                    << req.pkgId << ". Applications in package: " << pkgContents.size());
+            SmackRules::installApplicationRules(req.appId, req.pkgId, pkgContents);
+        }
     } catch (const SmackException::Base &e) {
         LogError("Error while applying Smack policy for application: " << e.DumpToString());
         return SECURITY_MANAGER_API_ERROR_SETTING_FILE_LABEL_FAILED;
@@ -364,7 +421,7 @@ int appInstall(const app_inst_req &req, uid_t uid)
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int appUninstall(const std::string &appId, uid_t uid)
+int appUninstall(const std::string &appId, uid_t uid, bool isSlave)
 {
     std::string pkgId;
     std::string smackLabel;
@@ -421,22 +478,32 @@ int appUninstall(const std::string &appId, uid_t uid)
         return SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
     }
 
-    try {
-        if (appExists) {
-            if (removePkg) {
-                LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
-                SmackRules::uninstallPackageRules(pkgId);
+    if (appExists) {
+        if (isSlave) {
+            LogDebug("Delegating Smack rules removal for deleted pkgId " << pkgId <<
+                     " to master");
+            int ret = requestMasterSmackUninstallRules(appId, pkgId, pkgContents, removePkg);
+            if (ret != SECURITY_MANAGER_API_SUCCESS) {
+                LogError("Error while processing uninstall request on master: " << ret);
+                return ret;
             }
+        } else {
+            try {
+                if (removePkg) {
+                    LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
+                    SmackRules::uninstallPackageRules(pkgId);
+                }
 
-            LogDebug("Removing smack rules for deleted appId " << appId);
-            SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents);
+                LogDebug ("Removing smack rules for deleted appId " << appId);
+                SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents);
+            } catch (const SmackException::Base &e) {
+                LogError("Error while removing Smack rules for application: " << e.DumpToString());
+                return SECURITY_MANAGER_API_ERROR_SETTING_FILE_LABEL_FAILED;
+            } catch (const std::bad_alloc &e) {
+                LogError("Memory allocation error: " << e.what());
+                return SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+            }
         }
-    } catch (const SmackException::Base &e) {
-        LogError("Error while removing Smack rules for application: " << e.DumpToString());
-        return SECURITY_MANAGER_API_ERROR_SETTING_FILE_LABEL_FAILED;
-    } catch (const std::bad_alloc &e) {
-        LogError("Memory allocation error: " << e.what());
-        return SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
     }
 
     return SECURITY_MANAGER_API_SUCCESS;
@@ -537,10 +604,11 @@ int userAdd(uid_t uidAdded, int userType, uid_t uid)
     } catch (CynaraException::InvalidParam &e) {
         return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
     }
+
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int userDelete(uid_t uidDeleted, uid_t uid)
+int userDelete(uid_t uidDeleted, uid_t uid, bool isSlave)
 {
     int ret = SECURITY_MANAGER_API_SUCCESS;
     if (uid != 0)
@@ -556,7 +624,7 @@ int userDelete(uid_t uidDeleted, uid_t uid)
     }
 
     for (auto &app: userApps) {
-        if (appUninstall(app, uidDeleted) != SECURITY_MANAGER_API_SUCCESS) {
+        if (appUninstall(app, uidDeleted, isSlave) != SECURITY_MANAGER_API_SUCCESS) {
         /*if uninstallation of this app fails, just go on trying to uninstall another ones.
         we do not have anything special to do about that matter - user will be deleted anyway.*/
             ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;

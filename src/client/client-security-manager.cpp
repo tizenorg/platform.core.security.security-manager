@@ -168,7 +168,7 @@ int security_manager_app_install(const app_inst_req *p_req)
         int retval;
         ClientOffline offlineMode;
         if (offlineMode.isOffline()) {
-            retval = SecurityManager::ServiceImpl::appInstall(*p_req, geteuid());
+            retval = SecurityManager::ServiceImpl::appInstall(*p_req, geteuid(), false);
         } else {
             MessageBuffer send, recv;
 

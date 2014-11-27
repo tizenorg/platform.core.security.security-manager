@@ -54,6 +54,22 @@ private:
      * @return             true on success
      */
     bool processOne(const ConnectionID &conn, MessageBuffer &buffer, InterfaceID interfaceID);
+
+    /**
+     * Process SMACK rules installation for package
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processSmackInstallRules(MessageBuffer &buffer, MessageBuffer &send);
+
+    /**
+     * Process SMACK rules uninstallation
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processSmackUninstallRules(MessageBuffer &buffer, MessageBuffer &send);
 };
 
 } // namespace SecurityManager

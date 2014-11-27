@@ -193,7 +193,7 @@ void Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     Deserialization::Deserialize(buffer, req.privileges);
     Deserialization::Deserialize(buffer, req.appPaths);
     Deserialization::Deserialize(buffer, req.uid);
-    Serialization::Serialize(send, ServiceImpl::appInstall(req, uid));
+    Serialization::Serialize(send, ServiceImpl::appInstall(req, uid, m_isSlave));
 }
 
 void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
@@ -201,7 +201,7 @@ void Service::processAppUninstall(MessageBuffer &buffer, MessageBuffer &send, ui
     std::string appId;
 
     Deserialization::Deserialize(buffer, appId);
-    Serialization::Serialize(send, ServiceImpl::appUninstall(appId, uid));
+    Serialization::Serialize(send, ServiceImpl::appUninstall(appId, uid, m_isSlave));
 }
 
 void Service::processGetPkgId(MessageBuffer &buffer, MessageBuffer &send)
@@ -254,7 +254,7 @@ void Service::processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_
 
     Deserialization::Deserialize(buffer, uidRemoved);
 
-    ret = ServiceImpl::userDelete(uidRemoved, uid);
+    ret = ServiceImpl::userDelete(uidRemoved, uid, m_isSlave);
     Serialization::Serialize(send, ret);
 }
 
