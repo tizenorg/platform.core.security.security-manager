@@ -168,7 +168,7 @@ int security_manager_app_install(const app_inst_req *p_req)
         int retval;
         ClientOffline offlineMode;
         if (offlineMode.isOffline()) {
-            retval = SecurityManager::ServiceImpl::appInstall(*p_req, geteuid());
+            retval = SecurityManager::ServiceImpl::appInstall(*p_req, geteuid(), false);
         } else {
             MessageBuffer send, recv;
 
@@ -566,7 +566,8 @@ int security_manager_user_add(const user_req *p_req)
         int retval;
         ClientOffline offlineMode;
         if (offlineMode.isOffline()) {
-            retval = SecurityManager::ServiceImpl::userAdd(p_req->uid, p_req->utype, geteuid());
+            retval = SecurityManager::ServiceImpl::userAdd(p_req->uid, p_req->utype, geteuid(),
+                                                           false);
         } else {
             MessageBuffer send, recv;
             //server is working

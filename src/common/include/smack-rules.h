@@ -45,8 +45,9 @@ public:
             const std::string &allowPermissions, const std::string &denyPermissions);
     void loadFromFile(const std::string &path);
     void addFromTemplate(const std::vector<std::string> &templateRules,
-        const std::string &appId, const std::string &pkgId);
-    void addFromTemplateFile(const std::string &appId, const std::string &pkgId);
+        const std::string &appId, const std::string &pkgId, const std::string &prefix);
+    void addFromTemplateFile(const std::string &appId, const std::string &pkgId,
+        const std::string &prefix);
 
     void apply() const;
     void clear() const;
@@ -74,6 +75,23 @@ public:
      */
     static void installApplicationRules(const std::string &appId, const std::string &pkgId,
         const std::vector<std::string> &pkgContents);
+
+    /**
+     * Install package-specific smack rules for specified Zone.
+     *
+     * Function creates smack rules using predefined template and adds a prefix (if it is provided).
+     * Rules are applied to the kernel and saved on persistent storage so they are loaded on system
+     * boot.
+     *
+     * @param[in] appId - application id that is beeing installed
+     * @param[in] pkgId - package id that the application is in
+     * @param[in] pkgContents - a list of all applications in the package
+     * @param[in] prefix - a prefix used at the beginning of labels, empty string means no prefix
+     *                     is added
+     */
+    static void installApplicationRules(const std::string &appId, const std::string &pkgId,
+            const std::vector<std::string> &pkgContents, const std::string &prefix);
+
     /**
      * Uninstall package-specific smack rules.
      *
