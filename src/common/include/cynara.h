@@ -104,6 +104,16 @@ public:
         const std::vector<std::string> &oldPrivileges,
         const std::vector<std::string> &newPrivileges);
 
+    /**
+     * Create new bucket in Cynara
+     */
+    void CreateBucket(const std::string &bucketName, CynaraAdminPolicy::Operation operation);
+
+    /**
+     * Remove bucket from Cynara
+     */
+    void RemoveBucket(const std::string &bucketName);
+
 private:
     CynaraAdmin();
     struct cynara_admin *m_CynaraAdmin;

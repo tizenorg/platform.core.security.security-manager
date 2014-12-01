@@ -217,6 +217,22 @@ void CynaraAdmin::UpdatePackagePolicy(
     cynaraAdmin.SetPolicies(policies);
 }
 
+void CynaraAdmin::CreateBucket(
+    const std::string &bucketName, CynaraAdminPolicy::Operation operation)
+{
+    checkCynaraError(
+        cynara_admin_set_bucket(m_CynaraAdmin, bucketName.c_str(), int(operation), ""),
+        "Error while creating new bucket: " + bucketName);
+}
+
+void CynaraAdmin::RemoveBucket(
+    const std::string &bucketName)
+{
+    checkCynaraError(
+        cynara_admin_set_bucket(m_CynaraAdmin, bucketName.c_str(), CYNARA_ADMIN_DELETE, ""),
+        "Error while removing bucket: " + bucketName);
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
