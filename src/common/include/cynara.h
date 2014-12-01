@@ -24,6 +24,8 @@
 #ifndef _SECURITY_MANAGER_CYNARA_
 #define _SECURITY_MANAGER_CYNARA_
 
+#include "usertype-profile.h"
+
 #include <cynara-client.h>
 #include <cynara-admin.h>
 #include <dpl/exception.h>
@@ -118,6 +120,12 @@ public:
      * @param bucketName name of the bucket to be removed
      */
     void RemoveBucket(const std::string &bucketName);
+
+    /**
+     * Define policy for specific user type
+     */
+    static void DefineUsertypePolicy(const std::string &usertype,
+        const std::vector<SecurityManager::UserTypePrivilege> &privileges);
 
 private:
     CynaraAdmin();

@@ -81,6 +81,13 @@ int getPkgId(const std::string &appId, std::string &pkgId);
  */
 int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_set<gid_t> &gids);
 
+/**
+ * Reload user type policies into cynara
+ *
+ * @return API return code, as defined in security-manager.h
+ */
+int reloadUserTypePolicy(void);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 
