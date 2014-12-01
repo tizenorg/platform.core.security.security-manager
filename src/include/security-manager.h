@@ -43,6 +43,8 @@ enum lib_retcode {
     SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED
 };
 
+const char *security_manager_strerror(enum lib_retcode rc);
+
 /*! \brief accesses types for application installation paths*/
 enum app_install_path_type {
     //accessible read-write only for applications with same package id
