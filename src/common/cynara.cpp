@@ -233,6 +233,25 @@ void CynaraAdmin::RemoveBucket(
         "Error while removing bucket: " + bucketName);
 }
 
+void CynaraAdmin::DefineUsertypePolicy(
+    const std::string &usertype,
+    const std::vector<SecurityManager::UserTypePrivilege> &privileges)
+{
+    CynaraAdmin cynaraAdmin;
+    std::vector<CynaraAdminPolicy> policies;
+
+    for (auto & privilege : privileges) {
+        policies.push_back(CynaraAdminPolicy(privilege.app, CYNARA_ADMIN_WILDCARD, privilege.privilege, CynaraAdminPolicy::Operation::Allow, usertype));
+    };
+    try {
+        cynaraAdmin.RemoveBucket(usertype);
+    } catch (CynaraException::Base) {
+        //Bucket didn't exist
+    };
+    cynaraAdmin.CreateBucket(usertype, CynaraAdminPolicy::Operation::Deny);
+    cynaraAdmin.SetPolicies(policies);
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
