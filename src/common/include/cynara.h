@@ -24,6 +24,8 @@
 #ifndef _SECURITY_MANAGER_CYNARA_
 #define _SECURITY_MANAGER_CYNARA_
 
+#include "usertype-profile.h"
+
 #include <cynara-client.h>
 #include <cynara-admin.h>
 #include <dpl/exception.h>
@@ -109,7 +111,7 @@ public:
      * Create new bucket in Cynara
      *
      * @param bucketName name of the new bucket to be created
-     * @param defaultPolicy for bucket
+     * @param defaultPolicy default policy for bucket
      */
     void CreateBucket(const std::string &bucketName, CynaraAdminPolicy::Operation defaultPolicy);
 
@@ -118,6 +120,15 @@ public:
      * @param bucketName name of the bucket to be removed
      */
     void RemoveBucket(const std::string &bucketName);
+
+    /**
+     * Define policy for specific user type
+     *
+     * @param usertype name of the user type for which the policy is defined
+     * @param privileges list of user type privileges 
+     */
+    static void DefineUsertypePolicy(const std::string &usertype,
+        const std::vector<SecurityManager::UserTypePrivilege> &privileges);
 
 private:
     CynaraAdmin();
