@@ -107,6 +107,14 @@ private:
      * @param  pid    Process id in which application will be launched
      */
     void processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
+
+    /**
+     * Reload user type policy
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void reloadPolicy(MessageBuffer &send);
 };
 
 } // namespace SecurityManager
