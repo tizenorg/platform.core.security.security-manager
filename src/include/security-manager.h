@@ -219,6 +219,13 @@ int security_manager_drop_process_privileges(void);
  */
 int security_manager_prepare_app(const char *app_id);
 
+/**
+ * Reloads user type policy from a predefined folder
+ * and feeds this data to proper buckets in cynara
+ *
+ * \return API return code or error code
+ */
+int security_manager_reload_policy(void);
 
 #ifdef __cplusplus
 }
