@@ -141,6 +141,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::APP_GET_GROUPS:
                     processGetAppGroups(buffer, send, uid, pid);
                     break;
+                case SecurityModuleCall::RELOAD_POLICY:
+                    reloadPolicy(send);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -221,6 +224,11 @@ void Service::processGetAppGroups(MessageBuffer &buffer, MessageBuffer &send, ui
         }
     }
 }
+
+void Service::reloadPolicy(MessageBuffer &send) {
+    int ret = ServiceImpl::reloadUserTypePolicy();
+    Serialization::Serialize(send, ret);
+};
 
 
 } // namespace SecurityManager
