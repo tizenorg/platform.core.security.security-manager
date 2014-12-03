@@ -119,6 +119,7 @@ enum class SecurityModuleCall
     APP_UNINSTALL,
     APP_GET_PKGID,
     APP_GET_GROUPS,
+    RELOAD_POLICY,
 };
 
 } // namespace SecurityManager
