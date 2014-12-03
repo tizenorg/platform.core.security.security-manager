@@ -18,8 +18,8 @@ BuildRequires: pkgconfig(libsystemd-journal)
 BuildRequires: pkgconfig(libtzplatform-config)
 BuildRequires: pkgconfig(sqlite3)
 BuildRequires: pkgconfig(db-util)
-BuildRequires: pkgconfig(cynara-admin)
-BuildRequires: pkgconfig(cynara-client)
+BuildRequires: cynara-devel
+
 BuildRequires: boost-devel
 %{?systemd_requires}
 
