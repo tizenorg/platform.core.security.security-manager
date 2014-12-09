@@ -36,6 +36,7 @@
 #include <sys/xattr.h>
 #include <sys/smack.h>
 #include <sys/capability.h>
+#include <climits>
 
 #include <dpl/log/log.h>
 #include <dpl/exception.h>
@@ -47,6 +48,8 @@
 #include <file-lock.h>
 
 #include <security-manager.h>
+
+namespace {
 
 /**
  * Mapping of lib_retcode error codes to theirs strings equivalents
@@ -60,6 +63,49 @@ static std::map<enum lib_retcode, std::string> lib_retcode_string_map = {
     {SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED, "User does not have sufficient "
                                                    "rigths to perform an operation"}
 };
+
+policy_entry *allocate_and_copy_entries(const std::vector<SecurityManager::PolicyEntry> &entries)
+{
+    if (entries.size() == 0)
+        return nullptr;
+
+    policy_entry *result = new policy_entry[entries.size()];
+
+    for(size_t i = 0; i < entries.size(); i++) {
+        const SecurityManager::PolicyEntry &entry = entries.at(i);
+        const std::string &app  = entry.appId;
+        const std::string &priv = entry.privilege;
+
+        result[i].appId = new char[app.length() + 1];
+        app.copy(result[i].appId, app.length());
+        result[i].appId[app.length()] = 0;
+
+        result[i].privilege = new char[priv.length() + 1];
+        priv.copy(result[i].privilege, priv.length());
+        result[i].privilege[priv.length()] = 0;
+
+        result[i].uid = entry.uid;
+        result[i].max_value = entry.maxValue;
+        result[i].current = entry.current;
+    }
+
+    return result;
+}
+
+inline bool checkUidStr(const char *uid_str)
+{
+    try {
+        if (std::stoul(uid_str) <= UINT_MAX)
+           return true;
+    } catch (std::invalid_argument &e) {
+        LogError("Cannot convert uid_str: " << uid_str << " to uint");
+        return false;
+    }
+
+    LogError("Too big uid: " << uid_str);
+    return false;
+}
+} // end of anonymous namespace
 
 SECURITY_MANAGER_API
 const char *security_manager_strerror(enum lib_retcode rc)
@@ -661,14 +707,24 @@ int security_manager_policy_add_unit(policy_update_req *p_req,
                                      const char *privilege,
                                      int value)
 {
-    (void)p_req;
-    (void)uid_str;
-    (void)user_type;
-    (void)app_id;
-    (void)privilege;
-    (void)value;
+    if (!p_req
+     || !uid_str || strlen(uid_str) == 0 || !checkUidStr(uid_str)
+     || user_type <= SM_USER_TYPE_NONE || user_type >= SM_USER_TYPE_END
+     || !app_id || strlen(app_id) == 0
+     || !privilege || strlen(privilege) == 0)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
 
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    try {
+        p_req->units.push_back(
+                std::move(SecurityManager::PolicyUpdateUnit(uid_str, app_id, privilege,
+                                                            static_cast<int>(user_type), value))
+                );
+    } catch (std::bad_alloc &ex) {
+        LogError("Cannot allocate memory for policy update vector");
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
 }
 
 SECURITY_MANAGER_API
@@ -677,68 +733,132 @@ int security_manager_policy_add_unit_for_self(policy_update_req *p_req,
                                               const char *privilege,
                                               int value)
 {
-    (void)p_req;
-    (void)app_id;
-    (void)privilege;
-    (void)value;
+    return security_manager_policy_add_unit(p_req, std::to_string(getuid()).c_str(),
+                                            SM_USER_TYPE_NORMAL, app_id, privilege, value);
+}
 
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+inline int security_manager_policy_update_send(policy_update_req *p_req,
+                                               SecurityManager::SecurityModuleCall call_type)
+{
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
+
+    if (p_req == nullptr || p_req->units.size() == 0)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    return try_catch([&] {
+
+        //put request into buffer
+        Serialization::Serialize(send, static_cast<int>(call_type));
+        Serialization::Serialize(send, p_req->units);
+
+        //send it to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+        case SECURITY_MANAGER_API_SUCCESS:
+            return SECURITY_MANAGER_SUCCESS;
+        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        default:
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
 }
 
 SECURITY_MANAGER_API
 int security_manager_policy_update_send_for_self(policy_update_req *p_req)
 {
-    (void)p_req;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_policy_update_send(p_req,
+                   SecurityManager::SecurityModuleCall::POLICY_UPDATE_SELF);
 }
 
 SECURITY_MANAGER_API
 int security_manager_policy_update_send_for_admin(policy_update_req *p_req)
 {
-    (void)p_req;
+    return security_manager_policy_update_send(p_req,
+                   SecurityManager::SecurityModuleCall::POLICY_UPDATE_ADMIN);
+}
 
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+inline int security_manager_get_policy(policy_entry **pp_privs_policy,
+                                       size_t *p_size,
+                                       SecurityManager::SecurityModuleCall call_type)
+{
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
+
+    if (pp_privs_policy == nullptr || p_size == nullptr)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    return try_catch([&] {
+
+        //put request into buffer
+        Serialization::Serialize(send, static_cast<int>(call_type));
+
+        //send it to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+        case SECURITY_MANAGER_API_SUCCESS: {
+            //extract and allocate buffers for privs policy entries
+            std::vector<SecurityManager::PolicyEntry> entries;
+            Deserialization::Deserialize(recv, entries);
+
+            *pp_privs_policy = allocate_and_copy_entries(entries);
+            *p_size = entries.size();
+
+            return SECURITY_MANAGER_SUCCESS;
+        }
+        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        default:
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
 }
 
 SECURITY_MANAGER_API
 int security_manager_get_configured_policy_for_admin(policy_entry **pp_privs_policy,
                                                      size_t *p_size)
 {
-    (void)pp_privs_policy;
-    (void)p_size;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_policy(pp_privs_policy, p_size,
+                  SecurityManager::SecurityModuleCall::GET_CONF_POLICY_ADMIN);
 }
 
 SECURITY_MANAGER_API
 int security_manager_get_configured_policy_for_self(policy_entry **pp_privs_policy,
                                                     size_t *p_size)
 {
-    (void)pp_privs_policy;
-    (void)p_size;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_policy(pp_privs_policy, p_size,
+                  SecurityManager::SecurityModuleCall::GET_CONF_POLICY_SELF);
 }
 
 SECURITY_MANAGER_API
 int security_manager_get_whole_policy(policy_entry **pp_privs_policy,
                                       size_t *p_size)
 {
-    (void)pp_privs_policy;
-    (void)p_size;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_policy(pp_privs_policy, p_size,
+                  SecurityManager::SecurityModuleCall::GET_WHOLE_POLICY_ADMIN);
 }
 
 SECURITY_MANAGER_API
 int security_manager_get_whole_policy_for_self(policy_entry **pp_privs_policy,
                                                size_t *p_size)
 {
-    (void)pp_privs_policy;
-    (void)p_size;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_policy(pp_privs_policy, p_size,
+                  SecurityManager::SecurityModuleCall::GET_WHOLE_POLICY_SELF);
 }
 
 SECURITY_MANAGER_API
