@@ -24,6 +24,8 @@
 #ifndef _SECURITY_MANAGER_CYNARA_
 #define _SECURITY_MANAGER_CYNARA_
 
+#include "usertype-profile.h"
+
 #include <cynara-client.h>
 #include <cynara-admin.h>
 #include <dpl/exception.h>
@@ -132,6 +134,15 @@ public:
      */
     void InitBuckets();
 
+    /**
+     * Define policy for specific user type
+     *
+     * @param usertype name of the user type for which the policy is defined
+     * @param privileges list of user type privileges
+     */
+    static void DefineUserTypePolicy(const std::string &usertype,
+        const std::vector<UserTypePrivilege> &privileges);
+
 private:
     CynaraAdmin();
 
@@ -188,7 +199,6 @@ private:
     Cynara();
     struct cynara *m_Cynara;
 };
-
 } // namespace SecurityManager
 
 #endif // _SECURITY_MANAGER_CYNARA_

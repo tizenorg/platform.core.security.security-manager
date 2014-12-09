@@ -111,6 +111,15 @@ int userDelete(uid_t uidDeleted, uid_t uid);
  */
 int bucketsInit(uid_t uidInContext);
 
+/**
+ * Reload user type policies into cynara
+ *
+ * @param[in] uid uid of user calling this operation
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int reloadUserTypePolicy(uid_t uid);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 
