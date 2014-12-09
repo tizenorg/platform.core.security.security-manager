@@ -105,9 +105,11 @@ int userDelete(uid_t uidDeleted, uid_t uid);
 /**
  * Reload user type policies into cynara
  *
+ * @param[in] uid of user calling this operation
+ *
  * @return API return code, as defined in security-manager.h
  */
-int reloadUserTypePolicy(void);
+int reloadUserTypePolicy(uid_t uid);
 
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
