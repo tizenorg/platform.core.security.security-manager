@@ -52,6 +52,7 @@ static po::options_description getGenericOptions()
     opts.add_options()
          ("help,h", "produce help message")
          ("install,i", "install an application")
+         ("reload-policy,r", "reload user types policy")
          ;
     return opts;
 }
@@ -258,6 +259,21 @@ static int installApp(const struct app_inst_req &req)
     return ret;
 }
 
+static int reloadPolicy()
+{
+    int ret = EXIT_FAILURE;
+
+    ret = security_manager_reload_policy();
+    if (SECURITY_MANAGER_SUCCESS == ret) {
+        std::cout << "User type policy reloaded successfully." << std::endl;
+        LogDebug("User type policy reloaded successfully.");
+    } else {
+        std::cout << "User type policy reload failed. Return code: " << ret << std::endl;
+        LogDebug("User type policy reload failed. Return code: " << ret);
+    }
+    return ret;
+}
+
 int main(int argc, char *argv[])
 {
     po::variables_map vm;
@@ -292,6 +308,9 @@ int main(int argc, char *argv[])
                 return installApp(*req);
             else
                 return EXIT_FAILURE;
+        } else if (vm.count("reload-policy")) {
+            LogDebug("Reload policy.");
+            return reloadPolicy();
         } else {
             std::cout << "No command argument was given." << std::endl;
             usage(std::string(argv[0]));
