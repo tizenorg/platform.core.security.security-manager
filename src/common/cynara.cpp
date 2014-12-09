@@ -169,7 +169,7 @@ void CynaraAdmin::UpdatePackagePolicy(
     const std::vector<std::string> &oldPrivileges,
     const std::vector<std::string> &newPrivileges)
 {
-    CynaraAdmin cynaraAdmin;
+    CynaraAdmin cynaraAdmin = CynaraAdmin::getInstance();
     std::vector<CynaraAdminPolicy> policies;
 
     // Perform sort-merge join on oldPrivileges and newPrivileges.
@@ -249,6 +249,28 @@ void CynaraAdmin::EmptyBucket(const std::string &bucketName, bool recursive, con
             client.c_str(), user.c_str(), privilege.c_str()),
         "Error while emptying bucket: " + bucketName + ", filter (C, U, P): " +
             client + ", " + user + ", " + privilege);
+}
+
+void CynaraAdmin::DefineUserTypePolicy(
+    const std::string &usertype,
+    const std::vector<UserTypePrivilege> &privileges)
+{
+    CynaraAdmin cynaraAdmin = CynaraAdmin::getInstance();
+    std::vector<CynaraAdminPolicy> policies;
+
+    for (auto & privilege : privileges) {
+        policies.push_back(
+            CynaraAdminPolicy(privilege.app, CYNARA_ADMIN_WILDCARD, privilege.privilege,
+                CynaraAdminPolicy::Operation::Allow, usertype));
+    };
+    try {
+        cynaraAdmin.EmptyBucket(usertype, false,
+            CYNARA_ADMIN_WILDCARD, CYNARA_ADMIN_WILDCARD, CYNARA_ADMIN_WILDCARD);
+    } catch (CynaraException::BucketNotFound) {
+        //Bucket didn't exist
+    };
+    cynaraAdmin.CreateBucket(usertype, CynaraAdminPolicy::Operation::Deny);
+    cynaraAdmin.SetPolicies(policies);
 }
 
 Cynara::Cynara()
