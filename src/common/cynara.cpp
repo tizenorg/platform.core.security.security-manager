@@ -169,7 +169,7 @@ void CynaraAdmin::UpdatePackagePolicy(
     const std::vector<std::string> &oldPrivileges,
     const std::vector<std::string> &newPrivileges)
 {
-    CynaraAdmin cynaraAdmin;
+    CynaraAdmin cynaraAdmin = CynaraAdmin::getInstance();
     std::vector<CynaraAdminPolicy> policies;
 
     // Perform sort-merge join on oldPrivileges and newPrivileges.
@@ -237,6 +237,26 @@ void CynaraAdmin::RemoveBucket(const std::string &bucketName)
     checkCynaraError(
         cynara_admin_set_bucket(m_CynaraAdmin, bucketName.c_str(), static_cast<int>(CynaraAdminPolicy::Operation::Delete), ""),
         "Error while removing bucket: " + bucketName);
+}
+
+void CynaraAdmin::DefineUserTypePolicy(
+    const std::string &usertype,
+    const std::vector<UserTypePrivilege> &privileges)
+{
+    CynaraAdmin cynaraAdmin = CynaraAdmin::getInstance();
+    std::vector<CynaraAdminPolicy> policies;
+
+    for (auto & privilege : privileges) {
+        policies.push_back(
+            CynaraAdminPolicy(privilege.app, CYNARA_ADMIN_WILDCARD, privilege.privilege, CynaraAdminPolicy::Operation::Allow, usertype));
+    };
+    try {
+        cynaraAdmin.RemoveBucket(usertype);
+    } catch (CynaraException::BucketNotFound) {
+        //Bucket didn't exist
+    };
+    cynaraAdmin.CreateBucket(usertype, CynaraAdminPolicy::Operation::Deny);
+    cynaraAdmin.SetPolicies(policies);
 }
 
 Cynara::Cynara()
