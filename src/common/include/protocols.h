@@ -114,6 +114,10 @@ struct user_req {
     int utype;
 };
 
+/*struct policy_result {
+    std::vector<struct SecurityManager::policyEntry> entries;
+};*/
+
 namespace SecurityManager {
 
 extern char const * const SERVICE_SOCKET;
@@ -128,6 +132,25 @@ enum class SecurityModuleCall
     USER_DELETE,
 };
 
+struct policyUpdateUnit {
+    std::string userId;    // uid converted to string
+    std::string appId;     // application identifier
+    std::string privilege; // Cynara privilege
+    int userType;          // user type - mapped from gumd
+    int value;             // policy to be set, corresponds to Cynara's policy result type
+};
+typedef struct policyUpdateUnit policyUpdateUnit;
+
+/*struct policyEntry {
+    std::string name; // name of corresponding application or Cynara privilege
+    int max_value;    // holds the maximum privilege status type allowed to be set
+    int current;      // holds the current privilege status, corresponds to Cynara policy result
+};*/
+
 } // namespace SecurityManager
+
+struct policy_update_req {
+    std::vector<SecurityManager::policyUpdateUnit> units;
+};
 
 #endif // _SECURITY_MANAGER_PROTOCOLS_
