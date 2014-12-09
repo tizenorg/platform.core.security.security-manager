@@ -136,6 +136,28 @@ enum class SecurityModuleCall
     RELOAD_POLICY,
 };
 
+struct PolicyUpdateUnit {
+    std::string userId;    // uid converted to string
+    std::string appId;     // application identifier
+    std::string privilege; // Cynara privilege
+    int userType;          // user type - mapped from gumd
+    int value;             // policy to be set, corresponds to Cynara's policy result type
+    int userOrType;        // denominates a policy for user or user type
+};
+typedef struct PolicyUpdateUnit PolicyUpdateUnit;
+
+/*struct PolicyEntry {
+    uid_t uid;             // user identifier
+    std::string appId;     // name of application
+    std::string privilege; // name of Cynara privilege
+    int maxValue;          // holds the maximum policy status type allowed to be set for this entry
+    int current;           // holds the current policy status for this entry
+};*/
+
 } // namespace SecurityManager
+
+struct policy_update_req {
+    std::vector<SecurityManager::PolicyUpdateUnit> units;
+};
 
 #endif // _SECURITY_MANAGER_PROTOCOLS_
