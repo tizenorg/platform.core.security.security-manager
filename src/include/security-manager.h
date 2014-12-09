@@ -305,6 +305,13 @@ int security_manager_user_add(const user_req *p_req);
  */
 int security_manager_user_delete(const user_req *p_req);
 
+/**
+ * Reloads user type policy from a predefined folder
+ * and feeds this data to proper buckets in cynara
+ *
+ * \return API return code or error code
+ */
+int security_manager_reload_policy(void);
 
 #ifdef __cplusplus
 }

@@ -20,7 +20,7 @@
  * @author      Krzysztof Sasiak <k.sasiak@samsung.com>
  * @brief       user type profile class
  */
-/* vim: set ts=4 et sw=4 tw=78 : */
+/* vim: set ts=4 et sw=4 : */
 
 #include <cstring>
 #include <boost/algorithm/string.hpp>

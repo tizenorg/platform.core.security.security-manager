@@ -429,10 +429,14 @@ int userDelete(uid_t uidDeleted, uid_t uid)
     return ret;
 }
 
-int reloadUserTypePolicy(void) {
+int reloadUserTypePolicy(uid_t uid) {
     int ret = SECURITY_MANAGER_API_SUCCESS;
     struct dirent *ent;
     DIR *dir = opendir(USERTYPE_POLICY_PATH);
+
+    if (uid != 0) {
+        return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+    }
 
     if (dir != NULL) {
         while ((ent = readdir(dir))) {
