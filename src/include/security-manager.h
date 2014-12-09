@@ -81,6 +81,36 @@ typedef struct app_inst_req app_inst_req;
 struct user_req;
 typedef struct user_req user_req;
 
+/*! \brief data structure responsible for handling policy updates
+ *  required to manage users' and applications' permissions */
+struct policy_update_req;
+typedef struct policy_update_req policy_update_req;
+
+/*! \brief structure that is used to return the result of policy checks
+ *         for applications and privileges.
+ *
+ *  The status of returned privilege is held in two variables - max_value and current.
+ *  The first one stores the highest possible permission level that could be assigned
+ *  to the given entry using privacy manager or device admin tool. The second one stores the
+ *  current state of this permission.
+ *  Both max_value and current fields values correspond to Cynara policy result.
+ */
+struct policy_entry {
+    uid_t uid;       /* user identifier */
+    char *appId;     /* name of application */
+    char *privilege; /* name of Cynara privilege */
+    int max_value;   /* holds the maximum policy status type allowed to be set for this entry*/
+    int current;     /* holds the current policy status for this entry*/
+};
+typedef struct policy_entry policy_entry;
+
+/*! \brief wildcard to be used in policy update requests to match all possible values of
+ *         given field. Use it, for example when it is desired to apply policy change for all
+ *         users of chosen type or all apps for selected user. Please see documentation of the
+ *         security_manager_policy_add_unit() function for further details.
+ */
+#define SECURITY_MANAGER_ANY "#"
+
 /**
  * This function translates lib_retcode error codes to strings describing
  * errors.
@@ -312,6 +342,180 @@ int security_manager_user_delete(const user_req *p_req);
  * @return API return code or error code
  */
 int security_manager_reload_policy(void);
+
+/**
+ * \brief This function is responsible for initializing policy_update_req data structure.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * policy_update_req_free() for freeing allocated resources.
+ *
+ * \param[out] pp_req Address of pointer for handle policy_update_req structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_req_new(policy_update_req **pp_req);
+
+/**
+ * \brief This function is used to free resources allocated by calling policy_update_req_new().
+ *
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ */
+void security_manager_policy_update_req_free(policy_update_req *p_req);
+
+/**
+ * \brief This generic function is used to add policy update unit to policy_update_req
+ *        structure. It allows to enable or disable a privilege for selected user, type
+ *        and app_id. It may be used more than once on the allocated policy_update_req
+ *        pointer, allowing to fill it with many units defining policy. After adding all
+ *        necessary units, the request should be sent to the server to perform policy update.
+ *
+ * It is allowed to use SECURITY_MANAGER_ANY and SM_USER_TYPE_ANY as arguments,
+ * which makes this function operating in various configurations.
+ *
+ * \attention This API should be used only by admin user. This function will not return any
+ *            error when unprivileged user tries to break this rule. Although, authorization error
+ *            will be returned from the server when it receives the request in the
+ *            security_manager_policy_update_send...() API call.
+ *
+ * Examples of use cases:
+ *  -# No wildcards, all args specified      - add unit updating policy for app belonging\n
+ *                                             to given user (user_type ignored)
+ *  -# uid_str = SECURITY_MANAGER_ANY        - add unit updating app privilege for all users\n
+ *                                             of given type
+ *  -# uid_str = SECURITY_MANAGER_ANY & user_type = SM_USER_TYPE_ANY - add unit updating app priv\n
+ *                                                                     for all users of all types
+ *  -# uid_str and app_id = SECURITY_MANAGER_ANY  - add unit updating priv for all users of given\n
+ *                                                  type and for all apps
+ *  -# app_id = SECURITY_MANAGER_ANY    - add unit updating privilege for all apps\n
+ *                                        belonging to given user (user_type ignored)
+ *  -# privilege = SECURITY_MANAGER_ANY - add unit updating all privileges for an app\n
+ *                                        belonging to given user (user_type ignored)
+ *
+ * \param[in] p_req     Pointer handling allocated policy_update_req structure
+ * \param[in] uid_str   uid converted to c-string (use SECURITY_MANAGER_ANY to apply to all users)
+ * \param[in] user_type User type (ignored when uid_str diffs from SECURITY_MANAGER_ANY)
+ * \param[in] app_id    Application identifier (use SECURITY_MANAGER_ANY to apply to all apps)
+ * \param[in] privilege Privilege name (use SECURITY_MANAGER_ANY to apply to all privs)
+ * \param[in] value     The value to be set (Cynara policy result type)
+ * \return API return code or error code
+ */
+int security_manager_policy_add_unit(policy_update_req *p_req,
+                                     const char *uid_str,
+                                     security_manager_user_type user_type,
+                                     const char *app_id,
+                                     const char *privilege,
+                                     int value);
+
+/**
+ * \brief This function creates new policy update unit for current user and adds it to the
+ *        policy update request given in argument. It should be used in policy updates
+ *        performed by the Privacy Manager. This is a simplified version of the
+ *        security_manager_policy_add_unit() function.
+ *
+ * \attention It is intended to be used by Privacy Manager application, allowing to enable or
+ *            disable privileges for the current user.
+ *
+ * \attention This function does not operate on wildcards, only strict arguments are allowed.
+ *
+ * \param[in] p_req     Pointer handling allocated policy_update_req structure
+ * \param[in] app_id    Application identifier
+ * \param[in] privilege Privilege name
+ * \param[in] value     The value to be set (Cynara policy result type)
+ * \return API return code or error code
+ */
+int security_manager_policy_add_unit_for_self(policy_update_req *p_req,
+                                              const char *app_id,
+                                              const char *privilege,
+                                              int value);
+
+/**
+ * \brief This function is used to send the prepared policy update request using admin
+ *        entry point. The request should contain at least one policy update unit, otherwise
+ *        the SECURITY_MANAGER_ERROR_INPUT_PARAM is returned.
+ *
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_send_for_admin(policy_update_req *p_req);
+
+/**
+ * \brief This function is used to send the prepared policy update request using privacy manager
+ *        entry point. The request should contain at least one policy update unit, otherwise
+ *        the SECURITY_MANAGER_ERROR_INPUT_PARAM is returned.
+ *
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_send_for_self(policy_update_req *p_req);
+
+/**
+ * \brief Function fetches all privileges that are edited (overwritten) by admin user.
+ *        The result is stored in the policy_entry structures array.
+ *
+ * \attention It should be called by admin user. Normal users may list edited policy entries
+ *            using security_manager_get_configured_policy_for_self() API function.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * security_manager_policy_entries_free() for freeing allocated resources.
+ *
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_configured_policy_for_admin(policy_entry **pp_privs_policy,
+                                                     size_t *p_size);
+
+/**
+ * \brief Function fetches all privileges that are edited (overwritte) by user in his
+ *        privacy manager. The result is stored in the policy_entry structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * security_manager_policy_entries_free() for freeing allocated resources.
+ *
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_configured_policy_for_self(policy_entry **pp_privs_policy,
+                                                    size_t *p_size);
+
+/**
+ * \brief Function gets the whole policy for all users, their applications and privileges.
+ *        The result is stored in the policy_entry structures array.
+ *
+ * \attention It should be called by admin user. Normal users may list policy of privileges
+ *            and applications using security_manager_get_whole_policy_for_self() API function.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * security_manager_policy_entries_free() for freeing allocated resources.
+ *
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_whole_policy(policy_entry **pp_privs_policy,
+                                      size_t *p_size);
+
+/**
+ * \brief Function gets whole policy for current user. The result is stored in the policy_entry
+ *        structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * security_manager_policy_entries_free() for freeing allocated resources.
+ *
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_whole_policy_for_self(policy_entry **pp_privs_policy,
+                                               size_t *p_size);
+
+/**
+ * \brief This function is used to free resources allocated in policy_entry structures array.
+ *
+ * \param[in] p_entries Pointer handling allocated policy status array
+ * \param[in] size      Size of the array
+ */
+void security_manager_policy_entries_free(policy_entry *p_entries, const size_t size);
 
 #ifdef __cplusplus
 }
