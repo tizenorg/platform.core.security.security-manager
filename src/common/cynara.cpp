@@ -250,6 +250,26 @@ void CynaraAdmin::EmptyBucket(const std::string &bucketName, bool recursive, con
             client + ", " + user + ", " + privilege);
 }
 
+void CynaraAdmin::DefineUserTypePolicy(
+    const std::string &usertype,
+    const std::vector<UserTypePrivilege> &privileges)
+{
+    std::vector<CynaraAdminPolicy> policies;
+
+    for (auto & privilege : privileges) {
+        policies.push_back(
+            CynaraAdminPolicy(privilege.app, CYNARA_ADMIN_WILDCARD, privilege.privilege,
+                CynaraAdminPolicy::Operation::Allow, usertype));
+    };
+    try {
+        CynaraAdmin::getInstance().EmptyBucket(usertype, false,
+            CYNARA_ADMIN_WILDCARD, CYNARA_ADMIN_WILDCARD, CYNARA_ADMIN_WILDCARD);
+    } catch (CynaraException::BucketNotFound) {
+        //Bucket didn't exist
+    };
+    CynaraAdmin::getInstance().SetPolicies(policies);
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
