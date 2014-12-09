@@ -25,6 +25,8 @@
 #ifndef _SECURITY_MANAGER_PROTOCOLS_
 #define _SECURITY_MANAGER_PROTOCOLS_
 
+#include "security-manager.h"
+
 #include <sys/types.h>
 #include <vector>
 #include <string>
@@ -130,6 +132,9 @@ enum class SecurityModuleCall
     APP_GET_GROUPS,
     USER_ADD,
     USER_DELETE,
+    POLICY_UPDATE,
+    GET_USER_APPS_POLICY,
+    GET_USER_PRIVS_POLICY,
 };
 
 struct policyUpdateUnit {
@@ -138,6 +143,22 @@ struct policyUpdateUnit {
     std::string privilege; // Cynara privilege
     int userType;          // user type - mapped from gumd
     int value;             // policy to be set, corresponds to Cynara's policy result type
+
+    policyUpdateUnit() = delete; /* no default contructor */
+
+    policyUpdateUnit(const char *userId, const char *appId, const char *privilege,
+                       int userType, int value)
+                      : userId(userId), appId(appId), privilege(privilege),
+                        userType(userType), value(value)
+    {}
+
+    policyUpdateUnit(policyUpdateUnit &&source) : userId(source.userId), appId(source.appId),
+                                                  privilege(source.privilege), userType(source.userType),
+                                                  value(source.value)
+    {}
+
+    policyUpdateUnit(policyUpdateUnit &source) = delete; /* no copy constructor */
+
 };
 typedef struct policyUpdateUnit policyUpdateUnit;
 
