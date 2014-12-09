@@ -25,9 +25,12 @@
 #ifndef _SECURITY_MANAGER_PROTOCOLS_
 #define _SECURITY_MANAGER_PROTOCOLS_
 
+#include "security-manager.h"
+
 #include <sys/types.h>
 #include <vector>
 #include <string>
+#include <dpl/serialization.h>
 
 /**
  * \name Return Codes
@@ -130,6 +133,9 @@ enum class SecurityModuleCall
     APP_GET_GROUPS,
     USER_ADD,
     USER_DELETE,
+    POLICY_UPDATE,
+    GET_USER_APPS_POLICY,
+    GET_USER_PRIVS_POLICY,
 };
 
 struct policyUpdateUnit {
@@ -138,14 +144,52 @@ struct policyUpdateUnit {
     std::string privilege; // Cynara privilege
     int userType;          // user type - mapped from gumd
     int value;             // policy to be set, corresponds to Cynara's policy result type
+
+    policyUpdateUnit() = delete; /* no default contructor */
+
+    policyUpdateUnit(const char *userId, const char *appId, const char *privilege,
+                       int userType, int value)
+                      : userId(userId), appId(appId), privilege(privilege),
+                        userType(userType), value(value)
+    {}
+
+    policyUpdateUnit(policyUpdateUnit &&source) : userId(source.userId), appId(source.appId),
+                                                  privilege(source.privilege), userType(source.userType),
+                                                  value(source.value)
+    {}
+
+    policyUpdateUnit(policyUpdateUnit &source) = delete; /* no copy constructor */
+
 };
 typedef struct policyUpdateUnit policyUpdateUnit;
 
-/*struct policyEntry {
+struct policyEntry : ISerializable {
     std::string name; // name of corresponding application or Cynara privilege
-    int max_value;    // holds the maximum privilege status type allowed to be set
+    int maxValue;     // holds the maximum privilege status type allowed to be set
     int current;      // holds the current privilege status, corresponds to Cynara policy result
-};*/
+
+    policyEntry() : name(""), maxValue(0), current(0)
+    {}
+
+    policyEntry(const policyEntry& source) {
+        name = source.name;
+        maxValue = source.maxValue;
+        current = source.current;
+    };
+
+    policyEntry(IStream &stream) {
+        Deserialization::Deserialize(stream, name);
+        Deserialization::Deserialize(stream, maxValue);
+        Deserialization::Deserialize(stream, current);
+    };
+
+    virtual void Serialize(IStream &stream) const {
+        Serialization::Serialize(stream, name);
+        Serialization::Serialize(stream, maxValue);
+        Serialization::Serialize(stream, current);
+    };
+};
+typedef struct policyEntry policyEntry;
 
 } // namespace SecurityManager
 
