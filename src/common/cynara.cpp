@@ -115,6 +115,8 @@ static bool checkCynaraError(int result, const std::string &msg)
             ThrowMsg(CynaraException::InvalidParam, msg);
         case CYNARA_API_SERVICE_NOT_AVAILABLE:
             ThrowMsg(CynaraException::ServiceNotAvailable, msg);
+        case CYNARA_API_BUCKET_NOT_FOUND:
+            ThrowMsg(CynaraException::BucketNotFound, msg);
         default:
             ThrowMsg(CynaraException::UnknownError, msg);
     }
@@ -212,6 +214,56 @@ void CynaraAdmin::UpdatePackagePolicy(
                     CynaraAdminPolicy::Operation::Allow));
     }
 
+    cynaraAdmin.SetPolicies(policies);
+}
+
+void CynaraAdmin::CreateBucket(
+    const std::string &bucketName, CynaraAdminPolicy::Operation defaultPolicy)
+{
+    switch(defaultPolicy) {
+        case CynaraAdminPolicy::Operation::Bucket:
+        case CynaraAdminPolicy::Operation::Delete:
+            ThrowMsg(CynaraException::InvalidParam, "Unsupported default policy");
+            break;
+        default:
+            checkCynaraError(
+                cynara_admin_set_bucket(m_CynaraAdmin, bucketName.c_str(), static_cast<int>(defaultPolicy), ""),
+                "Error while creating or updating bucket: " + bucketName);
+    }
+}
+
+void CynaraAdmin::RemoveBucket(const std::string &bucketName)
+{
+    checkCynaraError(
+        cynara_admin_set_bucket(m_CynaraAdmin, bucketName.c_str(), static_cast<int>(CynaraAdminPolicy::Operation::Delete), ""),
+        "Error while removing bucket: " + bucketName);
+}
+
+void CynaraAdmin::EmptyBucket(const std::string &bucketName, const bool recursive, const std::string &client,
+                                const std::string &user, const std::string &privilege)
+{
+    checkCynaraError(
+        cynara_admin_erase(m_CynaraAdmin, bucketName.c_str(), static_cast<int>(recursive), client.c_str(), user.c_str(), privilege.c_str()),
+        "Error while emptying bucket: " + bucketName + ", filter (C, U, P): " + client + ", " + user + ", " + privilege);
+}
+
+void CynaraAdmin::DefineUserTypePolicy(
+    const std::string &usertype,
+    const std::vector<UserTypePrivilege> &privileges)
+{
+    CynaraAdmin cynaraAdmin = CynaraAdmin::getInstance();
+    std::vector<CynaraAdminPolicy> policies;
+
+    for (auto & privilege : privileges) {
+        policies.push_back(
+            CynaraAdminPolicy(privilege.app, CYNARA_ADMIN_WILDCARD, privilege.privilege, CynaraAdminPolicy::Operation::Allow, usertype));
+    };
+    try {
+        cynaraAdmin.EmptyBucket(usertype, false, CYNARA_ADMIN_WILDCARD, CYNARA_ADMIN_WILDCARD, CYNARA_ADMIN_WILDCARD);
+    } catch (CynaraException::BucketNotFound) {
+        //Bucket didn't exist
+    };
+    cynaraAdmin.CreateBucket(usertype, CynaraAdminPolicy::Operation::Deny);
     cynaraAdmin.SetPolicies(policies);
 }
 
