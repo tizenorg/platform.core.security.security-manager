@@ -25,9 +25,12 @@
 #ifndef _SECURITY_MANAGER_PROTOCOLS_
 #define _SECURITY_MANAGER_PROTOCOLS_
 
+#include "security-manager.h"
+
 #include <sys/types.h>
 #include <vector>
 #include <string>
+#include <dpl/serialization.h>
 
 /**
  * \name Return Codes
@@ -138,25 +141,126 @@ enum class SecurityModuleCall
     USER_ADD,
     USER_DELETE,
     RELOAD_POLICY,
-    BUCKETS_INIT
+    BUCKETS_INIT,
+    POLICY_UPDATE_ADMIN,
+    POLICY_UPDATE_SELF,
+    GET_USER_APPS,
+    GET_USER_PRIVS_POLICY,
 };
 
-struct PolicyUpdateUnit {
+struct PolicyUpdateUnit : ISerializable {
     std::string userId;    // uid converted to string
     std::string appId;     // application identifier
     std::string privilege; // Cynara privilege
     int userType;          // user type - mapped from gumd
     int value;             // policy to be set, corresponds to Cynara's policy result type
     int userOrType;        // denominates a policy for user or user type
+
+    PolicyUpdateUnit() = delete; /* no default contructor */
+
+    PolicyUpdateUnit(const char *userId, const char *appId, const char *privilege,
+                       int value)
+                      : userId(userId), appId(appId), privilege(privilege),
+                        value(value)
+    {}
+
+    PolicyUpdateUnit(const user_object *uo, const char *appId, const char *privilege,
+                       int value)
+                      : appId(appId), privilege(privilege),
+                        value(value)
+    {
+        userId = std::string(uo->name);
+        userOrType = uo->type;
+    }
+
+    PolicyUpdateUnit(PolicyUpdateUnit &source) = delete; /* no copy constructor */
+    PolicyUpdateUnit &operator=(const PolicyUpdateUnit &second) = delete; /* no copy operator */
+
+    /* The move constructor is used when pushing objects to vector */
+    PolicyUpdateUnit(PolicyUpdateUnit &&source) : userId(std::move(source.userId)),
+                                                  appId(std::move(source.appId)),
+                                                  privilege(std::move(source.privilege)),
+                                                  userType(source.userType),
+                                                  value(source.value),
+                                                  userOrType(source.userOrType)
+    {}
+
+    /* The move assignment is used when receiving object from buffer */
+    PolicyUpdateUnit &operator=(const PolicyUpdateUnit &&second)
+    {
+        userId = std::move(second.userId);
+        appId = std::move(second.appId);
+        privilege = std::move(second.privilege);
+        userType = second.userType;
+        value = second.value;
+        userOrType = second.userOrType;
+        return *this;
+    }
+
+    PolicyUpdateUnit(IStream &stream) {
+        Deserialization::Deserialize(stream, userId);
+        Deserialization::Deserialize(stream, appId);
+        Deserialization::Deserialize(stream, privilege);
+        Deserialization::Deserialize(stream, userType);
+        Deserialization::Deserialize(stream, value);
+        Deserialization::Deserialize(stream, userOrType);
+    }
+
+    virtual void Serialize(IStream &stream) const {
+        Serialization::Serialize(stream, userId);
+        Serialization::Serialize(stream, appId);
+        Serialization::Serialize(stream, privilege);
+        Serialization::Serialize(stream, userType);
+        Serialization::Serialize(stream, value);
+        Serialization::Serialize(stream, userOrType);
+    }
 };
 typedef struct PolicyUpdateUnit PolicyUpdateUnit;
 
-/*struct PolicyEntry {
-    std::string appId;     // name of application
-    std::string privilege; // name of Cynara privilege
+struct PolicyEntry : ISerializable {
+    std::string appId;	   // name of entry: application or Cynara privilege
+    std::string privilege; // name of entry: application or Cynara privilege
     int maxValue;          // holds the maximum policy status type allowed to be set for this entry
     int current;           // holds the current policy status for this entry
-};*/
+
+    PolicyEntry() : appId(""), privilege(""), maxValue(0), current(0)
+    {}
+
+    PolicyEntry(const PolicyEntry &source) = delete; /* no copy constructor */
+    PolicyEntry &operator=(const PolicyEntry &second) = delete; /* no copy operator */
+
+    /* The move constructor is used when pushing objects to vector */
+    PolicyEntry(const PolicyEntry &&source) : appId(std::move(source.appId)),
+                                              privilege(std::move(source.privilege)),
+                                              maxValue(source.maxValue),
+                                              current(source.current)
+    {}
+
+    /* The move assignment is used when receiving object from buffer */
+    PolicyEntry &operator=(const PolicyEntry &&second)
+    {
+        appId = std::move(second.appId);
+        privilege = std::move(second.privilege);
+        maxValue = second.maxValue;
+        current = second.current;
+        return *this;
+    }
+
+    PolicyEntry(IStream &stream) {
+        Deserialization::Deserialize(stream, appId);
+        Deserialization::Deserialize(stream, privilege);
+        Deserialization::Deserialize(stream, maxValue);
+        Deserialization::Deserialize(stream, current);
+    }
+
+    virtual void Serialize(IStream &stream) const {
+        Serialization::Serialize(stream, appId);
+        Serialization::Serialize(stream, privilege);
+        Serialization::Serialize(stream, maxValue);
+        Serialization::Serialize(stream, current);
+    }
+};
+typedef struct PolicyEntry PolicyEntry;
 
 } // namespace SecurityManager
 
