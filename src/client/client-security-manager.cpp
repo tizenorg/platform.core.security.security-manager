@@ -36,9 +36,12 @@
 #include <sys/xattr.h>
 #include <sys/smack.h>
 #include <sys/capability.h>
+#include <climits>
+#include <pwd.h>
 
 #include <dpl/log/log.h>
 #include <dpl/exception.h>
+#include <tzplatform_config.h>
 
 #include <message-buffer.h>
 #include <client-common.h>
@@ -49,6 +52,38 @@
 
 #include <security-manager.h>
 
+namespace {
+
+policy_entry *allocate_and_copy_entries(const std::vector<std::string> &names,
+                                        const std::vector<int> &statuses)
+{
+    if (names.size() != statuses.size()) {
+        throw std::length_error("Received malformed data, sizes of vectors are different!");
+    }
+
+    if (names.size() == 0)
+        return nullptr;
+
+    policy_entry *result = new policy_entry[names.size()];
+
+    for(size_t i = 0; i < names.size(); i++) {
+        const std::string &tmp = names.at(i);
+        result[i].name = new char[tmp.length() + 1];
+        tmp.copy(result[i].name, tmp.length());
+        result[i].name[tmp.length()] = 0;
+        result[i].status = statuses.at(i);
+    }
+
+    return result;
+}
+
+inline bool checkUidStr(const char *uid_str)
+{
+    if ( std::stoul(uid_str) <= UINT_MAX)
+        return true;
+    return false;
+}
+} // end of anonymous namespace
 
 
 SECURITY_MANAGER_API
@@ -633,14 +668,24 @@ int security_manager_policy_add_unit(policy_update_req *p_req,
                                      const char *privilege,
                                      const bool allow)
 {
-    (void)p_req;
-    (void)uid_str;
-    (void)user_type;
-    (void)app_id;
-    (void)privilege;
-    (void)allow;
+    if (!p_req
+     || !uid_str || strlen(uid_str) == 0 || !checkUidStr(uid_str)
+     || user_type < SM_USER_TYPE_ANY || user_type >= SM_USER_TYPE_ENUM_END
+     || !app_id || strlen(app_id) == 0
+     || !privilege || strlen(privilege) == 0)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
 
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    try {
+        p_req->units.push_back(
+                policy_update_unit(uid_str, static_cast<int>(user_type),
+                                   app_id, privilege, allow)
+                );
+    } catch (std::bad_alloc &ex) {
+        LogError("Cannot allocate memory for policy update vector");
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
 }
 
 SECURITY_MANAGER_API
@@ -649,20 +694,50 @@ int security_manager_policy_add_unit_for_self(policy_update_req *p_req,
                                               const char *privilege,
                                               const bool allow)
 {
-    (void)p_req;
-    (void)app_id;
-    (void)privilege;
-    (void)allow;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_policy_add_unit(p_req, std::to_string(getuid()).c_str(),
+                                            SM_USER_TYPE_NORMAL, app_id, privilege, allow);
 }
 
 SECURITY_MANAGER_API
 int security_manager_policy_update_req_send(policy_update_req *p_req)
 {
-    (void)p_req;
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
 
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    if (p_req == nullptr || p_req->units.size() == 0)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    return try_catch([&] {
+
+        //put request into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::POLICY_UPDATE));
+        Serialization::Serialize(send, p_req->units.size());
+        for (auto &unit : p_req->units) {
+            Serialization::Serialize(send, unit.user_id);
+            Serialization::Serialize(send, unit.user_type);
+            Serialization::Serialize(send, unit.appId);
+            Serialization::Serialize(send, unit.privilege);
+            Serialization::Serialize(send, unit.allow);
+        }
+
+        //send it to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+        case SECURITY_MANAGER_API_SUCCESS:
+            return SECURITY_MANAGER_SUCCESS;
+        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        default:
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
 }
 
 SECURITY_MANAGER_API
@@ -670,29 +745,63 @@ int security_manager_get_user_apps_policy(const uid_t uid,
                                           policy_entry **pp_apps_policy,
                                           size_t *p_size)
 {
-    (void)uid;
-    (void)pp_apps_policy;
-    (void)p_size;
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
 
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    if (pp_apps_policy == nullptr || p_size == nullptr)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    return try_catch([&] {
+
+        //put request into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::GET_USER_APPS_POLICY));
+        Serialization::Serialize(send, uid);
+
+        //send it to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+        case SECURITY_MANAGER_API_SUCCESS: {
+            //extract and allocate buffers for apps policy entries
+            std::vector<std::string> apps;
+            std::vector<int> statuses;
+            Deserialization::Deserialize(recv, apps);
+            Deserialization::Deserialize(recv, statuses);
+
+            if (apps.size() != statuses.size()) { /* these sizes must be equal! */
+                LogError("Received malformed data, sizes of vectors are different!");
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+            }
+            *pp_apps_policy = allocate_and_copy_entries(apps, statuses);
+            *p_size = apps.size();
+
+            return SECURITY_MANAGER_SUCCESS;
+        }
+        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        default:
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
 }
 
 SECURITY_MANAGER_API
 int security_manager_get_apps_policy_for_self(policy_entry **pp_apps_policy, size_t *p_size)
 {
-    (void)pp_apps_policy;
-    (void)p_size;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_user_apps_policy(getuid(), pp_apps_policy, p_size);
 }
 
 SECURITY_MANAGER_API
 int security_manager_get_global_apps_policy(policy_entry **pp_apps_policy, size_t *p_size)
 {
-    (void)pp_apps_policy;
-    (void)p_size;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_user_apps_policy(tzplatform_getuid(TZ_SYS_GLOBALAPP_USER),
+                                                 pp_apps_policy, p_size);
 }
 
 SECURITY_MANAGER_API
@@ -700,11 +809,50 @@ int security_manager_get_user_privs_policy(const uid_t uid,
                                            policy_entry **pp_privs_policy,
                                            size_t *p_size)
 {
-    (void)uid;
-    (void)pp_privs_policy;
-    (void)p_size;
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
 
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    if (pp_privs_policy == nullptr || p_size == nullptr)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    return try_catch([&] {
+
+        //put request into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::GET_USER_PRIVS_POLICY));
+        Serialization::Serialize(send, uid);
+
+        //send it to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+        case SECURITY_MANAGER_API_SUCCESS: {
+            //extract and allocate buffers for privs policy entries
+            std::vector<std::string> privileges;
+            std::vector<int> statuses;
+            Deserialization::Deserialize(recv, privileges);
+            Deserialization::Deserialize(recv, statuses);
+
+            if (privileges.size() != statuses.size()) { /* these sizes must be equal! */
+                LogError("Received malformed data, sizes of vectors are different!");
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+            }
+            *pp_privs_policy = allocate_and_copy_entries(privileges, statuses);
+            *p_size = privileges.size();
+
+            return SECURITY_MANAGER_SUCCESS;
+        }
+        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        default:
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
 }
 
 SECURITY_MANAGER_API
@@ -713,12 +861,52 @@ int security_manager_get_user_app_privs_policy(const uid_t uid,
                                                policy_entry **pp_privs_policy,
                                                size_t *p_size)
 {
-    (void)uid;
-    (void)app_id;
-    (void)pp_privs_policy;
-    (void)p_size;
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
 
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    if (app_id == nullptr || strlen(app_id) == 0
+     || pp_privs_policy == nullptr || p_size == nullptr)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    return try_catch([&] {
+
+        //put request into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::GET_APP_PRIVS_POLICY));
+        Serialization::Serialize(send, uid);
+        Serialization::Serialize(send, std::string(app_id));
+
+        //send it to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+        case SECURITY_MANAGER_API_SUCCESS: {
+            //extract and allocate buffers for privs policy entries
+            std::vector<std::string> privileges;
+            std::vector<int> statuses;
+            Deserialization::Deserialize(recv, privileges);
+            Deserialization::Deserialize(recv, statuses);
+
+            if (privileges.size() != statuses.size()) { /* these sizes must be equal! */
+                LogError("Received malformed data, sizes of vectors are different!");
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+            }
+            *pp_privs_policy = allocate_and_copy_entries(privileges, statuses);
+            *p_size = privileges.size();
+
+            return SECURITY_MANAGER_SUCCESS;
+        }
+        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        default:
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
 }
 
 SECURITY_MANAGER_API
@@ -726,11 +914,8 @@ int security_manager_get_app_privs_policy_for_self(const char *app_id,
                                                    policy_entry **pp_privs_policy,
                                                    size_t *p_size)
 {
-    (void)app_id;
-    (void)pp_privs_policy;
-    (void)p_size;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_user_app_privs_policy(getuid(), app_id,
+                                                      pp_privs_policy, p_size);
 }
 
 SECURITY_MANAGER_API
@@ -738,11 +923,8 @@ int security_manager_get_global_app_privs_policy(const char *app_id,
                                                  policy_entry **pp_privs_policy,
                                                  size_t *p_size)
 {
-    (void)app_id;
-    (void)pp_privs_policy;
-    (void)p_size;
-
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_user_app_privs_policy(tzplatform_getuid(TZ_SYS_GLOBALAPP_USER), 
+                                                      app_id, pp_privs_policy, p_size);
 }
 
 SECURITY_MANAGER_API

@@ -25,6 +25,9 @@
 #ifndef _SECURITY_MANAGER_PROTOCOLS_
 #define _SECURITY_MANAGER_PROTOCOLS_
 
+#include "security-manager.h"
+#include <dpl/serialization.h>
+
 #include <sys/types.h>
 #include <vector>
 #include <string>
@@ -120,6 +123,24 @@ struct policy_update_unit {
     std::string appId;
     std::string privilege;
     bool allow;
+
+    policy_update_unit() : user_id(""), user_type(static_cast<int>(SM_USER_TYPE_ENUM_END)),
+                           appId(""), privilege(""), allow(true)
+    {}
+
+    policy_update_unit(const char *user_id, const int user_type, const char *appId,
+                       const char *privilege, const bool allow)
+                      : user_id(user_id), user_type(user_type), appId(appId),
+                        privilege(privilege), allow(allow)
+    {}
+
+    policy_update_unit(policy_update_unit &&source) : user_id(source.user_id), user_type(source.user_type),
+                                                      appId(source.appId), privilege(source.privilege),
+                                                      allow(source.allow)
+    {}
+
+    policy_update_unit(policy_update_unit &source) = delete; /* no copy constructor */
+
 };
 
 struct policy_update_req {
@@ -138,6 +159,10 @@ enum class SecurityModuleCall
     APP_GET_GROUPS,
     USER_ADD,
     USER_DELETE,
+    POLICY_UPDATE,
+    GET_USER_APPS_POLICY,
+    GET_USER_PRIVS_POLICY,
+    GET_APP_PRIVS_POLICY,
 };
 
 /*! \brief indicating that privilege is allowed in private settings */
