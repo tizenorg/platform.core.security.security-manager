@@ -23,6 +23,7 @@
  * @brief       Implementation of the service methods
  */
 
+#include <dirent.h>
 #include <grp.h>
 #include <limits.h>
 #include <pwd.h>
@@ -32,17 +33,21 @@
 
 #include <dpl/log/log.h>
 #include <tzplatform_config.h>
+#include <boost/algorithm/string.hpp>
 
 #include "protocols.h"
 #include "privilege_db.h"
 #include "cynara.h"
 #include "smack-rules.h"
 #include "smack-labels.h"
+#include "usertype-profile.h"
 
 #include "service_impl.h"
 
 namespace SecurityManager {
 namespace ServiceImpl {
+
+static const std::string USERTYPE_POLICY_PATH = tzplatform_mkpath(TZ_SYS_SHARE, "security-manager/policy");
 
 static uid_t getGlobalUserId(void)
 {
@@ -439,6 +444,50 @@ int bucketsInit(uid_t uidInContext)
     CynaraAdmin::getInstance().InitBuckets();
 
     return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int reloadUserTypePolicy(uid_t uid)
+{
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+    struct dirent *ent;
+    DIR *dir = opendir(USERTYPE_POLICY_PATH.c_str());
+
+    if (uid != 0) {
+        return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+    }
+
+    if (dir != NULL) {
+        while ((ent = readdir(dir))) {
+            if (ent->d_type == DT_REG) {
+                try {
+                    std::ostringstream realPath;
+                    realPath << USERTYPE_POLICY_PATH << "/" << ent->d_name;
+                    std::string path = std::string(ent->d_name);
+                    int start_pos = std::string("usertype-").length();
+                    int count = path.find(".profile") -  std::string("usertype-").length();
+                    std::string userType = "USER_TYPE_" + path.substr(start_pos, count);
+                    boost::algorithm::to_upper(userType);
+                    LogDebug("Opening usertype profile: " << userType << ", path: " << realPath.str());
+                    std::vector<UserTypePrivilege> privileges;
+                    UserTypeProfile utp = UserTypeProfile(realPath.str());
+                    utp.getPrivilegesList(privileges);
+                    CynaraAdmin::DefineUserTypePolicy(userType, privileges);
+                } catch (UserTypeProfileException::FileAccessError) {
+                    ret = SECURITY_MANAGER_API_ERROR_FILE_NOT_EXIST;
+                    break;
+                } catch (UserTypeProfileException::FileParsingError) {
+                    ret = SECURITY_MANAGER_API_ERROR_FILE_FORMAT_MALFORMED;
+                    break;
+                } catch (CynaraException::Base) {
+                    ret = SECURITY_MANAGER_API_ERROR_UNKNOWN;
+                    break;
+                };
+            };
+        };
+        closedir(dir);
+    } else ret = SECURITY_MANAGER_API_ERROR_FILE_NOT_EXIST;
+
+    return ret;
 }
 
 } /* namespace ServiceImpl */

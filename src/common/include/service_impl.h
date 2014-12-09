@@ -40,7 +40,7 @@ namespace ServiceImpl {
  * @param[in] req installation request
  * @param[in] uid id of the requesting user
  *
- * @return API return code, as defined in security-manager.h
+ * @return API return code, as defined in protocols.h
  */
 int appInstall(const app_inst_req &req, uid_t uid);
 
@@ -110,6 +110,15 @@ int userDelete(uid_t uidDeleted, uid_t uid);
  * @return API return code, as defined in protocols.h
  */
 int bucketsInit(uid_t uidInContext);
+
+/**
+ * Reload user type policies into cynara
+ *
+ * @param[in] uid uid of user calling this operation
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int reloadUserTypePolicy(uid_t uid);
 
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
