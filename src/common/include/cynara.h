@@ -39,6 +39,7 @@ public:
     DECLARE_EXCEPTION_TYPE(Base, InvalidParam)
     DECLARE_EXCEPTION_TYPE(Base, ServiceNotAvailable)
     DECLARE_EXCEPTION_TYPE(Base, UnknownError)
+    DECLARE_EXCEPTION_TYPE(Base, BucketNotFound)
 };
 
 struct CynaraAdminPolicy : cynara_admin_policy
@@ -103,6 +104,20 @@ public:
     static void UpdatePackagePolicy(const std::string &label, const std::string &user,
         const std::vector<std::string> &oldPrivileges,
         const std::vector<std::string> &newPrivileges);
+
+    /**
+     * Create new bucket in Cynara
+     *
+     * @param bucketName name of the new bucket to be created
+     * @param defaultPolicy default policy for bucket
+     */
+    void CreateBucket(const std::string &bucketName, CynaraAdminPolicy::Operation defaultPolicy);
+
+    /**
+     * Remove bucket from Cynara
+     * @param bucketName name of the bucket to be removed
+     */
+    void RemoveBucket(const std::string &bucketName);
 
 private:
     CynaraAdmin();
