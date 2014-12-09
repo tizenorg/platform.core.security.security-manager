@@ -23,6 +23,7 @@
  * @brief       Implementation of the service methods
  */
 
+#include <dirent.h>
 #include <grp.h>
 #include <limits.h>
 #include <pwd.h>
@@ -39,6 +40,7 @@
 #include "smack-common.h"
 #include "smack-rules.h"
 #include "smack-labels.h"
+#include "usertype-profile.h"
 
 #include "service_impl.h"
 
@@ -423,6 +425,49 @@ int userDelete(uid_t uidDeleted, uid_t uid)
             ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
         }
     }
+
+    return ret;
+}
+
+int reloadUserTypePolicy(uid_t uid)
+{
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+    struct dirent *ent;
+    DIR *dir = opendir(USERTYPE_POLICY_PATH);
+
+    if (uid != 0) {
+        return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+    }
+
+    if (dir != NULL) {
+        while ((ent = readdir(dir))) {
+            if (ent->d_type == DT_REG) {
+                try {
+                    std::ostringstream realPath;
+                    realPath << USERTYPE_POLICY_PATH << "/" << ent->d_name;
+                    std::string path = std::string(ent->d_name);
+                    int start_pos = std::string("usertype-").length();
+                    int count = path.find(".profile") -  std::string("usertype-").length();
+                    std::string userType = path.substr(start_pos, count);
+                    LogDebug("Opening usertype profile: " << userType << ", path: " << realPath.str());
+                    std::vector<UserTypePrivilege> privileges;
+                    UserTypeProfile utp = UserTypeProfile(realPath.str());
+                    utp.getPrivilegesList(privileges);
+                    CynaraAdmin::DefineUserTypePolicy(userType, privileges);
+                } catch (UserTypeProfileException::FileAccessError) {
+                    ret = SECURITY_MANAGER_API_ERROR_FILE_NOT_EXIST;
+                    break;
+                } catch (UserTypeProfileException::FileParsingError) {
+                    ret = SECURITY_MANAGER_API_ERROR_UNKNOWN;
+                    break;
+                } catch (CynaraException::Base) {
+                    ret = SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+                    break;
+                };
+            };
+        };
+        closedir(dir);
+    } else ret = SECURITY_MANAGER_API_ERROR_FILE_NOT_EXIST;
 
     return ret;
 }
