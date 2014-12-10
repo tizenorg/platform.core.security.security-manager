@@ -12,6 +12,7 @@ SET(TARGET_COMMON "security-manager-commons")
 SET(TARGET_DB ".security-manager.db")
 SET(TARGET_CMD "security-manager-cmd")
 SET(TARGET_FILE_LOCK_TEST "security-manager-file-lock-test")
+SET(TARGET_FILE_SM_TEST "security-manager-test")
 
 ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(common)
