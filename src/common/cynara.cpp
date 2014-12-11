@@ -217,6 +217,32 @@ void CynaraAdmin::UpdatePackagePolicy(
     cynaraAdmin.SetPolicies(policies);
 }
 
+void CynaraAdmin::ListPolicies(
+    const std::string &bucketName,
+    const std::string &client,
+    const std::string &user,
+    const std::string &privilege,
+    std::vector<CynaraAdminPolicy> *policies)
+{
+    struct cynara_admin_policy ** pp_policies;
+
+    if(checkCynaraError(
+        cynara_admin_list_policies(m_CynaraAdmin, bucketName.c_str(), client.c_str(),
+            user.c_str(), privilege.c_str(), &pp_policies),
+        "Error while getting list of policies for bucket: " + bucketName))
+    {
+        for (std::size_t i = 0; pp_policies[i] != nullptr; i++) {
+            policies->push_back(CynaraAdminPolicy(
+                std::string(pp_policies[i]->client),
+                std::string(pp_policies[i]->user),
+                std::string(pp_policies[i]->privilege),
+                static_cast<CynaraAdminPolicy::Operation>(pp_policies[i]->result),
+                std::string(pp_policies[i]->bucket)
+            ));
+        }
+    }
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
