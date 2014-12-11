@@ -232,6 +232,7 @@ int appUninstall(const std::string &appId, uid_t uid)
 
     try {
         std::vector<std::string> oldAppPrivileges;
+        std::vector<std::string> privilegesToKeep;
 
         PrivilegeDb::getInstance().BeginTransaction();
         if (!PrivilegeDb::getInstance().GetAppPkgId(appId, pkgId)) {
@@ -256,8 +257,18 @@ int appUninstall(const std::string &appId, uid_t uid)
             PrivilegeDb::getInstance().GetAppPrivileges(appId, uid, oldAppPrivileges);
             PrivilegeDb::getInstance().UpdateAppPrivileges(appId, uid, std::vector<std::string>());
             PrivilegeDb::getInstance().RemoveApplication(appId, uid, removePkg);
-            CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, uidstr, oldAppPrivileges,
+            /* FIXME: Temporary fix. Unless all apps uses the same Smack label for Cynara we must not
+               to update Cynara rules */
+            if (strcmp("User", smackLabel.c_str()))
+                CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, uidstr, oldAppPrivileges,
                                              std::vector<std::string>());
+            else { /* FIXME: Temporary fix.
+                      Check if any other application needs the same privileges that the application
+                      witch is uninstalled. If yes then we need to keep these privileges. */
+                PrivilegeDb::getInstance().GetPrivilegesToKeep(appId, uid, privilegesToKeep);
+                CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, uidstr, oldAppPrivileges,
+                                                             privilegesToKeep);
+            }
             PrivilegeDb::getInstance().CommitTransaction();
             LogDebug("Application uninstallation commited to database");
         }

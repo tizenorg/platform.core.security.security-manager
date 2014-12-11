@@ -54,7 +54,8 @@ enum class QueryType {
     EGetPkgId,
     EGetPrivilegeGroups,
     EGetUserApps,
-    EGetAppsInPkg
+    EGetAppsInPkg,
+    EGetPrivilegeToKeep
 };
 
 class PrivilegeDb {
@@ -83,6 +84,7 @@ private:
         { QueryType::EGetPrivilegeGroups, " SELECT name FROM privilege_group_view WHERE privilege_name = ?" },
         { QueryType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
         { QueryType::EGetAppsInPkg, " SELECT app_name FROM app_pkg_view WHERE pkg_name = ?" },
+        { QueryType::EGetPrivilegeToKeep, " SELECT DISTINCT privilege_name FROM app_privilege_view WHERE app_name != ? AND uid = ?" },
     };
 
     /**
@@ -183,6 +185,14 @@ public:
      */
     void GetAppPrivileges(const std::string &appId, uid_t uid,
         std::vector<std::string> &currentPrivileges);
+
+    /**
+     * Retrieve list of privileges assigned to other applications that needs to be kept.
+     * FIXME: Remove this function when every application will have its own identifier
+     * in Cynara (instead of "User")
+     */
+    void GetPrivilegesToKeep(const std::string &appId, uid_t uid,
+            std::vector<std::string> &currentPrivileges);
 
     /**
      * Add an application into the database

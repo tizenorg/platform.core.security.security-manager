@@ -222,6 +222,23 @@ void PrivilegeDb::GetAppPrivileges(const std::string &appId, uid_t uid,
     });
 }
 
+void  PrivilegeDb::GetPrivilegesToKeep(const std::string &appId, uid_t uid,
+            std::vector<std::string> &privilegesToKeep)
+{
+    try_catch<void>([&] {
+        auto &command = getQuery(QueryType::EGetPrivilegeToKeep);
+        command->BindString(1, appId.c_str());
+        command->BindInteger(2, static_cast<unsigned int>(uid));
+        privilegesToKeep.clear();
+
+        while (command->Step()) {
+            std::string privilege = command->GetColumnString(0);
+            LogDebug("Got privilege: " << privilege);
+            privilegesToKeep.push_back(privilege);
+        };
+    });
+}
+
 void PrivilegeDb::RemoveAppPrivileges(const std::string &appId, uid_t uid)
 {
     try_catch<void>([&] {
