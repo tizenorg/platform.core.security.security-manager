@@ -362,6 +362,30 @@ void CynaraAdmin::InitBuckets()
     linkBuckets(CYNARA_ADMIN_DEFAULT_BUCKET, Buckets.at(Bucket::MAIN));
 }
 
+void CynaraAdmin::ListPolicies(
+    const std::string &bucketName,
+    const std::string &appId,
+    const std::string &user,
+    const std::string &privilege,
+    std::vector<CynaraAdminPolicy> &policies)
+{
+    struct cynara_admin_policy ** pp_policies;
+
+    if(checkCynaraError(
+        cynara_admin_list_policies(m_CynaraAdmin, bucketName.c_str(), appId.c_str(),
+            user.c_str(), privilege.c_str(), &pp_policies),
+        "Error while getting list of policies for bucket: " + bucketName))
+    {
+        for (std::size_t i = 0; pp_policies[i] != nullptr; i++) {
+            policies.push_back(CynaraAdminPolicy(static_cast<cynara_admin_policy&&>(*pp_policies[i])));
+
+            free(pp_policies[i]);
+        }
+
+        free(pp_policies);
+    }
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
