@@ -110,6 +110,7 @@ private:
 
     void processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
+    void processGetUserAppsPolicy(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 };
 
 } // namespace SecurityManager

@@ -102,6 +102,17 @@ int userAdd(uid_t uidAdded, int userType, uid_t uid);
  */
 int userDelete(uid_t uidDeleted, uid_t uid);
 
+/**
+ * Process user deletion request.
+ *
+ * @param[in] uid uid of requesting user
+ * @param[in] uidInContext uid of the user for which apps should be returned
+ * @param[out] apps list of all apps available to user
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int getUserAppsPolicy(uid_t uid, uid_t uidInContext, std::vector<std::string> &apps);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 

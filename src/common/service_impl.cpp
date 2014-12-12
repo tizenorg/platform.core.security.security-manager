@@ -427,5 +427,27 @@ int userDelete(uid_t uidDeleted, uid_t uid)
     return ret;
 }
 
+int getUserAppsPolicy(uid_t uid, uid_t uidInContext, std::vector<std::string> &apps)
+{
+    std::vector<std::string> tmpList;
+    std::string uidStr = std::to_string(uidInContext);
+    CynaraAdmin cynara = CynaraAdmin::getInstance();
+    std::vector<CynaraAdminPolicy> localPolicies;
+
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+
+    if (uid != uidInContext) {
+    //TODO: check if uid is privileged to perform this exact query (belongs to admin group)
+    };
+
+    PrivilegeDb::getInstance().GetUserApps(uidInContext, apps);
+    //fetch also global apps
+    PrivilegeDb::getInstance().GetUserApps(TZ_SYS_GLOBALAPP_USER, tmpList);
+
+    apps.insert(apps.end(), tmpList.begin(), tmpList.end());
+
+    return ret;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
