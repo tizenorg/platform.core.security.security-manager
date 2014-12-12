@@ -58,6 +58,9 @@ struct CynaraAdminPolicy : cynara_admin_policy
         const std::string &privilege, const std::string &goToBucket,
         const std::string &bucket = std::string(CYNARA_ADMIN_DEFAULT_BUCKET));
 
+    /* The following contructor makes it convertable from base struct */
+    CynaraAdminPolicy(const struct cynara_admin_policy &source);
+
     /* Don't provide copy constructor, it would cause pointer trouble. */
     CynaraAdminPolicy(const CynaraAdminPolicy &that) = delete;
 

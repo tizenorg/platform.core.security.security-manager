@@ -78,6 +78,31 @@ CynaraAdminPolicy::CynaraAdminPolicy(const std::string &client, const std::strin
     }
 }
 
+CynaraAdminPolicy::CynaraAdminPolicy(const struct cynara_admin_policy &source)
+{
+    this->bucket = strdup(source.bucket);
+    this->client = strdup(source.client);
+    this->user = strdup(source.user);
+    this->privilege = strdup(source.privilege);
+    if (source.result_extra)
+        this->result_extra = strdup(source.result_extra);
+    else
+        this->result_extra = nullptr;
+    this->result = source.result;
+
+    if (this->bucket == nullptr || this->client == nullptr ||
+        this->user == nullptr || this->privilege == nullptr ||
+        (source.result_extra != nullptr && this->result_extra == nullptr)) {
+        free(this->bucket);
+        free(this->client);
+        free(this->user);
+        free(this->privilege);
+        free(this->result_extra);
+        ThrowMsg(CynaraException::OutOfMemory,
+                std::string("Error in CynaraAdminPolicy allocation."));
+    }
+}
+
 CynaraAdminPolicy::CynaraAdminPolicy(CynaraAdminPolicy &&that)
 {
     bucket = that.bucket;
