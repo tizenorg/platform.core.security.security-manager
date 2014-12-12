@@ -88,7 +88,7 @@ CynaraAdminPolicy::CynaraAdminPolicy(const std::string &client, const std::strin
     }
 }
 
-CynaraAdminPolicy::CynaraAdminPolicy(CynaraAdminPolicy &&that)
+CynaraAdminPolicy::CynaraAdminPolicy(struct cynara_admin_policy &&that)
 {
     bucket = that.bucket;
     client = that.client;
