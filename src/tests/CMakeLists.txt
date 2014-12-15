@@ -1,0 +1,33 @@
+PKG_CHECK_MODULES(TESTS_DEP
+    REQUIRED
+    gmock
+    cynara-client
+)
+
+INCLUDE_DIRECTORIES(
+    ${INCLUDE_PATH}
+    ${TESTS_DEP_INCLUDE_DIRS}
+    ${COMMON_PATH}/include
+    ${DPL_PATH}/core/include
+    ${DPL_PATH}/log/include
+    )
+
+SET(TESTS_SOURCES
+    ${TESTS_PATH}/security-manager-unit-tests.cpp
+    ${TESTS_PATH}/cynara-admin.cpp
+    )
+
+ADD_EXECUTABLE(${TARGET_UNIT_TESTS} ${TESTS_SOURCES})
+
+SET_TARGET_PROPERTIES(${TARGET_UNIT_TESTS}
+    PROPERTIES
+        COMPILE_FLAGS "-D_GNU_SOURCE -fvisibility=hidden")
+
+TARGET_LINK_LIBRARIES(${TARGET_UNIT_TESTS}
+    ${TESTS_DEP_LDFLAGS}
+    ${TESTS_DEP_LIBRARIES}
+    ${TARGET_COMMON}
+    )
+
+INSTALL(TARGETS ${TARGET_UNIT_TESTS} DESTINATION ${BIN_INSTALL_DIR})
+

@@ -53,10 +53,21 @@ Requires:   cyad
 %description -n security-manager-policy
 Set of security rules that constitute security policy in the system
 
+%package  unit-tests
+Summary:  Security manager unit tests
+Group:    Security/Testing
+Source4:  %{name}-unit-tests.manifest
+Requires: security-manager = %{version}-%{release}
+BuildRequires: pkgconfig(gmock)
+
+%description unit-tests
+Unit tests for security manager
+
 %prep
 %setup -q
 cp %{SOURCE1} .
 cp %{SOURCE3} .
+cp -a %{SOURCE4} .
 
 %build
 %if 0%{?sec_build_binary_debug_enable}
@@ -164,3 +175,8 @@ fi
 %manifest %{name}.manifest
 %{_datadir}/security-manager/policy
 %attr(755,root,root) %{_bindir}/security-manager-policy-reload
+
+%files unit-tests
+%defattr(-,root,root,-)
+%manifest %{name}-unit-tests.manifest
+%attr(755,root,root) %{_bindir}/%{name}-unit-tests
