@@ -54,7 +54,7 @@ void securityClientEnableLogSystem(void) {
 
 int waitForSocket(int sock, int event, int timeout) {
     int retval;
-    pollfd desc[1];
+    pollfd desc[1] = {};
     desc[0].fd = sock;
     desc[0].events = event;
 
@@ -68,6 +68,34 @@ int waitForSocket(int sock, int event, int timeout) {
     } else if (-1 == retval) {
         int err = errno;
         LogError("Error in poll: " << strerror(err));
+    } else {
+        /* Let us check for descriptor error conditions
+         * (events that are implicitly polled for).
+         * If any, let us return -1 (error) but it could
+         * also be decided in an upper call.
+         */
+        if (desc[0].revents & (~desc[0].events)) {
+            LogDebug("poll revents: " << desc[0].revents);
+            if (desc[0].revents & POLLERR) {
+                retval = -1;
+                LogError("poll: Error condition");
+            }
+            if (desc[0].revents & POLLHUP) {
+                retval = -1;
+                LogError("poll: Hung up");
+            }
+            if (desc[0].revents & POLLNVAL) {
+                retval = -1;
+                LogError("poll: Invalid request (fd not open)");
+            }
+            if ((desc[0].revents & (~(POLLERR | POLLHUP | POLLNVAL))) & (~desc[0].events)) {
+                LogDebug("poll: Unexpected event(s)");
+            }
+            if ((desc[0].revents & desc[0].events) == 0) {
+                retval = -1;
+                LogDebug("poll: expected event is missing");
+            }
+        }
     }
     return retval;
 }
