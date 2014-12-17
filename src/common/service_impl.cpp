@@ -29,6 +29,7 @@
 
 #include <cstring>
 #include <algorithm>
+#include <climits>
 
 #include <dpl/log/log.h>
 #include <tzplatform_config.h>
@@ -44,6 +45,108 @@
 
 namespace SecurityManager {
 namespace ServiceImpl {
+
+namespace {
+// TODO Macros below are taken from gumd, please change them to proper #include while integrating
+//      gumd with SM
+#define UID_MIN      2000
+#define UID_MAX      60000
+#define SYS_UID_MIN  200
+#define SYS_UID_MAX  999
+
+inline bool checkUidStr(const std::string &uid_str)
+{
+    try {
+        if (uid_str.compare(SECURITY_MANAGER_ANY))
+            return true; // we have got a wildcard
+
+        // if not, try to get uid_t value and check for gumd uid range
+        unsigned long long_uid;
+        if ((long_uid = std::stoul(uid_str)) <= UINT_MAX) {
+           if (getUserType(static_cast<uid_t>(long_uid)) != SM_USER_TYPE_NONE)
+               return true;
+        }
+    } catch (std::invalid_argument &e) {
+        LogError("Cannot convert uid_str: " << uid_str << " to uint");
+        return false;
+    }
+
+    LogError("Wrong uid: " << uid_str);
+    return false;
+}
+
+inline bool policyValidateAndAuthCheck(
+        const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid,
+        std::string &userStr)
+{
+    LogDebug("Authenticating and validating policy update request for user with id: " << uid);
+    if (policyUnits.size() == 0) {
+        LogError("Validation failed: policy update request is empty");
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+    }
+
+    security_manager_user_type userType = getUserType(uid);
+    if (userType == SM_USER_TYPE_NONE) { // this user is suspicious!
+        LogError("Authentication failed: cannot determine the type of user with id: " << uid);
+        return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+    }
+    LogDebug("Found type of user with id: " << uid << ", result: " << static_cast<int>(userType));
+
+    userStr = std::to_string(static_cast<unsigned int>(uid));
+    bool valid = true; // print all validation logs, do not return immediately
+
+    for (auto &unit : policyUnits) {
+        if (userType == SM_USER_TYPE_ADMIN && ( // validation for admin
+                    checkUidStr(unit.userId) == false // userId should be in range or wildcard
+                 || unit.value < CYNARA_ADMIN_DENY    // value range check
+                 || unit.value > CYNARA_ADMIN_ALLOW   //
+                 || unit.userType <= SM_USER_TYPE_NONE // user type range check
+                 || unit.userType > SM_USER_TYPE_ANY   //
+                 || (unit.userId.compare(SECURITY_MANAGER_ANY) == 0    // all wildcards == malformed
+                  && unit.appId.compare(SECURITY_MANAGER_ANY) == 0     //
+                  && unit.privilege.compare(SECURITY_MANAGER_ANY) == 0 //
+                  && unit.userType == SM_USER_TYPE_ANY)                //
+           )) {
+            LogError("Error while validating policy update unit, requested by user: " << userStr
+                    << ", policy unit: [userId: " << unit.userId << ", appId: " << unit.appId
+                    << ", privilege: " << unit.privilege << ", userType: " << unit.userType
+                    << ", value: " << unit.value << "]");
+            valid = false;
+        } else if (userType != SM_USER_TYPE_ADMIN && ( // authentication for non-admin
+                        userStr.compare(unit.userId) != 0   // uid has to be the same, no wildcard!
+                     || unit.appId.compare(SECURITY_MANAGER_ANY) == 0     // no wildcards allowed
+                     || unit.privilege.compare(SECURITY_MANAGER_ANY) == 0 //
+                     || unit.userType != SM_USER_TYPE_NORMAL // user type check
+                     || unit.value < CYNARA_ADMIN_DENY  // value range check
+                     || unit.value > CYNARA_ADMIN_ALLOW // TODO should check for max allowed priv
+                  )) {
+            LogError("Error while authenticating policy update unit, requested by user: " << userStr
+                    << ", policy unit: [userId: " << unit.userId << ", appId: " << unit.appId
+                    << ", privilege: " << unit.privilege << ", userType: " << unit.userType
+                    << ", value: " << unit.value << "]");
+            // on auth error, return immediately
+            return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+        }
+
+        // perform additional length check
+        if (unit.appId.length() == 0
+         || unit.privilege.length() == 0) {
+            LogError("Error while validating policy update unit, requested by user: " << userStr
+                    << ", policy unit: [userId: " << unit.userId << ", appId: " << unit.appId
+                    << ", privilege: " << unit.privilege << ", userType: " << unit.userType
+                    << ", value: " << unit.value << "]");
+            valid = false;
+        }
+
+    } // end for
+
+    if (valid == false)
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+
+    LogDebug("Policy update request authenticated and validated successfully");
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+} // end of anonymous namespace
 
 static uid_t getGlobalUserId(void)
 {
@@ -425,6 +528,91 @@ int userDelete(uid_t uidDeleted, uid_t uid)
     }
 
     return ret;
+}
+
+security_manager_user_type getUserType(uid_t uid)
+{
+    /* TODO: make range checks to find user type, example:
+    if (uid >= SYS_UID_MIN || uid <= SYS_UID_MAX)
+        return SM_USER_TYPE_SYSTEM;
+             - or just use some gumd API */
+
+    if (uid >= UID_MIN || uid <= UID_MAX)
+        return SM_USER_TYPE_NORMAL; // hardcoded SM_USER_TYPE_NORMAL for now
+
+    return SM_USER_TYPE_NONE;
+}
+
+int policyUpdate(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid)
+{
+    std::string userStr;
+
+    // Start with authentication and validation
+    int ret = policyValidateAndAuthCheck(policyUnits, uid, userStr);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    try {
+        CynaraAdmin &cynaraAdmin = CynaraAdmin::getInstance();
+        std::vector<CynaraAdminPolicy> policies;
+        const std::string wildcard(CYNARA_ADMIN_WILDCARD);
+
+        for (auto &unit : policyUnits) {
+            const std::string &appIdToSet = (unit.appId.compare(SECURITY_MANAGER_ANY) == 0) ?
+                                                                  wildcard : unit.appId;
+            const std::string &privToSet = (unit.privilege.compare(SECURITY_MANAGER_ANY) == 0) ?
+                                                                     wildcard : unit.privilege;
+
+            if (userStr.compare(unit.userId) == 0) {
+                // Apply update to PRIVACY_MANAGER bucket
+
+                /* TODO:
+                 * - should policy updates with wildcards be added to privacy manager?
+                 */
+                policies.push_back(CynaraAdminPolicy(appIdToSet,
+                                                     unit.userId,
+                                                     privToSet,
+                                                     unit.value,
+                                                     "PRIVACY_MANAGER"));
+
+            } else {
+                // Apply update to ADMIN bucket
+
+                /* TODO:
+                 *    a) When userId is a wildcard then get the list of users of given type
+                 *       and create CynaraAdminPolicy instance and apply it to Cynara for all
+                 *       of them.
+                 *    b) When userId is a wildcard and userType is a wildcard
+                 *       then apply one rule with "*" as user (or for each user separately,
+                 *       for every one of them - to be discussed with other developers)
+                 *    c) When appId and/or privilege is a wildcard, then just apply the Cynara
+                 *       wildcard "*" (CYNARA_ADMIN_WILDCARD) to these fields
+                 *    d) Rethink corner cases, implement all of them!
+                 */
+                const std::string &userIdToSet = (unit.userId.compare(SECURITY_MANAGER_ANY) == 0) ?
+                                                                        wildcard : unit.userId;
+
+                policies.push_back(CynaraAdminPolicy(appIdToSet,
+                                                     userIdToSet,
+                                                     privToSet,
+                                                     unit.value,
+                                                     "ADMIN"));
+
+            }
+        } // end for
+
+        // Apply updates
+        cynaraAdmin.SetPolicies(policies);
+
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while updating Cynara rules: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation error while updating Cynara rules: " << e.what());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    return SECURITY_MANAGER_API_SUCCESS;
 }
 
 } /* namespace ServiceImpl */

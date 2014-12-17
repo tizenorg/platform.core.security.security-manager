@@ -141,7 +141,8 @@ struct PolicyUpdateUnit : ISerializable {
     int userType;          // user type - mapped from gumd
     int value;             // policy to be set, corresponds to Cynara's policy result type
 
-    PolicyUpdateUnit() = delete; /* no default contructor */
+    PolicyUpdateUnit() /* needed in Deserialization */
+    {}
 
     PolicyUpdateUnit(const char *userId, const char *appId, const char *privilege,
                        int userType, int value)

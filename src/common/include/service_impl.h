@@ -102,6 +102,30 @@ int userAdd(uid_t uidAdded, int userType, uid_t uid);
  */
 int userDelete(uid_t uidDeleted, uid_t uid);
 
+/**
+ * Function returns the type of user with given identifier
+ *
+ * TODO:
+ * @attention Currently it is hardcoded to return NORMAL user type.
+ *            Range checks implementation needed, need description of uid types ranges.
+ *
+ * @param[in] uid user identifier
+ *
+ * @return User type enum value, as defined in security-manager.h\n
+ *         SM_USER_TYPE_NONE in case of uid from unknown range
+ */
+security_manager_user_type getUserType(uid_t uid);
+
+/**
+ * Update policy in Cynara according to the info in received policy vector.
+ *
+ * @param[in] policyUnits vector of policy chunks with instructions
+ * @param[in] uid identifier of requesting user
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int policyUpdate(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 
