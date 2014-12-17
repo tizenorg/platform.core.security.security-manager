@@ -427,5 +427,39 @@ int userDelete(uid_t uidDeleted, uid_t uid)
     return ret;
 }
 
+int policyUpdate(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid)
+{
+    (void)policyUnits;
+    (void)uid;
+    //std::string userStr = std::to_string(static_cast<unsigned int>(uid));
+    /* TODO list:
+     * 1. Check the type of user with uid from param - ask gumd or database for user type
+     *                                               - remember the type
+     * 2. Authenticate and validate the policyUnits vector:
+     *                   !! WE HAVE TO DO IT IN SEPARATE LOOP
+     *                   !! WE SHOULD NOT APPLY ANY UPDATE IF REQUEST IS WRONG !!
+     *                   !! (the above is not valid if Cynara provides some kind
+     *                   !!  of transactions which can be rolled back,
+     *                   !!  I have to check that)
+     *    a) For each unit check userId - if uid is normal user, then only his uid is allowed
+     *                                  - only admin user may change policy for others
+     *    b) Each time check for wildcards - they may be used only by admin users
+     *    c) If some unit contained only wildcards or had some 0-length string,
+     *       then it would have been malformed
+     * 2. Once again iterate through all policyUnits entries and perform the following actions to
+     *    update policy in Cynara:
+     *    a) If uid matches userId, then add rules to PRIVACY MANAGER bucket in Cynara
+     *       - otherwise use ADMIN bucket
+     *    b) When userId is a wildcard, and uid is admin then get the list of users of given type
+     *       and apply update unit to Cynara for all of them.
+     *    c) When userId is a wildcard and userType is a wildcard
+     *       then apply one rule with "*" as user (or for each user separately, for all of them
+     *       - to be discussed with other developers)
+     *    d) When appId and/or privilege is a wildcard, then just apply the Cynara wildcard "*"
+     *       in these fields
+     */
+    return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */

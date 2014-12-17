@@ -102,6 +102,16 @@ int userAdd(uid_t uidAdded, int userType, uid_t uid);
  */
 int userDelete(uid_t uidDeleted, uid_t uid);
 
+/**
+ * Update policy in Cynara according to the info in received policy vector.
+ *
+ * @param[in] policyUnits vector of policy chunks with instructions
+ * @param[in] uid uid of requesting user
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int policyUpdate(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 

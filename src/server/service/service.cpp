@@ -147,6 +147,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::USER_DELETE:
                     processUserDelete(buffer, send, uid);
                     break;
+                case SecurityModuleCall::POLICY_UPDATE:
+                    processPolicyUpdate(buffer, send, uid);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -249,6 +252,17 @@ void Service::processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_
     Deserialization::Deserialize(buffer, uidRemoved);
 
     ret = ServiceImpl::userDelete(uidRemoved, uid);
+    Serialization::Serialize(send, ret);
+}
+
+void Service::processPolicyUpdate(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
+{
+    int ret;
+    std::vector<SecurityManager::PolicyUpdateUnit> policyUnits;
+
+    Deserialization::Deserialize(buffer, policyUnits);
+
+    ret = ServiceImpl::policyUpdate(policyUnits, uid);
     Serialization::Serialize(send, ret);
 }
 
