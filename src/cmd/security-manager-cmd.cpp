@@ -53,6 +53,7 @@ static po::options_description getGenericOptions()
          ("help,h", "produce help message")
          ("install,i", "install an application")
          ("reload-policy,r", "reload user types policy")
+         ("init-buckets,b", "init buckets for policies")
          ;
     return opts;
 }
@@ -259,6 +260,9 @@ static int installApp(const struct app_inst_req &req)
     return ret;
 }
 
+// declaration is moved from security-manager.h to hide it from clients
+int security_manager_init_cynara_buckets(void);
+
 static int reloadPolicy()
 {
     int ret = EXIT_FAILURE;
@@ -270,6 +274,22 @@ static int reloadPolicy()
     } else {
         std::cout << "User type policy reload failed. Return code: " << ret << std::endl;
         LogDebug("User type policy reload failed. Return code: " << ret);
+    }
+    return ret;
+}
+
+static int initBuckets()
+{
+    int ret = EXIT_FAILURE;
+
+    ret = security_manager_init_cynara_buckets();
+
+    if (SECURITY_MANAGER_SUCCESS == ret) {
+        std::cout << "init buckets successfully." << std::endl;
+        LogDebug("init buckets successfully.");
+    } else {
+        std::cout << "init buckets failed. Return code: " << ret << std::endl;
+        LogDebug("init buckets failed. Return code: " << ret);
     }
     return ret;
 }
@@ -311,6 +331,9 @@ int main(int argc, char *argv[])
         } else if (vm.count("reload-policy")) {
             LogDebug("Reload policy.");
             return reloadPolicy();
+        } else if (vm.count("init-buckets")) {
+            initBuckets();
+            return EXIT_SUCCESS;
         } else {
             std::cout << "No command argument was given." << std::endl;
             usage(std::string(argv[0]));
