@@ -40,7 +40,7 @@ namespace ServiceImpl {
  * @param[in] req installation request
  * @param[in] uid id of the requesting user
  *
- * @return API return code, as defined in security-manager.h
+ * @return API return code, as defined in protocols.h
  */
 int appInstall(const app_inst_req &req, uid_t uid);
 
@@ -101,6 +101,15 @@ int userAdd(uid_t uidAdded, int userType, uid_t uid);
  * @return API return code, as defined in protocols.h
  */
 int userDelete(uid_t uidDeleted, uid_t uid);
+
+/**
+ * Create and connect standard buckets for policies
+ *
+ * @param[in] uidInContext uid of user calling this operation
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int bucketsInit(uid_t uidInContext);
 
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */

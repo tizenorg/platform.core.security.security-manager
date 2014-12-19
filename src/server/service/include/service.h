@@ -110,6 +110,14 @@ private:
 
     void processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
+
+    /**
+     * Create and initialize basic buckets for policies
+     *
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    User's identifier for whom application will be launched
+     */
+    void processBucketsInit(MessageBuffer &send, uid_t uid);
 };
 
 } // namespace SecurityManager
