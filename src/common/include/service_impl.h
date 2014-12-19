@@ -105,7 +105,7 @@ int userDelete(uid_t uidDeleted, uid_t uid);
 /**
  * Reload user type policies into cynara
  *
- * @param[in] uid of user calling this operation
+ * @param[in] uid uid of user calling this operation
  *
  * @return API return code, as defined in protocols.h
  */
