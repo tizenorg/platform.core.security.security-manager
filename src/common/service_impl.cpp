@@ -472,5 +472,15 @@ int reloadUserTypePolicy(uid_t uid)
     return ret;
 }
 
+int bucketsInit(uid_t uidInContext)
+{
+    if (uidInContext != 0)
+        return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+
+    CynaraAdmin::getInstance().InitBuckets();
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
