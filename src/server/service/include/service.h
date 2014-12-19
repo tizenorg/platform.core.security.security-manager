@@ -117,6 +117,15 @@ private:
      * @param  uid    UID of calling user
      */
     void processReloadPolicy(MessageBuffer &send, uid_t uid);
+
+    /**
+     * Create and initialize basic buckets for policies
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    User's identifier for whom application will be launched
+     */
+    void processBucketsInit(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 };
 
 } // namespace SecurityManager
