@@ -31,8 +31,21 @@
 #include <dpl/exception.h>
 #include <string>
 #include <vector>
+#include <map>
 
 namespace SecurityManager {
+
+enum class BucketType
+{
+    PRIVACY_MANAGER,
+    MAIN,
+    USER_TYPE_ADMIN,
+    USER_TYPE_NORMAL,
+    USER_TYPE_GUEST,
+    USER_TYPE_SYSTEM,
+    ADMIN,
+    MANIFESTS
+};
 
 class CynaraException
 {
@@ -75,6 +88,18 @@ struct CynaraAdminPolicy : cynara_admin_policy
 class CynaraAdmin
 {
 public:
+
+    const std::map<BucketType, const char * const > Buckets = {
+        { BucketType::PRIVACY_MANAGER, "PRIVACY_MANAGER"},
+        { BucketType::MAIN, "MAIN" },
+        { BucketType::USER_TYPE_ADMIN, "USER_TYPE_ADMIN" },
+        { BucketType::USER_TYPE_NORMAL, "USER_TYPE_NORMAL" },
+        { BucketType::USER_TYPE_GUEST, "USER_TYPE_GUEST" },
+        { BucketType::USER_TYPE_SYSTEM, "USER_TYPE_SYSTEM" },
+        { BucketType::ADMIN, "ADMIN" },
+        { BucketType::MANIFESTS, "MANIFESTS" },
+    };
+
     virtual ~CynaraAdmin();
 
     static CynaraAdmin &getInstance();
@@ -117,6 +142,16 @@ public:
      */
     static void DefineUserTypePolicy(const std::string &usertype,
         const std::vector<UserTypePrivilege> &privileges);
+
+    /**
+     * Create basic set of buckets according to policies schema -
+     * MAIN, USERTYPE_ADMIN, USERTYPE_NORMAL, USERTYPE_GUEST, USERTYPE_SYSTEM,
+     * ADMIN, MANIFESTS. PRIVACY_MANAGER is the first bucket in the flow,
+     * and it's not created - instead default bucket ("") is used.
+     *
+     * @param bucket_type type of bucket to create
+     */
+    void InitBuckets();
 
 private:
     CynaraAdmin();

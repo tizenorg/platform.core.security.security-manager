@@ -271,6 +271,41 @@ void CynaraAdmin::DefineUserTypePolicy(
     CynaraAdmin::getInstance().SetPolicies(policies);
 }
 
+static void linkBuckets(const std::string &bucket,
+                       const std::string &goToBucket)
+{
+    std::vector<CynaraAdminPolicy> policies;
+
+    policies.push_back(CynaraAdminPolicy(
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                goToBucket,
+                bucket
+    ));
+
+
+    CynaraAdmin::getInstance().SetPolicies(policies);
+}
+
+void CynaraAdmin::InitBuckets()
+{
+    CreateBucket(Buckets.at(BucketType::ADMIN), CynaraAdminPolicy::Operation::None);
+    CreateBucket(Buckets.at(BucketType::MANIFESTS), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(BucketType::USER_TYPE_ADMIN), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(BucketType::USER_TYPE_NORMAL), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(BucketType::USER_TYPE_GUEST), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(BucketType::USER_TYPE_SYSTEM), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(BucketType::MAIN), CynaraAdminPolicy::Operation::Deny);
+
+    linkBuckets(Buckets.at(BucketType::USER_TYPE_ADMIN), Buckets.at(BucketType::ADMIN));
+    linkBuckets(Buckets.at(BucketType::USER_TYPE_NORMAL), Buckets.at(BucketType::ADMIN));
+    linkBuckets(Buckets.at(BucketType::USER_TYPE_GUEST), Buckets.at(BucketType::ADMIN));
+    linkBuckets(Buckets.at(BucketType::USER_TYPE_SYSTEM), Buckets.at(BucketType::ADMIN));
+    linkBuckets(Buckets.at(BucketType::MAIN), Buckets.at(BucketType::MANIFESTS));
+    linkBuckets(CYNARA_ADMIN_DEFAULT_BUCKET, Buckets.at(BucketType::MAIN));
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
