@@ -518,5 +518,25 @@ int getAllSystemPrivileges(std::vector<std::string> &privilegesList)
     return ret;
 }
 
+int bucketsInit(uid_t uidInContext)
+{
+    if (uidInContext != 0)
+        return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+
+    try {
+        CynaraAdmin::getInstance().InitBuckets();
+    } catch(CynaraException::ServiceNotAvailable) {
+        return SECURITY_MANAGER_API_ERROR_NO_SUCH_SERVICE;
+    } catch(CynaraException::OutOfMemory) {
+        return SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+    } catch(CynaraException::InvalidParam) {
+        return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
+    } catch(CynaraException::UnknownError) {
+        return SECURITY_MANAGER_API_ERROR_UNKNOWN;
+    }
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
