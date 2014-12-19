@@ -634,3 +634,61 @@ int security_manager_user_delete(const user_req *p_req)
         }
     });
 }
+
+SECURITY_MANAGER_API
+int security_manager_reload_policy(void)
+{
+    using namespace SecurityManager;
+
+    LogDebug("security_manager_reload_policy() called");
+    MessageBuffer send, recv;
+
+    //put data into buffer
+    Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::RELOAD_POLICY));
+
+    //send request to server
+    int ret = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+    if (ret != SECURITY_MANAGER_API_SUCCESS) {
+        LogDebug("Error in sendToServer. Error code: " << ret);
+        return SECURITY_MANAGER_ERROR_UNKNOWN;
+    }
+
+    //receive response from server
+    Deserialization::Deserialize(recv, ret);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return SECURITY_MANAGER_ERROR_UNKNOWN;
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_init_cynara_buckets(void)
+{
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
+
+    return try_catch([&] {
+
+        //put data into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::BUCKETS_INIT));
+        //send buffer to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+            case SECURITY_MANAGER_API_SUCCESS:
+                return SECURITY_MANAGER_SUCCESS;
+            case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+                return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+            case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+            default:
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
+}
