@@ -273,6 +273,65 @@ void CynaraAdmin::DefineUserTypePolicy(
     cynaraAdmin.SetPolicies(policies);
 }
 
+static void initBucket(const std::string &bucket,
+                       const std::string &goToBucket)
+{
+    CynaraAdmin &cynaraAdmin = CynaraAdmin::getInstance();
+    std::vector<CynaraAdminPolicy> policies;
+
+    if(goToBucket.empty())
+        return;
+
+    policies.push_back(CynaraAdminPolicy(
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                goToBucket,
+                bucket
+    ));
+
+
+    cynaraAdmin.SetPolicies(policies);
+}
+
+void CynaraAdmin::InitBucket(BucketType bucket_type)
+{
+    switch (bucket_type) {
+        case BucketType::PRIVACY_MANAGER:
+            CreateBucket(Buckets.at(BucketType::PRIVACY_MANAGER), CynaraAdminPolicy::Operation::Allow);
+            initBucket(Buckets.at(BucketType::PRIVACY_MANAGER), Buckets.at(BucketType::MAIN));
+            break;
+        case BucketType::MAIN:
+            CreateBucket(Buckets.at(BucketType::MAIN), CynaraAdminPolicy::Operation::Deny);
+            initBucket(Buckets.at(BucketType::MAIN), Buckets.at(BucketType::MANIFESTS));
+            break;
+        case BucketType::USER_TYPE_ADMIN:
+            CreateBucket(Buckets.at(BucketType::USER_TYPE_ADMIN), CynaraAdminPolicy::Operation::Deny);
+            initBucket(Buckets.at(BucketType::USER_TYPE_ADMIN), Buckets.at(BucketType::ADMIN));
+            break;
+        case BucketType::USER_TYPE_NORMAL:
+            CreateBucket(Buckets.at(BucketType::USER_TYPE_NORMAL), CynaraAdminPolicy::Operation::Deny);
+            initBucket(Buckets.at(BucketType::USER_TYPE_NORMAL), Buckets.at(BucketType::ADMIN));
+            break;
+        case BucketType::USER_TYPE_GUEST:
+            CreateBucket(Buckets.at(BucketType::USER_TYPE_GUEST), CynaraAdminPolicy::Operation::Deny);
+            initBucket(Buckets.at(BucketType::USER_TYPE_GUEST), Buckets.at(BucketType::ADMIN));
+            break;
+        case BucketType::USER_TYPE_SYSTEM:
+            CreateBucket(Buckets.at(BucketType::USER_TYPE_SYSTEM), CynaraAdminPolicy::Operation::Deny);
+            initBucket(Buckets.at(BucketType::USER_TYPE_SYSTEM), Buckets.at(BucketType::ADMIN));
+            break;
+        case BucketType::ADMIN:
+            CreateBucket(Buckets.at(BucketType::ADMIN), CynaraAdminPolicy::Operation::None);
+            initBucket(Buckets.at(BucketType::ADMIN), std::string(""));
+            break;
+        case BucketType::MANIFESTS:
+            CreateBucket(Buckets.at(BucketType::MANIFESTS), CynaraAdminPolicy::Operation::Deny);
+            initBucket(Buckets.at(BucketType::MANIFESTS), std::string(""));
+            break;
+    }
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
