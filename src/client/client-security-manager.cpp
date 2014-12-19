@@ -65,6 +65,37 @@ static std::map<enum lib_retcode, std::string> lib_retcode_string_map = {
 };
 
 SECURITY_MANAGER_API
+int security_manager_init_cynara_buckets(void)
+{
+    using namespace SecurityManager;
+
+       int retval;
+        MessageBuffer send, recv;
+        //put data into buffer
+        Serialization::Serialize(send, (int)SecurityModuleCall::BUCKETS_INIT);
+        //send buffer to server
+        retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+            case SECURITY_MANAGER_API_SUCCESS:
+                return SECURITY_MANAGER_SUCCESS;
+            case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+                return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+            case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+            default:
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+  return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
 const char *security_manager_strerror(enum lib_retcode rc)
 {
     try {
