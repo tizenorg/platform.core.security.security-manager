@@ -472,5 +472,23 @@ int reloadUserTypePolicy(uid_t uid)
     return ret;
 }
 
+int bucketsInit(uid_t uidInContext)
+{
+    if (uidInContext != 0)
+        return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+
+    CynaraAdmin::InitBucket(BucketType::ADMIN);
+    CynaraAdmin::InitBucket(BucketType::MANIFESTS);
+    CynaraAdmin::InitBucket(BucketType::MANUFACTURER);
+    CynaraAdmin::InitBucket(BucketType::USER_TYPE_ADMIN);
+    CynaraAdmin::InitBucket(BucketType::USER_TYPE_NORMAL);
+    CynaraAdmin::InitBucket(BucketType::USER_TYPE_SYSTEM);
+    CynaraAdmin::InitBucket(BucketType::USER_TYPE_GUEST);
+    CynaraAdmin::InitBucket(BucketType::MAIN);
+    CynaraAdmin::InitBucket(BucketType::PRIVACY_MANAGER);
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
