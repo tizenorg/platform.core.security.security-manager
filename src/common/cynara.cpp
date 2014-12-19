@@ -28,6 +28,18 @@
 
 namespace SecurityManager {
 
+CynaraAdmin::BucketsMap CynaraAdmin::Buckets =
+{
+    { Bucket::PRIVACY_MANAGER, "PRIVACY_MANAGER"},
+    { Bucket::MAIN, "MAIN" },
+    { Bucket::USER_TYPE_ADMIN, "USER_TYPE_ADMIN" },
+    { Bucket::USER_TYPE_NORMAL, "USER_TYPE_NORMAL" },
+    { Bucket::USER_TYPE_GUEST, "USER_TYPE_GUEST" },
+    { Bucket::USER_TYPE_SYSTEM, "USER_TYPE_SYSTEM" },
+    { Bucket::ADMIN, "ADMIN" },
+    { Bucket::MANIFESTS, "MANIFESTS" },
+};
+
 
 CynaraAdminPolicy::CynaraAdminPolicy(const std::string &client, const std::string &user,
         const std::string &privilege, Operation operation,
@@ -269,6 +281,41 @@ void CynaraAdmin::DefineUserTypePolicy(
     };
     CynaraAdmin::getInstance().CreateBucket(usertype, CynaraAdminPolicy::Operation::Deny);
     CynaraAdmin::getInstance().SetPolicies(policies);
+}
+
+static void linkBuckets(const std::string &bucket,
+                       const std::string &goToBucket)
+{
+    std::vector<CynaraAdminPolicy> policies;
+
+    policies.push_back(CynaraAdminPolicy(
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                goToBucket,
+                bucket
+    ));
+
+
+    CynaraAdmin::getInstance().SetPolicies(policies);
+}
+
+void CynaraAdmin::InitBuckets()
+{
+    CreateBucket(Buckets.at(Bucket::ADMIN), CynaraAdminPolicy::Operation::None);
+    CreateBucket(Buckets.at(Bucket::MANIFESTS), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(Bucket::USER_TYPE_ADMIN), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(Bucket::USER_TYPE_NORMAL), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(Bucket::USER_TYPE_GUEST), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(Bucket::USER_TYPE_SYSTEM), CynaraAdminPolicy::Operation::Deny);
+    CreateBucket(Buckets.at(Bucket::MAIN), CynaraAdminPolicy::Operation::Deny);
+
+    linkBuckets(Buckets.at(Bucket::USER_TYPE_ADMIN), Buckets.at(Bucket::ADMIN));
+    linkBuckets(Buckets.at(Bucket::USER_TYPE_NORMAL), Buckets.at(Bucket::ADMIN));
+    linkBuckets(Buckets.at(Bucket::USER_TYPE_GUEST), Buckets.at(Bucket::ADMIN));
+    linkBuckets(Buckets.at(Bucket::USER_TYPE_SYSTEM), Buckets.at(Bucket::ADMIN));
+    linkBuckets(Buckets.at(Bucket::MAIN), Buckets.at(Bucket::MANIFESTS));
+    linkBuckets(CYNARA_ADMIN_DEFAULT_BUCKET, Buckets.at(Bucket::MAIN));
 }
 
 Cynara::Cynara()
