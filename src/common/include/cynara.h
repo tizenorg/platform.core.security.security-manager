@@ -31,8 +31,21 @@
 #include <dpl/exception.h>
 #include <string>
 #include <vector>
+#include <map>
 
 namespace SecurityManager {
+
+enum class Bucket
+{
+    PRIVACY_MANAGER,
+    MAIN,
+    USER_TYPE_ADMIN,
+    USER_TYPE_NORMAL,
+    USER_TYPE_GUEST,
+    USER_TYPE_SYSTEM,
+    ADMIN,
+    MANIFESTS
+};
 
 class CynaraException
 {
@@ -75,6 +88,10 @@ struct CynaraAdminPolicy : cynara_admin_policy
 class CynaraAdmin
 {
 public:
+
+    typedef std::map<Bucket, const std::string > BucketsMap;
+    static BucketsMap Buckets;
+
     virtual ~CynaraAdmin();
 
     static CynaraAdmin &getInstance();
