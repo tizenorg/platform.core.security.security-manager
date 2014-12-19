@@ -110,6 +110,13 @@ private:
 
     void processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
+    /**
+     * Reload user type policy
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processReloadPolicy(MessageBuffer &send, uid_t uid);
 };
 
 } // namespace SecurityManager

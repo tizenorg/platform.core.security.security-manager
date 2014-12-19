@@ -24,6 +24,7 @@
  * @version     1.0
  * @brief       This file contain client side implementation of security-manager API
  */
+/* vim: set ts=4 et sw=4 : */
 
 #include <cstdio>
 #include <utility>
@@ -46,6 +47,7 @@
 #include <smack-common.h>
 #include <service_impl.h>
 #include <file-lock.h>
+#include <usertype-profile.h>
 
 #include <security-manager.h>
 
@@ -627,4 +629,29 @@ int security_manager_user_delete(const user_req *p_req)
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
     });
+}
+
+SECURITY_MANAGER_API
+int security_manager_reload_policy(void) {
+    using namespace SecurityManager;
+
+    LogDebug("security_reload_policy() called");
+    MessageBuffer send, recv;
+
+    //put data into buffer
+    Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::RELOAD_POLICY));
+
+    //send request to server
+    int ret = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+    if (ret != SECURITY_MANAGER_API_SUCCESS) {
+        LogDebug("Error in sendToServer. Error code: " << ret);
+        return SECURITY_MANAGER_ERROR_UNKNOWN;
+    }
+
+    //receive response from server
+    Deserialization::Deserialize(recv, ret);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return SECURITY_MANAGER_ERROR_UNKNOWN;
+
+    return ret;
 }
