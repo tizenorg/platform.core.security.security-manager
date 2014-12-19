@@ -259,6 +259,65 @@ void CynaraAdmin::DefineUserTypePolicy(
     cynaraAdmin.SetPolicies(policies);
 }
 
+static void initBucket(CynaraAdmin &cynaraAdmin,
+                       const std::string &bucket,
+                       const std::string &goToBucket,
+                       CynaraAdminPolicy::Operation defaultPolicy)
+{
+    std::vector<CynaraAdminPolicy> policies;
+
+    cynaraAdmin.CreateBucket(bucket, defaultPolicy);
+
+    if(goToBucket == "")
+        return;
+
+    policies.push_back(CynaraAdminPolicy(
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                goToBucket,
+                bucket
+    ));
+
+
+    cynaraAdmin.SetPolicies(policies);
+}
+
+void CynaraAdmin::InitBucket(BucketType bucket_type)
+{
+    CynaraAdmin cynaraAdmin;
+
+    switch (bucket_type) {
+        case BucketType::PRIVACY_MANAGER:
+            initBucket(cynaraAdmin, "PRIVACY_MANAGER", "MAIN", CynaraAdminPolicy::Operation::Allow);
+            break;
+        case BucketType::MAIN:
+            initBucket(cynaraAdmin, "MAIN", "MANUFACTURER", CynaraAdminPolicy::Operation::Deny);
+            break;
+        case BucketType::USER_TYPE_ADMIN:
+            initBucket(cynaraAdmin, "USER_TYPE_ADMIN", "ADMIN", CynaraAdminPolicy::Operation::Deny);
+            break;
+        case BucketType::USER_TYPE_NORMAL:
+            initBucket(cynaraAdmin, "USER_TYPE_NORMAL", "ADMIN", CynaraAdminPolicy::Operation::Deny);
+            break;
+        case BucketType::USER_TYPE_GUEST:
+            initBucket(cynaraAdmin, "USER_TYPE_GUEST", "ADMIN", CynaraAdminPolicy::Operation::Deny);
+            break;
+        case BucketType::USER_TYPE_SYSTEM:
+            initBucket(cynaraAdmin, "USER_TYPE_SYSTEM", "ADMIN", CynaraAdminPolicy::Operation::Deny);
+            break;
+        case BucketType::ADMIN:
+            initBucket(cynaraAdmin, "ADMIN", "", CynaraAdminPolicy::Operation::None);
+            break;
+        case BucketType::MANUFACTURER:
+            initBucket(cynaraAdmin, "MANUFACTURER", "MANIFESTS", CynaraAdminPolicy::Operation::Allow);
+            break;
+        case BucketType::MANIFESTS:
+            initBucket(cynaraAdmin, "MANIFESTS", "", CynaraAdminPolicy::Operation::Deny);
+            break;
+    }
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(

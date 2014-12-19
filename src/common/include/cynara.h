@@ -34,6 +34,19 @@
 
 namespace SecurityManager {
 
+enum class BucketType
+{
+    PRIVACY_MANAGER,
+    MAIN,
+    USER_TYPE_ADMIN,
+    USER_TYPE_NORMAL,
+    USER_TYPE_GUEST,
+    USER_TYPE_SYSTEM,
+    ADMIN,
+    MANUFACTURER,
+    MANIFESTS
+};
+
 class CynaraException
 {
 public:
@@ -135,6 +148,26 @@ private:
      */
     void RemoveBucket(const std::string &bucketName);    
 
+    /**
+     * Define policy for specific user type
+     *
+     * @param usertype name of the user type for which the policy is defined
+     * @param privileges list of user type privileges
+     */
+    static void DefineUsertypePolicy(const std::string &usertype,
+        const std::vector<SecurityManager::UserTypePrivilege> &privileges);
+
+    /**
+     * Create basic set of buckets according to policies schema - PRIVACY_MANAGER,
+     * MAIN, USERTYPE_ADMIN, USERTYPE_NORMAL, USERTYPE_GUEST, USERTYPE_SYSTEM,
+     * ADMIN, MANUFACTURER, MANIFESTS.
+     *
+     * @param bucket_type type of bucket to create
+     */
+    static void InitBucket(BucketType bucket_type);
+
+private:
+    CynaraAdmin();
     struct cynara_admin *m_CynaraAdmin;
 };
 
