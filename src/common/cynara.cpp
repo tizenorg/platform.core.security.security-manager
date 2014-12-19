@@ -28,6 +28,18 @@
 
 namespace SecurityManager {
 
+CynaraAdmin::BucketsMap CynaraAdmin::Buckets =
+{
+    { Bucket::PRIVACY_MANAGER, std::string("PRIVACY_MANAGER")},
+    { Bucket::MAIN, std::string("MAIN")},
+    { Bucket::USER_TYPE_ADMIN, std::string("USER_TYPE_ADMIN")},
+    { Bucket::USER_TYPE_NORMAL, std::string("USER_TYPE_NORMAL")},
+    { Bucket::USER_TYPE_GUEST, std::string("USER_TYPE_GUEST") },
+    { Bucket::USER_TYPE_SYSTEM, std::string("USER_TYPE_SYSTEM")},
+    { Bucket::ADMIN, std::string("ADMIN")},
+    { Bucket::MANIFESTS, std::string("MANIFESTS")},
+};
+
 
 CynaraAdminPolicy::CynaraAdminPolicy(const std::string &client, const std::string &user,
         const std::string &privilege, Operation operation,
