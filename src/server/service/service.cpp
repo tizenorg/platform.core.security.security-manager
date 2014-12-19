@@ -110,6 +110,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::USER_DELETE:
                     processUserDelete(buffer, send, uid);
                     break;
+                case SecurityModuleCall::BUCKETS_INIT:
+                    processBucketsInit(send, uid);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -215,5 +218,9 @@ void Service::processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_
     Serialization::Serialize(send, ret);
 }
 
+void Service::processBucketsInit(MessageBuffer &send, uid_t uid)
+{
+    Serialization::Serialize(send, ServiceImpl::bucketsInit(uid));
+}
 
 } // namespace SecurityManager
