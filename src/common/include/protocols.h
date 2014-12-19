@@ -133,6 +133,7 @@ enum class SecurityModuleCall
     USER_ADD,
     USER_DELETE,
     RELOAD_POLICY,
+    BUCKETS_INIT
 };
 
 } // namespace SecurityManager

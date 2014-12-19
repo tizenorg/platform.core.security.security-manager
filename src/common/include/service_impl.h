@@ -132,6 +132,15 @@ int loadPrivileges(bool reload = false);
  */
 int getAllSystemPrivileges(std::vector<std::string> &privilegesList);
 
+/**
+ * Create and connect standard buckets for policies
+ *
+ * @param[in] uidInContext uid of user calling this operation
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int bucketsInit(uid_t uidInContext);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 
