@@ -30,7 +30,7 @@ namespace SecurityManager {
 
 
 CynaraAdminPolicy::CynaraAdminPolicy(const std::string &client, const std::string &user,
-        const std::string &privilege, Operation operation,
+        const std::string &privilege, int operation,
         const std::string &bucket)
 {
     this->client = strdup(client.c_str());
@@ -48,7 +48,7 @@ CynaraAdminPolicy::CynaraAdminPolicy(const std::string &client, const std::strin
                 std::string("Error in CynaraAdminPolicy allocation."));
     }
 
-    this->result = static_cast<int>(operation);
+    this->result = operation;
     this->result_extra = nullptr;
 }
 
@@ -187,13 +187,13 @@ void CynaraAdmin::UpdatePackagePolicy(
             LogDebug("(user = " << user << " label = " << label << ") " <<
                 "removing privilege " << *oldIter);
             policies.push_back(CynaraAdminPolicy(label, user, *oldIter,
-                    CynaraAdminPolicy::Operation::Delete));
+                    static_cast<int>(CynaraAdminPolicy::Operation::Delete)));
             ++oldIter;
         } else {
             LogDebug("(user = " << user << " label = " << label << ") " <<
                 "adding privilege " << *newIter);
             policies.push_back(CynaraAdminPolicy(label, user, *newIter,
-                    CynaraAdminPolicy::Operation::Allow));
+                    static_cast<int>(CynaraAdminPolicy::Operation::Allow)));
             ++newIter;
         }
     }
@@ -202,14 +202,14 @@ void CynaraAdmin::UpdatePackagePolicy(
         LogDebug("(user = " << user << " label = " << label << ") " <<
             "removing privilege " << *oldIter);
         policies.push_back(CynaraAdminPolicy(label, user, *oldIter,
-                    CynaraAdminPolicy::Operation::Delete));
+                    static_cast<int>(CynaraAdminPolicy::Operation::Delete)));
     }
 
     for (; newIter != newPrivileges.end(); ++newIter) {
         LogDebug("(user = " << user << " label = " << label << ") " <<
             "adding privilege " << *newIter);
         policies.push_back(CynaraAdminPolicy(label, user, *newIter,
-                    CynaraAdminPolicy::Operation::Allow));
+                    static_cast<int>(CynaraAdminPolicy::Operation::Allow)));
     }
 
     cynaraAdmin.SetPolicies(policies);
