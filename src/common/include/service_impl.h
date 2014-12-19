@@ -111,6 +111,13 @@ int userDelete(uid_t uidDeleted, uid_t uid);
  */
 int reloadUserTypePolicy(uid_t uid);
 
+/**
+ * Create and connect standard buckets for policies
+ *
+ * @return API return code, as defined in security-manager.h
+ */
+int bucketsInit(uid_t uinInContext);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 

@@ -150,6 +150,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::RELOAD_POLICY:
                     processReloadPolicy(send, uid);
                     break;
+                case SecurityModuleCall::BUCKETS_INIT:
+                    processBucketsInit(buffer, send, uid);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -260,5 +263,13 @@ void Service::processReloadPolicy(MessageBuffer &send, uid_t uid) {
     Serialization::Serialize(send, ret);
 };
 
+void Service::processBucketsInit(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
+{
+    int ret;
+    (void) buffer;
+
+    ret = ServiceImpl::bucketsInit(uid);
+    Serialization::Serialize(send, ret);
+}
 
 } // namespace SecurityManager
