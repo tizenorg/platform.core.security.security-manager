@@ -273,6 +273,71 @@ void CynaraAdmin::DefineUserTypePolicy(
     cynaraAdmin.SetPolicies(policies);
 }
 
+static void initBucket(CynaraAdmin &cynaraAdmin,
+                       const std::string &bucket,
+                       const std::string &goToBucket)
+{
+    std::vector<CynaraAdminPolicy> policies;
+
+    if(goToBucket == "")
+        return;
+
+    policies.push_back(CynaraAdminPolicy(
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                CYNARA_ADMIN_WILDCARD,
+                goToBucket,
+                bucket
+    ));
+
+
+    cynaraAdmin.SetPolicies(policies);
+}
+
+void CynaraAdmin::InitBucket(BucketType bucket_type)
+{
+    CynaraAdmin cynaraAdmin;
+
+    switch (bucket_type) {
+        case BucketType::PRIVACY_MANAGER:
+            cynaraAdmin.CreateBucket(CYNARA_BUCKET_PRIVACY_MANAGER, CynaraAdminPolicy::Operation::Allow);
+            initBucket(cynaraAdmin, CYNARA_BUCKET_PRIVACY_MANAGER, CYNARA_BUCKET_MAIN);
+            break;
+        case BucketType::MAIN:
+            cynaraAdmin.CreateBucket(CYNARA_BUCKET_MAIN, CynaraAdminPolicy::Operation::Deny);
+            initBucket(cynaraAdmin, CYNARA_BUCKET_MAIN, CYNARA_BUCKET_MANUFACTURER);
+            break;
+        case BucketType::USER_TYPE_ADMIN:
+            cynaraAdmin.CreateBucket(CYNARA_BUCKET_USER_TYPE_ADMIN, CynaraAdminPolicy::Operation::Deny);
+            initBucket(cynaraAdmin, CYNARA_BUCKET_USER_TYPE_ADMIN, CYNARA_BUCKET_ADMIN);
+            break;
+        case BucketType::USER_TYPE_NORMAL:
+            cynaraAdmin.CreateBucket(CYNARA_BUCKET_USER_TYPE_NORMAL, CynaraAdminPolicy::Operation::Deny);
+            initBucket(cynaraAdmin, CYNARA_BUCKET_USER_TYPE_NORMAL, CYNARA_BUCKET_ADMIN);
+            break;
+        case BucketType::USER_TYPE_GUEST:
+            cynaraAdmin.CreateBucket(CYNARA_BUCKET_USER_TYPE_GUEST, CynaraAdminPolicy::Operation::Deny);
+            initBucket(cynaraAdmin, CYNARA_BUCKET_USER_TYPE_GUEST, CYNARA_BUCKET_ADMIN);
+            break;
+        case BucketType::USER_TYPE_SYSTEM:
+            cynaraAdmin.CreateBucket(CYNARA_BUCKET_USER_TYPE_SYSTEM, CynaraAdminPolicy::Operation::Deny);
+            initBucket(cynaraAdmin, CYNARA_BUCKET_USER_TYPE_SYSTEM, CYNARA_BUCKET_ADMIN);
+            break;
+        case BucketType::ADMIN:
+            cynaraAdmin.CreateBucket(CYNARA_BUCKET_ADMIN, CynaraAdminPolicy::Operation::None);
+            initBucket(cynaraAdmin, CYNARA_BUCKET_ADMIN, "");
+            break;
+        case BucketType::MANUFACTURER:
+            cynaraAdmin.CreateBucket(CYNARA_BUCKET_MANUFACTURER, CynaraAdminPolicy::Operation::Allow);
+            initBucket(cynaraAdmin, CYNARA_BUCKET_MANUFACTURER, CYNARA_BUCKET_MANIFESTS);
+            break;
+        case BucketType::MANIFESTS:
+            cynaraAdmin.CreateBucket(CYNARA_BUCKET_MANIFESTS, CynaraAdminPolicy::Operation::Deny);
+            initBucket(cynaraAdmin, CYNARA_BUCKET_MANIFESTS, "");
+            break;
+    }
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
