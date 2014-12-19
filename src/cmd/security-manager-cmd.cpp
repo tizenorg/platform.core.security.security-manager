@@ -40,6 +40,9 @@ namespace po = boost::program_options;
 
 IMPLEMENT_SAFE_SINGLETON(SecurityManager::Log::LogSystem);
 
+// declaration is moved from security-manager.h to hide it from clients
+int security_manager_init_cynara_buckets(void);
+
 static std::map <std::string, enum app_install_path_type> app_install_path_type_map = {
     {"private", SECURITY_MANAGER_PATH_PRIVATE},
     {"public", SECURITY_MANAGER_PATH_PUBLIC},
@@ -53,6 +56,7 @@ static po::options_description getGenericOptions()
          ("help,h", "produce help message")
          ("install,i", "install an application")
          ("reload-policy,r", "reload user types policy")
+         ("init-buckets,b", "init buckets for policies")
          ;
     return opts;
 }
@@ -274,6 +278,22 @@ static int reloadPolicy()
     return ret;
 }
 
+static int initBuckets()
+{
+    int ret = EXIT_FAILURE;
+
+    ret = security_manager_init_cynara_buckets();
+
+    if (SECURITY_MANAGER_SUCCESS == ret) {
+        std::cout << "Buckets initialized successfully." << std::endl;
+        LogDebug("Buckets initialized successfully.");
+    } else {
+        std::cout << "Buckets initialization failed. Return code: " << ret << std::endl;
+        LogDebug("Buckets initialization failed. Return code: " << ret);
+    }
+    return ret;
+}
+
 int main(int argc, char *argv[])
 {
     po::variables_map vm;
@@ -311,6 +331,8 @@ int main(int argc, char *argv[])
         } else if (vm.count("reload-policy")) {
             LogDebug("Reload policy.");
             return reloadPolicy();
+        } else if (vm.count("init-buckets")) {
+            return initBuckets();
         } else {
             std::cout << "No command argument was given." << std::endl;
             usage(std::string(argv[0]));
