@@ -23,6 +23,7 @@
 
 #include <cstring>
 #include "cynara.h"
+#include "security-manager.h"
 
 #include <dpl/log/log.h>
 
@@ -222,6 +223,38 @@ void CynaraAdmin::UpdatePackagePolicy(
         policies.push_back(CynaraAdminPolicy(label, user, *newIter,
                     CynaraAdminPolicy::Operation::Allow));
     }
+
+    CynaraAdmin::getInstance().SetPolicies(policies);
+}
+
+void CynaraAdmin::UserInit(uid_t uid, int userType)
+{
+    Bucket bucket;
+    std::vector<CynaraAdminPolicy> policies;
+    std::string goToBucket;
+
+    switch (userType) {
+        case SM_USER_TYPE_SYSTEM:
+            bucket = Bucket::USER_TYPE_SYSTEM;
+            break;
+        case SM_USER_TYPE_ADMIN:
+            bucket = Bucket::USER_TYPE_ADMIN;
+            break;
+        case SM_USER_TYPE_GUEST:
+            bucket = Bucket::USER_TYPE_GUEST;
+            break;
+        case SM_USER_TYPE_NORMAL:
+            bucket = Bucket::USER_TYPE_NORMAL;
+            break;
+    }
+
+    goToBucket = Buckets.at(bucket);
+
+    policies.push_back(CynaraAdminPolicy(CYNARA_ADMIN_WILDCARD,
+                                            std::to_string(static_cast<unsigned int>(uid)),
+                                            CYNARA_ADMIN_WILDCARD,
+                                            goToBucket,
+                                            Buckets.at(Bucket::MAIN)));
 
     CynaraAdmin::getInstance().SetPolicies(policies);
 }

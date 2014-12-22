@@ -122,6 +122,16 @@ public:
         const std::vector<std::string> &oldPrivileges,
         const std::vector<std::string> &newPrivileges);
 
+    /**
+     * Depending on user type, create link between MAIN bucket and appropriate
+     * USER_TYPE_* bucket for newly added user uid to apply permissions for that
+     * user type.
+     *
+     * @param uid new user uid
+     * @param userType type as enumerated in security-manager.h
+     */
+    static void UserInit(uid_t uid, int userType);
+
 private:
     CynaraAdmin();
     struct cynara_admin *m_CynaraAdmin;
