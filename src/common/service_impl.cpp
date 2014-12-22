@@ -381,22 +381,37 @@ int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, std::unordered_
 
 int userAdd(uid_t uidAdded, int userType, uid_t uid)
 {
+    std::vector<CynaraAdminPolicy> policies;
+    std::string goToBucket;
+
     if (uid != 0)
         return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
 
     switch (userType) {
     case SM_USER_TYPE_SYSTEM:
+        goToBucket = CYNARA_BUCKET_USER_TYPE_SYSTEM;
+        break;
     case SM_USER_TYPE_ADMIN:
+        goToBucket = CYNARA_BUCKET_USER_TYPE_ADMIN;
+        break;
     case SM_USER_TYPE_GUEST:
+        goToBucket = CYNARA_BUCKET_USER_TYPE_GUEST;
+        break;
     case SM_USER_TYPE_NORMAL:
+        goToBucket = CYNARA_BUCKET_USER_TYPE_NORMAL;
         break;
     default:
         return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
     }
 
-    //TODO add policy information to cynara regarding user default privileges based on user_type
-    (void) uidAdded;
-    (void) userType;
+
+    policies.push_back(CynaraAdminPolicy(CYNARA_ADMIN_WILDCARD,
+                                        std::to_string(static_cast<unsigned int>(uidAdded)),
+                                        CYNARA_ADMIN_WILDCARD,
+                                        goToBucket,
+                                        CYNARA_BUCKET_MAIN));
+
+    CynaraAdmin::getInstance().SetPolicies(policies);
 
     return SECURITY_MANAGER_API_SUCCESS;
 }
