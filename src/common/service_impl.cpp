@@ -382,19 +382,13 @@ int userAdd(uid_t uidAdded, int userType, uid_t uid)
     if (uid != 0)
         return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
 
-    switch (userType) {
-    case SM_USER_TYPE_SYSTEM:
-    case SM_USER_TYPE_ADMIN:
-    case SM_USER_TYPE_GUEST:
-    case SM_USER_TYPE_NORMAL:
-        break;
-    default:
+    if(userType != SM_USER_TYPE_SYSTEM &&
+        userType != SM_USER_TYPE_ADMIN &&
+        userType != SM_USER_TYPE_GUEST &&
+        userType != SM_USER_TYPE_NORMAL)
         return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
-    }
 
-    //TODO add policy information to cynara regarding user default privileges based on user_type
-    (void) uidAdded;
-    (void) userType;
+    CynaraAdmin::getInstance().UserInit(uidAdded, static_cast<security_manager_user_type>(userType));
 
     return SECURITY_MANAGER_API_SUCCESS;
 }
