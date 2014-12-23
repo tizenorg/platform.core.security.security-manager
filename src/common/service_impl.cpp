@@ -31,6 +31,7 @@
 #include <cstring>
 #include <algorithm>
 #include <fstream>
+#include <climits>
 
 #include <dpl/log/log.h>
 #include <tzplatform_config.h>
@@ -53,6 +54,98 @@ static const std::string USERTYPE_POLICY_PATH = tzplatform_mkpath(TZ_SYS_SHARE, 
 static const std::string privilegesListFileName = "privileges-tizen.list";
 static const std::string privilegesListFile = USERTYPE_POLICY_PATH + "/" + privilegesListFileName;
 static std::vector<std::string> allPrivileges;
+
+namespace {
+
+inline bool policyValidateForAdmin(
+        const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid,
+        std::string &userStr)
+{
+    LogDebug("Authenticating and validating policy update request for user with id: " << uid);
+    if (policyUnits.size() == 0) {
+        LogError("Validation failed: policy update request is empty");
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+    }
+
+    /*
+    TODO: check in cynara if user has permission to set the policy
+    */
+
+    userStr = std::to_string(static_cast<unsigned int>(uid));
+    bool valid = true; // print all validation logs, do not return immediately
+
+    for (auto &unit : policyUnits) {
+
+        // perform additional length check
+        if (unit.appId.length() == 0
+         || unit.userId.length() == 0
+         || unit.privilege.length() == 0) {
+            LogError("Error while validating policy update unit, requested by user: " << userStr
+                    << ", policy unit: [userId: " << unit.userId << ", appId: " << unit.appId
+                    << ", privilege: " << unit.privilege << ", userType: " << unit.userType
+                    << ", value: " << unit.value << "]");
+            valid = false;
+        }
+
+    } // end for
+
+    if (valid == false)
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+
+    LogDebug("Policy update request authenticated and validated successfully");
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+inline bool policyValidateForSelf(
+        const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid,
+        std::string &userStr)
+{
+    LogDebug("Authenticating and validating policy update request for user with id: " << uid);
+    if (policyUnits.size() == 0) {
+        LogError("Validation failed: policy update request is empty");
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+    }
+
+    userStr = std::to_string(static_cast<unsigned int>(uid));
+    bool valid = true; // print all validation logs, do not return immediately
+
+    for (auto &unit : policyUnits) {
+        /*
+        accept only per user privileges,
+        uid in update unit has to be the same as the sender uid,
+        app cannot be a wildcard,
+        privilege cannot be a wildcard
+        */
+        if (unit.userId.empty()
+            || !unit.userId.compare(userStr)
+            || unit.appId.compare(SECURITY_MANAGER_ANY)
+            || unit.privilege.compare(SECURITY_MANAGER_ANY)) {
+            // on auth error, return immediately
+            return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
+        }
+
+        //TODO: check for each of the privileges if the result is >= than the possible minimum
+
+        // perform additional length check
+        if (unit.appId.length() == 0
+         || unit.userId.length() == 0
+         || unit.privilege.length() == 0) {
+            LogError("Error while validating policy update unit, requested by user: " << userStr
+                    << ", policy unit: [userId: " << unit.userId << ", appId: " << unit.appId
+                    << ", privilege: " << unit.privilege << ", userType: " << unit.userType
+                    << ", value: " << unit.value << "]");
+            valid = false;
+        }
+
+    } // end for
+
+    if (valid == false)
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+
+    LogDebug("Policy update request authenticated and validated successfully");
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+} // end of anonymous namespace
 
 static uid_t getGlobalUserId(void)
 {
@@ -520,6 +613,56 @@ int bucketsInit(uid_t uidInContext)
         return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
 
     CynaraAdmin::getInstance().InitBuckets();
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int policyUpdateForAdmin(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid)
+{
+    std::string userStr;
+
+    // Start with authentication and validation
+    int ret = policyValidateForAdmin(policyUnits, uid, userStr);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    try {
+        // Apply updates
+        //TODO: change hardcoded name to enum/map value
+        CynaraAdmin::getInstance().SetPolicies(policyUnits, "ADMIN");
+
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while updating Cynara rules: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation error while updating Cynara rules: " << e.what());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int policyUpdateForSelf(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid)
+{
+    std::string userStr;
+
+    // Start with authentication and validation
+    int ret = policyValidateForSelf(policyUnits, uid, userStr);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    try {
+        // Apply updates
+        //TODO: change hardcoded name to enum/map value
+        CynaraAdmin::getInstance().SetPolicies(policyUnits, "PRIVACY_MANAGER");
+
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while updating Cynara rules: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation error while updating Cynara rules: " << e.what());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
 
     return SECURITY_MANAGER_API_SUCCESS;
 }
