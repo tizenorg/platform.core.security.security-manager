@@ -28,6 +28,7 @@
 #include <cynara-admin.h>
 #include <dpl/exception.h>
 #include <string>
+#include <protocols.h>
 #include <vector>
 #include <map>
 
@@ -80,6 +81,7 @@ struct CynaraAdminPolicy : cynara_admin_policy
 
     /* Move constructor is the way to go. */
     CynaraAdminPolicy(CynaraAdminPolicy &&that);
+    CynaraAdminPolicy& operator=(CynaraAdminPolicy &&that);
 
     ~CynaraAdminPolicy();
 };
