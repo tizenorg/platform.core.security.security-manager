@@ -416,6 +416,18 @@ void CynaraAdmin::EmptyBucket(const std::string &bucketName, bool recursive, con
             client + ", " + user + ", " + privilege);
 }
 
+void CynaraAdmin::Check(const std::string &label, const std::string &privilege, const std::string &user,
+    const std::string &bucket, int &result, std::string &resultExtra, const bool recursive)
+{
+    char * cstr = &resultExtra[0]; // avoid temporary char * and copying to resultExtra
+
+    checkCynaraError(
+        cynara_admin_check(m_CynaraAdmin, bucket.c_str(), recursive, label.c_str(),
+            user.c_str(), privilege.c_str(), &result, &cstr),
+        "Error while asking cynara admin API for permission for app label: " + label + ", user: "
+            + user + " privilege: " + privilege + " bucket: " + bucket + "\n");
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
