@@ -171,6 +171,18 @@ public:
         const std::string &privilege,
         std::vector<CynaraAdminPolicy> &policies);
 
+    /**
+     * Ask Cynara for permission starting the search at specified bucket.
+     * Essentialy a wrapper on cynara_admin_check. Client is responsible for
+     * freeing result_extra if it's allocated in Cynara.
+     */
+    int Check(const std::string &appId,
+        const std::string &user,
+        const std::string &privilege,
+        const Bucket bucket,
+        int *result,
+        char **result_extra = nullptr);
+
 private:
     CynaraAdmin();
 
