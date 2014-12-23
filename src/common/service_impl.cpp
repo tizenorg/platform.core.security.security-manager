@@ -31,6 +31,7 @@
 #include <cstring>
 #include <algorithm>
 #include <fstream>
+#include <climits>
 
 #include <dpl/log/log.h>
 #include <tzplatform_config.h>
@@ -52,6 +53,99 @@ static const std::string USERTYPE_POLICY_PATH = tzplatform_mkpath(TZ_SYS_SHARE, 
 static const std::string privilegesListFileName = "privileges-tizen.list";
 static const std::string privilegesListFile = USERTYPE_POLICY_PATH + "/" + privilegesListFileName;
 static std::vector<std::string> allPrivileges;
+static const std::string ADMIN_PRIVILEGE = "http://tizen.org/privilege/systemsettings.admin";
+
+
+namespace {
+
+inline int policyValidateForAdmin(
+        const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid,
+        pid_t pid)
+{
+    LogDebug("Authenticating and validating policy update request for user with id: " << uid);
+    if (policyUnits.size() == 0) {
+        LogError("Validation failed: policy update request is empty");
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+    }
+
+    std::string userStr = std::to_string(static_cast<unsigned int>(uid));
+
+    //check in cynara if user has permission to set the policy
+    if (!Cynara::getInstance().check(CYNARA_ADMIN_WILDCARD, ADMIN_PRIVILEGE, userStr, std::to_string(pid).c_str()))
+        return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+
+    bool valid = true; // print all validation logs, do not return immediately
+
+    for (auto &unit : policyUnits) {
+        // perform additional length check
+        if (unit.appId.length() == 0
+         || unit.userId.length() == 0
+         || unit.privilege.length() == 0) {
+            LogError("Error while validating policy update unit, requested by user: " << userStr
+                    << ", policy unit: [userId: " << unit.userId << ", appId: " << unit.appId
+                    << ", privilege: " << unit.privilege << ", userType: " << unit.userType
+                    << ", value: " << unit.value << "]");
+            valid = false;
+        }
+
+    } // end for
+
+    if (valid == false)
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+
+    LogDebug("Policy update request authenticated and validated successfully");
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+inline int policyValidateForSelf(
+        const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid)
+{
+    LogDebug("Authenticating and validating policy update request for user with id: " << uid);
+    if (policyUnits.size() == 0) {
+        LogError("Validation failed: policy update request is empty");
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+    }
+
+    std::string userStr = std::to_string(static_cast<unsigned int>(uid));
+    bool valid = true; // print all validation logs, do not return immediately
+
+    for (auto &unit : policyUnits) {
+        /*
+        accept only per user privileges,
+        uid in update unit has to be the same as the sender uid,
+        app cannot be a wildcard,
+        privilege cannot be a wildcard
+        */
+        if (unit.userId.empty()
+            || !unit.userId.compare(userStr)
+            || unit.appId.compare(SECURITY_MANAGER_ANY)
+            || unit.privilege.compare(SECURITY_MANAGER_ANY)) {
+            // on auth error, return immediately
+            return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+        }
+
+        //TODO: check for each of the privileges if the result is >= than the possible minimum
+
+        // perform additional length check
+        if (unit.appId.length() == 0
+         || unit.userId.length() == 0
+         || unit.privilege.length() == 0) {
+            LogError("Error while validating policy update unit, requested by user: " << userStr
+                    << ", policy unit: [userId: " << unit.userId << ", appId: " << unit.appId
+                    << ", privilege: " << unit.privilege << ", userType: " << unit.userType
+                    << ", value: " << unit.value << "]");
+            valid = false;
+        }
+
+    } // end for
+
+    if (valid == false)
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+
+    LogDebug("Policy update request authenticated and validated successfully");
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+} // end of anonymous namespace
 
 static uid_t getGlobalUserId(void)
 {
@@ -527,6 +621,52 @@ int getAllSystemPrivileges(std::vector<std::string> &privilegesList)
         privilegesList = allPrivileges;
 
     return ret;
+}
+
+int policyUpdateForAdmin(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid, pid_t pid)
+{
+    // Start with authentication and validation
+    int ret = policyValidateForAdmin(policyUnits, uid, pid);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    try {
+        // Apply updates
+        //TODO: change hardcoded name to enum/map value
+        CynaraAdmin::getInstance().SetPolicies(policyUnits, "ADMIN");
+
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while updating Cynara rules: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation error while updating Cynara rules: " << e.what());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int policyUpdateForSelf(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid)
+{
+    // Start with authentication and validation
+    int ret = policyValidateForSelf(policyUnits, uid);
+    if (ret != SECURITY_MANAGER_API_SUCCESS)
+        return ret;
+
+    try {
+        // Apply updates
+        //TODO: change hardcoded name to enum/map value
+        CynaraAdmin::getInstance().SetPolicies(policyUnits, CYNARA_ADMIN_DEFAULT_BUCKET);
+
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while updating Cynara rules: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation error while updating Cynara rules: " << e.what());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    return SECURITY_MANAGER_API_SUCCESS;
 }
 
 } /* namespace ServiceImpl */

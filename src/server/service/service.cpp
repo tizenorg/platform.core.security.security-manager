@@ -116,6 +116,12 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::RELOAD_POLICY:
                     processReloadPolicy(send, uid);
                     break;
+                case SecurityModuleCall::POLICY_UPDATE_ADMIN:
+                    processPolicyUpdateForAdmin(buffer, send, uid, pid);
+                    break;
+                case SecurityModuleCall::POLICY_UPDATE_SELF:
+                    processPolicyUpdateForSelf(buffer, send, uid);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -229,6 +235,28 @@ void Service::processBucketsInit(MessageBuffer &send, uid_t uid)
 void Service::processReloadPolicy(MessageBuffer &send, uid_t uid)
 {
     Serialization::Serialize(send, ServiceImpl::reloadUserTypePolicy(uid));
+}
+
+void Service::processPolicyUpdateForAdmin(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid)
+{
+    int ret;
+    std::vector<SecurityManager::PolicyUpdateUnit> policyUnits;
+
+    Deserialization::Deserialize(buffer, policyUnits);
+
+    ret = ServiceImpl::policyUpdateForAdmin(policyUnits, uid, pid);
+    Serialization::Serialize(send, ret);
+}
+
+void Service::processPolicyUpdateForSelf(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
+{
+    int ret;
+    std::vector<SecurityManager::PolicyUpdateUnit> policyUnits;
+
+    Deserialization::Deserialize(buffer, policyUnits);
+
+    ret = ServiceImpl::policyUpdateForSelf(policyUnits, uid);
+    Serialization::Serialize(send, ret);
 }
 
 } // namespace SecurityManager
