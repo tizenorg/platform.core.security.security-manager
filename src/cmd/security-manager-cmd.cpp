@@ -312,11 +312,11 @@ static int installApp(const struct app_inst_req &req)
 static int manageUserOperation(const struct user_req &req, std::string operation)
 {
     int ret = EXIT_FAILURE;
-    if (operation == "a") {
+    if (operation == "a" || operation == "add") {
         ret = security_manager_user_add(&req);
         operation = "add";
     }
-    else if (operation == "r") {
+    else if (operation == "r" || operation == "remove") {
         ret = security_manager_user_delete(&req);
         operation = "remove";
     } else {
