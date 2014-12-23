@@ -156,7 +156,8 @@ struct PolicyUpdateUnit : ISerializable {
     int value;             // policy to be set, corresponds to Cynara's policy result type
     int userOrType;        // denominates a policy for user or user type
 
-    PolicyUpdateUnit() = delete; /* no default contructor */
+    PolicyUpdateUnit() /* needed in Deserialization */
+    {}
 
     PolicyUpdateUnit(const char *userId, const char *appId, const char *privilege,
                        int value)
