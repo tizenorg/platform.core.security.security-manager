@@ -20,6 +20,7 @@
  * @author      Michal Witanowski <m.witanowski@samsung.com>
  * @author      Jacek Bukarewicz <j.bukarewicz@samsung.com>
  * @author      Rafal Krypa <r.krypa@samsung.com>
+ * @author      Krzysztof Sasiak <k.sasiak@samsung.com>
  * @brief       Implementation of the service methods
  */
 
@@ -29,6 +30,7 @@
 
 #include <cstring>
 #include <algorithm>
+#include <climits>
 
 #include <dpl/log/log.h>
 #include <tzplatform_config.h>
@@ -43,6 +45,51 @@
 
 namespace SecurityManager {
 namespace ServiceImpl {
+
+static const std::string ADMIN_PRIVILEGE = "http://tizen.org/privilege/systemsettings.admin";
+static const std::string SELF_PRIVILEGE = "http://tizen.org/privilege/systemsettings";
+
+namespace {
+
+inline int validatePolicy(policy_entry &policyEntry, std::string uidStr, bool &forAdmin)
+{
+    LogDebug("Authenticating and validating policy update request for user with id: " << uidStr);
+
+    //automagically fill missing fields:
+    if (policyEntry.user.empty()) {
+        policyEntry.user = uidStr;
+    };
+
+    if (policyEntry.currentLevel.empty()) { //for admin
+        if (policyEntry.appId.empty()
+            || policyEntry.privilege.empty()) {
+            return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+        };
+        forAdmin = true;
+    } else if (policyEntry.maxLevel.empty()) { //for self
+        if (policyEntry.user.compare(uidStr)
+            || !policyEntry.appId.compare(SECURITY_MANAGER_ANY)
+            || !policyEntry.privilege.compare(SECURITY_MANAGER_ANY)
+            || policyEntry.appId.empty()
+            || policyEntry.privilege.empty()) {
+            return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+        };
+        forAdmin = false;
+    } else { //neither => bad request
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+    };
+
+    if (!policyEntry.user.compare(SECURITY_MANAGER_ANY))
+        policyEntry.user = CYNARA_ADMIN_WILDCARD;
+    if (!policyEntry.appId.compare(SECURITY_MANAGER_ANY))
+        policyEntry.appId = CYNARA_ADMIN_WILDCARD;
+    if (!policyEntry.privilege.compare(SECURITY_MANAGER_ANY))
+        policyEntry.privilege = CYNARA_ADMIN_WILDCARD;
+
+    LogDebug("Policy update request authenticated and validated successfully");
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+} // end of anonymous namespace
 
 static uid_t getGlobalUserId(void)
 {
@@ -420,6 +467,67 @@ int userDelete(uid_t uidDeleted, uid_t uid)
     CynaraAdmin::getInstance().UserRemove(uidDeleted);
 
     return ret;
+}
+
+int policyUpdate(const std::vector<policy_entry> &policyEntries, uid_t uid, pid_t pid, const std::string &smackLabel)
+{
+    std::string uidStr = std::to_string(uid);
+    std::string pidStr = std::to_string(pid);
+
+    if (!Cynara::getInstance().check(smackLabel, SELF_PRIVILEGE, uidStr, pidStr)) {
+        LogDebug("Not enough permission to call: " << __FUNCTION__);
+        return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+    };
+
+    if (policyEntries.size() == 0) {
+        LogError("Validation failed: policy update request is empty");
+        return SECURITY_MANAGER_API_ERROR_BAD_REQUEST;
+    };
+
+    bool isAdmin = Cynara::getInstance().check(smackLabel, ADMIN_PRIVILEGE, uidStr, pidStr);
+    std::vector<CynaraAdminPolicy> validatedPolicies;
+
+    for (auto &entry : const_cast<std::vector<policy_entry>&>(policyEntries)) {
+        bool forAdmin;
+        int ret = validatePolicy(entry, uidStr, forAdmin);
+
+        if (ret == SECURITY_MANAGER_API_SUCCESS) {
+            if (!forAdmin) {
+                validatedPolicies.push_back(CynaraAdminPolicy(
+                                                entry.appId,
+                                                entry.user,
+                                                entry.privilege,
+                                                CynaraAdmin::getInstance().convertToPolicyType(entry.currentLevel),
+                                                CynaraAdmin::Buckets.at(Bucket::PRIVACY_MANAGER)));
+            } else if (forAdmin && isAdmin) {
+                validatedPolicies.push_back(CynaraAdminPolicy(
+                                                entry.appId,
+                                                entry.user,
+                                                entry.privilege,
+                                                CynaraAdmin::getInstance().convertToPolicyType(entry.maxLevel),
+                                                CynaraAdmin::Buckets.at(Bucket::ADMIN)));
+            } else {
+                return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+            };
+
+        } else {
+            return ret;
+        }
+    };
+
+    try {
+        // Apply updates
+        CynaraAdmin::getInstance().SetPolicies(validatedPolicies);
+
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while updating Cynara rules: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation error while updating Cynara rules: " << e.what());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    return SECURITY_MANAGER_API_SUCCESS;
 }
 
 } /* namespace ServiceImpl */
