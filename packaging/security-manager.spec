@@ -130,6 +130,8 @@ fi
 %defattr(-,root,root,-)
 %attr(755,root,root) %{_bindir}/security-manager
 %attr(755,root,root) %{_bindir}/security-manager-cmd
+%attr(755,root,root) /etc/gumd/useradd.d/50_security-manager.post
+
 %{_libdir}/libsecurity-manager-commons.so.*
 %attr(-,root,root) %{_unitdir}/multi-user.target.wants/security-manager.service
 %attr(-,root,root) %{_unitdir}/security-manager.service

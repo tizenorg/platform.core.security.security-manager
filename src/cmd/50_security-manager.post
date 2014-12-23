@@ -1,0 +1,1 @@
+security-manager-cmd -e -u $2 -t $5
