@@ -110,6 +110,24 @@ private:
 
     void processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
+    /**
+     * Process policy update request from Admin entry point
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    Identifier of the user who sent the request
+     */
+    void processPolicyUpdateForAdmin(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
+
+    /**
+     * Process policy update request from Privacy Manager
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    Identifier of the user who sent the request
+     */
+    void processPolicyUpdateForSelf(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
+
 };
 
 } // namespace SecurityManager
