@@ -27,6 +27,7 @@
 #include <cynara-client.h>
 #include <cynara-admin.h>
 #include <dpl/exception.h>
+#include <dpl/noncopyable.h>
 #include <string>
 #include <vector>
 
@@ -68,7 +69,8 @@ struct CynaraAdminPolicy : cynara_admin_policy
     ~CynaraAdminPolicy();
 };
 
-class CynaraAdmin
+class CynaraAdmin :
+    public Noncopyable
 {
 public:
     virtual ~CynaraAdmin();
@@ -110,7 +112,8 @@ private:
     struct cynara_admin *m_CynaraAdmin;
 };
 
-class Cynara
+class Cynara :
+    public Noncopyable
 {
 public:
     virtual ~Cynara();

@@ -27,6 +27,7 @@
  * @brief       This file contains declaration of the API to privilges database.
  */
 
+#include <dpl/noncopyable.h>
 #include <cstdio>
 #include <list>
 #include <map>
@@ -55,7 +56,9 @@ enum class QueryType {
     EGetUserApps,
 };
 
-class PrivilegeDb {
+class PrivilegeDb :
+    public Noncopyable
+{
     /**
      * PrivilegeDb database class
      */
