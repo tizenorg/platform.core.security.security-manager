@@ -167,7 +167,6 @@ void CynaraAdmin::UpdatePackagePolicy(
     const std::vector<std::string> &oldPrivileges,
     const std::vector<std::string> &newPrivileges)
 {
-    CynaraAdmin cynaraAdmin;
     std::vector<CynaraAdminPolicy> policies;
 
     // Perform sort-merge join on oldPrivileges and newPrivileges.
@@ -212,7 +211,7 @@ void CynaraAdmin::UpdatePackagePolicy(
                     CynaraAdminPolicy::Operation::Allow));
     }
 
-    cynaraAdmin.SetPolicies(policies);
+    CynaraAdmin::getInstance().SetPolicies(policies);
 }
 
 Cynara::Cynara()
