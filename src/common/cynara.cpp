@@ -390,6 +390,28 @@ void CynaraAdmin::ListPolicies(
     }
 }
 
+int CynaraAdmin::FindMinimalPermission(
+    const std::string &appId,
+    const std::string &user,
+    const std::string &privilege)
+{
+    int result = static_cast<int>(CynaraAdminPolicy::Operation::Deny);
+    char * result_extra;
+
+    if(checkCynaraError(
+        cynara_admin_check(m_CynaraAdmin, Buckets.at(Bucket::MAIN).c_str(), true, appId.c_str(),
+            user.c_str(), privilege.c_str(), &result, &result_extra),
+        "Error while finding lowest privilege for appId: " + appId + ", user: "
+            + user + " privilege: " + privilege + "\n"))
+    {
+        // we ignore extra string
+        if(result_extra != nullptr)
+            free(result_extra);
+    }
+
+    return result;
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
