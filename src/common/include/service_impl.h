@@ -120,6 +120,40 @@ int bucketsInit(uid_t uidInContext);
  */
 int reloadUserTypePolicy(uid_t uid);
 
+/**
+ * Function returns the type of user with given identifier
+ *
+ * TODO:
+ * @attention Currently it is hardcoded to return NORMAL user type.
+ *            Range checks implementation needed, need description of uid types ranges.
+ *
+ * @param[in] uid user identifier
+ *
+ * @return User type enum value, as defined in security-manager.h\n
+ *         SM_USER_TYPE_NONE in case of uid from unknown range
+ */
+security_manager_user_type getUserType(uid_t uid);
+
+/**
+ * Update policy in Cynara using admin entry point - proper privilege is needed for this to succeed
+ *
+ * @param[in] policyUnits vector of policy chunks with instructions
+ * @param[in] uid identifier of requesting user
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int policyUpdateForAdmin(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid);
+
+/**
+ * Update policy in Cynara using privacy manager entry point - personal privileges per user.
+ *
+ * @param[in] policyUnits vector of policy chunks with instructions
+ * @param[in] uid identifier of requesting user
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int policyUpdateForSelf(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 

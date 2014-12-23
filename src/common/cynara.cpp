@@ -190,6 +190,51 @@ void CynaraAdmin::SetPolicies(const std::vector<CynaraAdminPolicy> &policies)
         "Error while updating Cynara policy.");
 }
 
+void CynaraAdmin::SetPolicies(const std::vector<PolicyUpdateUnit> &policies, const std::string &bucket)
+{
+    std::vector<struct cynara_admin_policy *> pp_policies(policies.size() + 1);
+    const std::string wildcard(CYNARA_ADMIN_WILDCARD);
+
+    LogDebug("Sending " << policies.size() << " policies to Cynara");
+    for (std::size_t i = 0; i < policies.size(); ++i) {
+        const std::string &appIdToSet = (policies[i].appId.compare(SECURITY_MANAGER_ANY) == 0) ?
+                                                                        wildcard : policies[i].appId;
+        const std::string &privToSet = (policies[i].privilege.compare(SECURITY_MANAGER_ANY) == 0) ?
+                                                                        wildcard : policies[i].privilege;
+        const std::string &userIdToSet = (policies[i].userId.compare(SECURITY_MANAGER_ANY) == 0) ?
+                                                                        wildcard : policies[i].userId;
+
+        if (policies[i].userOrType == UO_IS_TYPE) {
+            ThrowMsg(CynaraException::InvalidParam, "User type wildcards are not supported, yet");
+        }
+        else {
+            pp_policies[i] = new cynara_admin_policy();
+            pp_policies[i]->client = strdup(appIdToSet.c_str());
+            pp_policies[i]->user = strdup(userIdToSet.c_str());
+            pp_policies[i]->privilege = strdup(privToSet.c_str());
+            pp_policies[i]->result = policies[i].value;
+            pp_policies[i]->bucket = strdup(bucket.c_str());
+        };
+
+        //TODO: Add support for user types wildcard
+
+        LogDebug("policies[" << i << "] = {" <<
+            ".bucket = " << pp_policies[i]->bucket << ", " <<
+            ".client = " << pp_policies[i]->client << ", " <<
+            ".user = " << pp_policies[i]->user << ", " <<
+            ".privilege = " << pp_policies[i]->privilege << ", " <<
+            ".result = " << pp_policies[i]->result << ", " <<
+            ".result_extra = " << pp_policies[i]->result_extra << "}");
+    }
+
+    pp_policies[policies.size()] = nullptr;
+
+    checkCynaraError(
+        cynara_admin_set_policies(m_CynaraAdmin, pp_policies.data()),
+        "Error while updating Cynara policy.");
+}
+
+
 void CynaraAdmin::UpdatePackagePolicy(
     const std::string &label,
     const std::string &user,
