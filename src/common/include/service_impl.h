@@ -123,6 +123,27 @@ int loadPrivileges(bool reload = false);
  */
 int getAllSystemPrivileges(std::vector<std::string> &privilegesList);
 
+/**
+ * Update policy in Cynara using admin entry point - proper privilege is needed for this to succeed
+ *
+ * @param[in] policyUnits vector of policy chunks with instructions
+ * @param[in] uid identifier of requesting user
+ * @param[in] pid PID of requesting process
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int policyUpdateForAdmin(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid, pid_t pid);
+
+/**
+ * Update policy in Cynara using privacy manager entry point - personal privileges per user.
+ *
+ * @param[in] policyUnits vector of policy chunks with instructions
+ * @param[in] uid identifier of requesting user
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int policyUpdateForSelf(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 

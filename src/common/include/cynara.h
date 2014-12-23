@@ -28,6 +28,7 @@
 #include <cynara-admin.h>
 #include <dpl/exception.h>
 #include <string>
+#include <protocols.h>
 #include <vector>
 #include <map>
 
@@ -110,6 +111,16 @@ public:
      * @param policies vector of CynaraAdminPolicy objects to send to Cynara
      */
     void SetPolicies(const std::vector<CynaraAdminPolicy> &policies);
+
+
+    /**
+     * Update Cynara policies.
+     * Caller must have permission to access Cynara administrative socket.
+     *
+     * @param policies vector of PolicyUpdateUnit objects to send to Cynara
+     * @param bucket   name of the bucket to use
+     */
+    void SetPolicies(const std::vector<PolicyUpdateUnit> &policies, const std::string &bucket);
 
     /**
      * Update Cynara policies for the package and the user, using two vectors
