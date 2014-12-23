@@ -416,6 +416,21 @@ void CynaraAdmin::EmptyBucket(const std::string &bucketName, bool recursive, con
             client + ", " + user + ", " + privilege);
 }
 
+bool CynaraAdmin::Check(
+    const std::string &appId,
+    const std::string &user,
+    const std::string &privilege,
+    const Bucket bucket,
+    int *result,
+    char **result_extra)
+{
+    return checkCynaraError(
+        cynara_admin_check(m_CynaraAdmin, Buckets.at(bucket).c_str(), true, appId.c_str(),
+            user.c_str(), privilege.c_str(), result, result_extra),
+        "Error while asking cynara admin API for permission for appId: " + appId + ", user: "
+            + user + " privilege: " + privilege + " bucket: " + Buckets.at(bucket) + "\n");
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
