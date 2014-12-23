@@ -129,6 +129,17 @@ public:
         const std::string &privilege,
         std::vector<CynaraAdminPolicy> &policies);
 
+    /**
+     * Check permission for specified app, user and privilege starting
+     * from MAIN bucket.
+     * It is intended for Privacy Manager where user can only set permissions
+     * lower than they already are.
+     */
+    int FindLowestPrivilege(
+        const std::string &appId,
+        const std::string &user,
+        const std::string &privilege);
+
 private:
     CynaraAdmin();
     struct cynara_admin *m_CynaraAdmin;

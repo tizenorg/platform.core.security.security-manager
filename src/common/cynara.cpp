@@ -239,6 +239,25 @@ void CynaraAdmin::ListPolicies(
     }
 }
 
+int CynaraAdmin::FindLowestPrivilege(
+    const std::string &appId,
+    const std::string &user,
+    const std::string &privilege)
+{
+    int result = static_cast<int>(CynaraAdminPolicy::Operation::Deny);
+    char * result_extra;
+
+    if(checkCynaraError(
+        cynara_admin_check(m_CynaraAdmin, "MAIN", true, appId.c_str(),
+            user.c_str(), privilege.c_str(), &result, &result_extra),
+        "Error while finding lowest privilege for appId: " + appId + ", user: "
+            + user + " privilege: " + privilege + "\n"))
+    {
+    }
+
+    return result;
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
