@@ -109,12 +109,6 @@ static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
             LogWarning("User's apps may have registered folders only in user's home dir");
             return false;
         }
-
-        app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
-        if (pathType == SECURITY_MANAGER_PATH_PUBLIC) {
-            LogWarning("Only root can register SECURITY_MANAGER_PATH_PUBLIC path");
-            return false;
-        }
     }
     return true;
 }
@@ -202,7 +196,7 @@ int appInstall(const app_inst_req &req, uid_t uid)
     for (const auto &appPath : req.appPaths) {
         const std::string &path = appPath.first;
         app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
-        int result = setupPath(req.pkgId, path, pathType);
+        int result = setupPath(req.appId, path, pathType);
 
         if (!result) {
             LogError("setupPath() failed");
