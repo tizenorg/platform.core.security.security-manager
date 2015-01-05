@@ -216,13 +216,15 @@ void CynaraAdmin::UpdatePackagePolicy(
             LogDebug("(user = " << user << " label = " << label << ") " <<
                 "removing privilege " << *oldIter);
             policies.push_back(CynaraAdminPolicy(label, user, *oldIter,
-                    CynaraAdminPolicy::Operation::Delete));
+                    CynaraAdminPolicy::Operation::Delete,
+                    Buckets.at(Bucket::MANIFESTS)));
             ++oldIter;
         } else {
             LogDebug("(user = " << user << " label = " << label << ") " <<
                 "adding privilege " << *newIter);
             policies.push_back(CynaraAdminPolicy(label, user, *newIter,
-                    CynaraAdminPolicy::Operation::Allow));
+                    CynaraAdminPolicy::Operation::Allow,
+                    Buckets.at(Bucket::MANIFESTS)));
             ++newIter;
         }
     }
@@ -231,14 +233,16 @@ void CynaraAdmin::UpdatePackagePolicy(
         LogDebug("(user = " << user << " label = " << label << ") " <<
             "removing privilege " << *oldIter);
         policies.push_back(CynaraAdminPolicy(label, user, *oldIter,
-                    CynaraAdminPolicy::Operation::Delete));
+                    CynaraAdminPolicy::Operation::Delete,
+                    Buckets.at(Bucket::MANIFESTS)));
     }
 
     for (; newIter != newPrivileges.end(); ++newIter) {
         LogDebug("(user = " << user << " label = " << label << ") " <<
             "adding privilege " << *newIter);
         policies.push_back(CynaraAdminPolicy(label, user, *newIter,
-                    CynaraAdminPolicy::Operation::Allow));
+                    CynaraAdminPolicy::Operation::Allow,
+                    Buckets.at(Bucket::MANIFESTS)));
     }
 
     CynaraAdmin::getInstance().SetPolicies(policies);
