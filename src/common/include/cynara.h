@@ -59,7 +59,7 @@ public:
     DECLARE_EXCEPTION_TYPE(Base, BucketNotFound)
 };
 
-struct CynaraAdminPolicy : cynara_admin_policy
+struct CynaraAdminPolicy : cynara_admin_policy, ISerializable
 {
     enum class Operation {
         Deny = CYNARA_ADMIN_DENY,
@@ -92,6 +92,8 @@ struct CynaraAdminPolicy : cynara_admin_policy
     {}
 
     ~CynaraAdminPolicy();
+
+    void Serialize(IStream &stream);
 };
 
 class CynaraAdmin
