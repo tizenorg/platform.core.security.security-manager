@@ -94,6 +94,41 @@ private:
 
     void processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
+    /**
+     * List all privileges for set by admin, placed in Cynara's ADMIN
+     * bucket
+     *
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    Identifier of the user who sent the request
+     * @param  pid    PID of the process which sent the request
+     */
+    void processGetAdminConfigurablePolicy(MessageBuffer &send, uid_t uid, pid_t pid);
+
+    /**
+     * List all privileges for specific user, placed in Cynara's PRIVACY_MANAGER
+     * bucket
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    Identifier of the user who sent the request
+     * @param  pid      PID of the process which sent the request
+     * @param  forAdmin determines internal type of request
+     */
+    void processGetConfiguredPolicy(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid, bool forAdmin);
+
+    /**
+     * Get whole policy for specific user. Whole policy is a list of all apps,
+     * and their permissions (based on what they've stated in their manifests).
+     * If uid is unprivileged, then only privileges for the caller uid will be
+     * listed. If uid is privileged, then apps for all the users will be listed.
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send     Raw data buffer to be sent
+     * @param  uid      Identifier of the user who sent the request
+     * @param  pid      PID of the process which sent the request
+     */
+    void processGetPolicy(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid);
+
 };
 
 } // namespace SecurityManager

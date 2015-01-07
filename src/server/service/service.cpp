@@ -114,6 +114,15 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::USER_DELETE:
                     processUserDelete(buffer, send, uid);
                     break;
+                case SecurityModuleCall::GET_CONF_POLICY_ADMIN:
+                    processGetConfiguredPolicy(buffer, send, uid, pid, true);
+                    break;
+                case SecurityModuleCall::GET_CONF_POLICY_SELF:
+                    processGetConfiguredPolicy(buffer, send, uid, pid, false);
+                    break;
+                case SecurityModuleCall::GET_POLICY:
+                    processGetPolicy(buffer, send, uid, pid);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -219,5 +228,29 @@ void Service::processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_
     Serialization::Serialize(send, ret);
 }
 
+
+void Service::processGetConfiguredPolicy(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid, bool forAdmin)
+{
+    int ret;
+    policy_entry filter;
+    Deserialization::Deserialize(buffer, filter);
+    std::vector<policy_entry> policyEntries;
+
+    ret = ServiceImpl::getConfiguredPolicy(forAdmin, filter, uid, pid, policyEntries);
+    Serialization::Serialize(send, ret);
+    Serialization::Serialize(send, policyEntries);
+}
+
+void Service::processGetPolicy(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid)
+{
+    int ret;
+    policy_entry filter;
+    Deserialization::Deserialize(buffer, filter);
+    std::vector<policy_entry> policyEntries;
+
+    ret = ServiceImpl::getPolicy(filter, uid, pid, policyEntries);
+    Serialization::Serialize(send, ret);
+    Serialization::Serialize(send, policyEntries);
+}
 
 } // namespace SecurityManager
