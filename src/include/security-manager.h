@@ -423,55 +423,50 @@ int security_manager_policy_update_req_add_entry(policy_update_req *p_req, const
  * This function is used to obtain user ID from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure
- * \param[out] value pointer to which parameter value will be written to.
  * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
- * \return API return code or error code
+ * \return user uid
  */
 
-int security_manager_policy_entry_get_user(policy_entry *p_entry, char **value);
+const char *security_manager_policy_entry_get_user(policy_entry *p_entry);
 /**
  * This function is used to obtain application name from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure
- * \param[out] value pointer to which parameter value will be written to.
  * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
- * \return API return code or error code
+ * \return application name
  */
 
-int security_manager_policy_entry_get_application(policy_entry *p_entry, char **value);
+const char *security_manager_policy_entry_get_application(policy_entry *p_entry);
 /**
  * This function is used to obtain privilege name from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure
- * \param[out] value pointer to which parameter value will be written to.
  * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
- * \return API return code or error code
+ * \return privilege name
  */
-int security_manager_policy_entry_get_privilege(policy_entry *p_entry, char **value);
+const char *security_manager_policy_entry_get_privilege(policy_entry *p_entry);
 /**
  * This function is used to obtain current policy level from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure
- * \param[out] value pointer to which parameter value will be written to.
  * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
- * \return API return code or error code
+ * \return Current policy level
  */
-int security_manager_policy_entry_get_level(policy_entry *p_entry, char **value);
+const char *security_manager_policy_entry_get_level(policy_entry *p_entry);
 
 /**
  * This function is used to obtain maximal policy level from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure.
- * \param[out] value pointer to which parameter value will be written to.
  * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
- * \return API return code or error code
+ * \return Maximal policy level
  */
-int security_manager_policy_entry_get_max_level(policy_entry *p_entry, char **value);
+const char *security_manager_policy_entry_get_max_level(policy_entry *p_entry);
 
 /**
  * \brief This function is used to send the prepared policy update request using privacy manager
@@ -592,7 +587,7 @@ int security_manager_get_configured_policy_for_admin(
 /**
  * \brief Function fetches all privileges that are configured by user in his/her
  *        privacy manager. The result is stored in the policy_entry structures array.
- *        User may only modify privileges for his own UID.
+ *        User may only fetch privileges for his/her own UID.
  *
  * \attention Developer is responsible for calling security_manager_policy_entries_free()
  *            for freeing allocated resources.
@@ -608,14 +603,15 @@ int security_manager_get_configured_policy_for_self(
         size_t *p_size);
 
 /**
- * \brief Function gets the whole policy for all users, their applications and privileges.
- *        The result is stored in the policy_entry structures array.
+ * \brief Function gets the whole policy for all users, their applications and privileges
+ *        based on the provided filter. The result is stored in the policy_entry array.
  *
- * \attention It should be called by admin user. Normal users may list policy of privileges
- *            and applications using security_manager_get_whole_policy_for_self() API function.
+ * \note If this call is performed by user with http://tizen.org/privilege/systemsettings.admin
+ *       privilege, then it's possible to list policies for all users.
+ *       Normal users may only list privileges for their own UID.
  *
- * It uses dynamic allocation inside and it is user's responsibility to call
- * security_manager_policy_entries_free() for freeing allocated resources.
+ * \attention Developer is responsible for calling security_manager_policy_entries_free()
+ *            for freeing allocated resources.
  *
  * \param[in]  p_filter        Pointer to filter struct
  * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array

@@ -857,53 +857,53 @@ int security_manager_policy_update_req_add_entry(policy_update_req *p_req, const
 }
 
 SECURITY_MANAGER_API
-int security_manager_policy_entry_get_user(policy_entry *p_entry, char **value)
+const char *security_manager_policy_entry_get_user(policy_entry *p_entry)
 {
-    if (!p_entry || !value)
-        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
-    *value = strdup(p_entry->user.c_str());
-    return  SECURITY_MANAGER_SUCCESS;
+    if (p_entry)
+        return strdup(p_entry->user.c_str());
+    else
+        return nullptr;
 }
 
 SECURITY_MANAGER_API
-int security_manager_policy_entry_get_application(policy_entry *p_entry, char **value)
+const char *security_manager_policy_entry_get_application(policy_entry *p_entry)
 {
-    if (!p_entry || !value)
-        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
-    *value = strdup(p_entry->appId.c_str());
-    return  SECURITY_MANAGER_SUCCESS;
+    if (p_entry)
+        return strdup(p_entry->appId.c_str());
+    else
+        return nullptr;
 }
 SECURITY_MANAGER_API
-int security_manager_policy_entry_get_privilege(policy_entry *p_entry, char **value)
+const char *security_manager_policy_entry_get_privilege(policy_entry *p_entry)
 {
-    if (!p_entry || !value)
-        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
-    *value = strdup(p_entry->privilege.c_str());
-    return  SECURITY_MANAGER_SUCCESS;
+    if (p_entry)
+        return strdup(p_entry->privilege.c_str());
+    else
+        return nullptr;
 }
 SECURITY_MANAGER_API
-int security_manager_policy_entry_get_level(policy_entry *p_entry, char **value)
+const char *security_manager_policy_entry_get_level(policy_entry *p_entry)
 {
-    if (!p_entry || !value)
-        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
-    *value = strdup(p_entry->currentLevel.c_str());
-    return  SECURITY_MANAGER_SUCCESS;
+    if (p_entry)
+        return strdup(p_entry->currentLevel.c_str());
+    else
+        return nullptr;
 }
 
 SECURITY_MANAGER_API
-int security_manager_policy_entry_get_max_level(policy_entry *p_entry, char **value)
+const char *security_manager_policy_entry_get_max_level(policy_entry *p_entry)
 {
-    if (!p_entry || !value)
-        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
-    *value = strdup(p_entry->maxLevel.c_str());
-    return  SECURITY_MANAGER_SUCCESS;
+    if (p_entry)
+        return strdup(p_entry->maxLevel.c_str());
+    else
+        return nullptr;
 }
 
 SECURITY_MANAGER_API
 void security_manager_policy_entries_free(policy_entry *p_entries, const size_t size)
 {
     for (size_t i = 0; i < size; i++) {
-    delete &p_entries[i];
+        delete &p_entries[i];
     }
     delete [] p_entries;
 }
