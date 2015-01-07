@@ -116,6 +116,18 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::POLICY_UPDATE_SELF:
                     processPolicyUpdateForSelf(buffer, send, uid);
                     break;
+                case SecurityModuleCall::GET_CONF_POLICY_ADMIN:
+                    processGetAdminConfigurablePolicy(send, uid, pid);
+                    break;
+                case SecurityModuleCall::GET_CONF_POLICY_SELF:
+                    processGetUserConfigurablePolicy(send, uid);
+                    break;
+                case SecurityModuleCall::GET_WHOLE_POLICY_ADMIN:
+                    processGetWholePolicy(send, uid, pid, true);
+                    break;
+                case SecurityModuleCall::GET_WHOLE_POLICY_SELF:
+                    processGetWholePolicy(send, uid, pid, false);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -242,6 +254,36 @@ void Service::processPolicyUpdateForSelf(MessageBuffer &buffer, MessageBuffer &s
 
     ret = ServiceImpl::policyUpdateForSelf(policyUnits, uid);
     Serialization::Serialize(send, ret);
+}
+
+void Service::processGetAdminConfigurablePolicy(MessageBuffer &send, uid_t uid, pid_t pid)
+{
+    int ret;
+    std::vector<PolicyEntry> policyEntries;
+
+    ret = ServiceImpl::getAdminConfigurablePolicy(uid, pid, policyEntries);
+    Serialization::Serialize(send, ret);
+    Serialization::Serialize(send, policyEntries);
+}
+
+void Service::processGetUserConfigurablePolicy(MessageBuffer &send, uid_t uid)
+{
+    int ret;
+    std::vector<PolicyEntry> policyEntries;
+
+    ret = ServiceImpl::getUserConfigurablePolicy(uid, policyEntries);
+    Serialization::Serialize(send, ret);
+    Serialization::Serialize(send, policyEntries);
+}
+
+void Service::processGetWholePolicy(MessageBuffer &send, uid_t uid, pid_t pid, bool isAdmin)
+{
+    int ret;
+    std::vector<PolicyEntry> policyEntries;
+
+    ret = ServiceImpl::getWholePolicy(uid, pid, isAdmin, policyEntries);
+    Serialization::Serialize(send, ret);
+    Serialization::Serialize(send, policyEntries);
 }
 
 } // namespace SecurityManager

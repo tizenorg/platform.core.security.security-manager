@@ -603,5 +603,96 @@ int policyUpdateForSelf(const std::vector<SecurityManager::PolicyUpdateUnit> &po
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
+int getConfigurablePolicy(bool isAdmin, uid_t uid, std::vector<PolicyEntry> &policyEntries)
+{
+    std::vector<CynaraAdminPolicy> listOfPolicies;
+
+    if (isAdmin) {
+        //Fetch privileges from ADMIN bucket
+        CynaraAdmin::getInstance().ListPolicies(CynaraAdmin::Buckets.at(Bucket::ADMIN), CYNARA_ADMIN_ANY, CYNARA_ADMIN_ANY, CYNARA_ADMIN_ANY, listOfPolicies);
+    }
+    else {
+        //Fetch privileges from PRIVACY_MANAGER bucket
+        CynaraAdmin::getInstance().ListPolicies(CYNARA_ADMIN_DEFAULT_BUCKET, CYNARA_ADMIN_ANY, std::to_string(uid), CYNARA_ADMIN_ANY, listOfPolicies);
+    };
+
+    for (auto &policy : listOfPolicies) {
+        if (policy.result ==  CYNARA_ADMIN_BUCKET)
+            continue;
+        PolicyEntry pe;
+        pe.uid = std::string(policy.user).compare(CYNARA_ADMIN_WILDCARD) ? std::stoul(std::string(policy.user)) : getGlobalUserId();
+        pe.appId = std::string(policy.client);
+        pe.privilege = std::string(policy.privilege);
+        pe.current = policy.result;
+        pe.maxValue = -1;
+        policyEntries.push_back(std::move(pe));
+    };
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int getAdminConfigurablePolicy(uid_t uid, pid_t pid, std::vector<PolicyEntry> &policyEntries)
+{
+    //TODO: Check if user has proper privilege to issue this call
+    if (!Cynara::getInstance().check(CYNARA_ADMIN_WILDCARD, ADMIN_PRIVILEGE, std::to_string(uid), std::to_string(pid).c_str()))
+        return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+
+    return
+        getConfigurablePolicy(true, uid, policyEntries);
+}
+
+int getUserConfigurablePolicy(uid_t uid, std::vector<PolicyEntry> &policyEntries)
+{
+    return
+        getConfigurablePolicy(false, uid, policyEntries);
+}
+
+int getWholePolicy(uid_t uid, pid_t pid, bool isAdmin, std::vector<PolicyEntry> &policyEntries)
+{
+    CynaraAdmin &ca = CynaraAdmin::getInstance();
+    std::vector<uid_t> listOfUsers;
+
+    if (isAdmin) {
+        if (Cynara::getInstance().check(CYNARA_ADMIN_WILDCARD, ADMIN_PRIVILEGE, std::to_string(uid), std::to_string(pid).c_str())) {
+            //TODO: switch to fetching users from GUMD
+            PrivilegeDb::getInstance().BeginTransaction();
+            PrivilegeDb::getInstance().GetListOfUsers(listOfUsers);
+            PrivilegeDb::getInstance().CommitTransaction();
+            LogDebug("Fetching policy for all users");
+        } else {
+            LogDebug("Not enough privilege to fetch policy for all users by user: " << uid);
+            return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+        };
+    } else {
+        LogDebug("Fetching policy for user: " << uid);
+        listOfUsers.push_back(uid);
+    };
+
+    for (auto &user : listOfUsers) {
+        std::vector<std::string> listOfApps;
+        PrivilegeDb::getInstance().GetUserApps(uid, listOfApps);
+
+        for (auto &app : listOfApps) {
+            std::vector<CynaraAdminPolicy> listOfPolicies;
+            //fetch app privileges from MANIFESTS bucket
+            CynaraAdmin::getInstance().ListPolicies(CynaraAdmin::Buckets.at(Bucket::MANIFESTS), app, CYNARA_ADMIN_ANY, CYNARA_ADMIN_ANY, listOfPolicies);
+            for (auto &policy : listOfPolicies) {
+                //ignore jump to bucket policies
+                if (policy.result ==  CYNARA_ADMIN_BUCKET)
+                    continue;
+                PolicyEntry pe;
+                pe.uid = user;
+                pe.appId = app;
+                pe.privilege = policy.privilege;
+                pe.current = CynaraAdmin::getInstance().FindMinimalPermission(app, std::to_string(user), policy.privilege);
+                pe.maxValue = CynaraAdmin::getInstance().FindMinimalPermission(app, std::to_string(user), policy.privilege);
+                policyEntries.push_back(std::move(pe));
+            };
+        };
+    };
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
