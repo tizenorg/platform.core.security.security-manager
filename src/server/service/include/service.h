@@ -144,6 +144,44 @@ private:
      */
     void processPolicyUpdateForSelf(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
+    /**
+     * Process listing privileges matching given criteria
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    Identifier of the user who sent the request
+     */
+    void processGetUserPrivilegePolicy(MessageBuffer &buffer, MessageBuffer &send, uid_t callerUid);
+
+    /**
+     * List all privileges for set by admin, placed in Cynara's ADMIN
+     * bucket
+     *
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    Identifier of the user who sent the request
+     */
+    void processGetAdminConfigurablePolicy(MessageBuffer &send, uid_t uid);
+
+    /**
+     * List all privileges for specific user, placed in Cynara's PRIVACY_MANAGER
+     * bucket
+     *
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    Identifier of the user who sent the request
+     */
+    void processGetUserConfigurablePolicy(MessageBuffer &send, uid_t uid);
+
+    /**
+     * Get whole policy for specific user. Whole policy is a list of all apps,
+     * and their permissions (based on what they've stated in their manifests).
+     * If uid is unprivileged, then only privileges for the caller uid will be
+     * listed. If uid is privileged, then apps for all the users will be listed.
+     *
+     * @param  send   Raw data buffer to be sent
+     * @param  uid    Identifier of the user who sent the request
+     */
+    void processGetWholePolicy(MessageBuffer &send, uid_t uid);
+
 };
 
 } // namespace SecurityManager
