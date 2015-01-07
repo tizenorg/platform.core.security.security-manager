@@ -159,6 +159,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::POLICY_UPDATE_SELF:
                     processPolicyUpdateForSelf(buffer, send, uid);
                     break;
+                case SecurityModuleCall::GET_USER_PRIVS_POLICY:
+                    processGetUserPrivilegePolicy(buffer, send, uid);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -294,6 +297,23 @@ void Service::processPolicyUpdateForSelf(MessageBuffer &buffer, MessageBuffer &s
 
     ret = ServiceImpl::policyUpdateForSelf(policyUnits, uid);
     Serialization::Serialize(send, ret);
+}
+
+void Service::processGetUserPrivilegePolicy(MessageBuffer &buffer, MessageBuffer &send, uid_t callerUid)
+{
+    int ret;
+    uid_t uid;
+    std::string appId;
+    std::string privilege;
+    std::vector<PolicyEntry> policyEntries;
+
+    Deserialization::Deserialize(buffer, uid);
+    Deserialization::Deserialize(buffer, appId);
+    Deserialization::Deserialize(buffer, privilege);
+
+    ret = ServiceImpl::getUserPrivilegePolicy(callerUid, uid, appId, privilege, policyEntries);
+    Serialization::Serialize(send, ret);
+    Serialization::Serialize(send, policyEntries);
 }
 
 } // namespace SecurityManager

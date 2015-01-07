@@ -113,6 +113,14 @@ CynaraAdminPolicy::~CynaraAdminPolicy()
     free(this->result_extra);
 }
 
+void CynaraAdminPolicy::Serialize(IStream &stream)
+{
+    Serialization::Serialize(stream, appId);
+    Serialization::Serialize(stream, privilege);
+    Serialization::Serialize(stream, maxValue);
+    Serialization::Serialize(stream, current);
+}
+
 static bool checkCynaraError(int result, const std::string &msg)
 {
     switch (result) {

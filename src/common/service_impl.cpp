@@ -667,5 +667,84 @@ int policyUpdateForSelf(const std::vector<SecurityManager::PolicyUpdateUnit> &po
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
+int getAdminConfigurablePolicy(uid_t uid, std::vector<CynaraAdminPolicy> &policy)
+{
+    //TODO: Check if user has proper privilege to issue this call
+    if (uid != 0)
+        return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+
+    std::string uidStr = std::to_string(uid);
+
+    //Fetch privileges from ADMIN bucket
+    CynaraAdmin::getInstance().ListPolicies(CynaraAdmin::Buckets.at(Bucket::ADMIN), CYNARA_ADMIN_WILDCARD_ANY, CYNARA_ADMIN_WILDCARD_ANY, CYNARA_ADMIN_WILDCARD_ANY, policy);
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int getUserConfigurablePolicy(uid_t uid, std::vector<CynaraAdminPolicy> &policy)
+{
+    //fetching privileges set for specific user can only be performed by the user
+    if (callerUid != uid)
+        return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+
+    std::string uidStr = std::to_string(uid);
+
+    //Fetch privileges from PRIVACY_MANAGER bucket
+    CynaraAdmin::getInstance().ListPolicies(CYNARA_ADMIN_DEFAULT_BUCKET, CYNARA_ADMIN_WILDCARD_ANY, uidStr, CYNARA_ADMIN_WILDCARD_ANY, policy);
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int getWholePolicy(uid_t uid, int type, std::vector<PolicyEntry> &policyEntries)
+{
+    bool isPrivileged = false;
+    CynaraAdmin &ca = CynaraAdmin::getInstance();
+
+    std::vector<uid_t> listOfUsers;
+
+    //TODO: check if user has proper privilege and set isPrivileged variable accordingly
+    if ((uid == 0) && (type == ADMIN)) {
+        isPrivileged = true;
+        getListOfUsers(listOfUsers);
+    } else if (type == USER) {
+        listOfUsers.push_back(uid);
+    } else {
+        return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+    };
+
+    //For unprivileged user or for privileged user managing own privileges, fetch only privileges from PRIVACY MANAGER (default) bucket
+    if ((!isPrivileged) || (callerUid == uid))
+        ca.ListPolicies(CYNARA_ADMIN_DEFAULT_BUCKET, appId, uidStr, privilege, internalPrivs);
+    ca.ListPolicies(CynaraAdmin::Buckets.at(Bucket::ADMIN), appId, uidStr, privilege, internalPrivs);
+
+    for (auto &user : listOfUsers) {
+        std::vector<std::string> listOfApps;
+        int ret = getUserAppsPolicy(uid, user, listOfApps);
+        if (ret != SECURITY_MANAGER_API_SUCCESS) {
+            LogDebug("Failed to fetch apps for user: " << user << " by user: " << uid);
+            continue;
+        };
+        for (auto &app : listOfApps) {
+            std::vector<std::string> listOfPrivileges;
+            int ret = getAppPrivileges(user, app, listOfPrivileges);
+            if (ret != SECURITY_MANAGER_API_SUCCESS) {
+                LogDebug("Failed to fetch privileges for app: " << app << ", for user: " << user << " by user: " << uid);
+                continue;
+            };
+            for (auto &privilege : listOfPrivileges) {
+                int current = CynaraAdmin::getInstance().FindMinimalPermission(app, user, privilege);
+                int max = CynaraAdmin::getInstance().FindMinimalPermission(app, user, privilege);
+                CynaraAdminPolicy cap;
+                cap.app = app;
+                cap.user = user;
+                cap.privilege = privilege;
+                cap.current = current;
+                cap.max = max;
+                policyEntries.push_back(cap);
+            };
+        };
+    };
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
