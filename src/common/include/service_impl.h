@@ -161,6 +161,36 @@ int policyUpdateForAdmin(const std::vector<SecurityManager::PolicyUpdateUnit> &p
  */
 int policyUpdateForSelf(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid);
 
+/**
+ * Fetch all configured privileges from the ADMIN bucket
+ *
+ * @param[in] uid identifier of queried user
+ * @param[out] policyEntries vector of policy entries with result
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int getAdminConfigurablePolicy(uid_t uid, std::vector<PolicyEntry> &policyEntries);
+
+/**
+ * Fetch all configured privileges from the PRIVACY_MANAGER bucket
+ *
+ * @param[in] uid identifier of queried user
+ * @param[out] policyEntries vector of policy entries with result
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int getUserConfigurablePolicy(uid_t uid, std::vector<PolicyEntry> &policyEntries);
+
+/**
+ * Fetch all privileges for all apps installed for specific user.
+ *
+ * @param[in] uid identifier of queried user
+ * @param[out] policyEntries vector of policy entries with result
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int getWholePolicy(uid_t uid, std::vector<PolicyEntry> &policyEntries);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 
