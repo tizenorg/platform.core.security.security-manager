@@ -44,6 +44,8 @@
 namespace SecurityManager {
 namespace ServiceImpl {
 
+static const std::string ADMIN_PRIVILEGE = "http://tizen.org/privilege/systemsettings.admin";
+
 static uid_t getGlobalUserId(void)
 {
     static uid_t globaluid = tzplatform_getuid(TZ_SYS_GLOBALAPP_USER);
@@ -420,6 +422,104 @@ int userDelete(uid_t uidDeleted, uid_t uid)
     CynaraAdmin::getInstance().UserRemove(uidDeleted);
 
     return ret;
+}
+
+int getConfiguredPolicy(bool forAdmin, const policy_entry &filter, uid_t uid, pid_t pid, const std::string &smackLabel, std::vector<policy_entry> &policyEntries)
+{
+    std::vector<CynaraAdminPolicy> listOfPolicies;
+    std::string uidStr = std::to_string(uid);
+
+    //convert appId to smack label
+    std::string appLabel = filter.appId;
+    if (!filter.appId.compare(CYNARA_ADMIN_WILDCARD))
+        generateAppLabel(filter.appId, appLabel);
+
+    if (forAdmin) {
+        //std::string smackLabel;
+        if (!Cynara::getInstance().check(smackLabel, ADMIN_PRIVILEGE, uidStr, std::to_string(pid).c_str()))
+            return SECURITY_MANAGER_API_ERROR_ACCESS_DENIED;
+        //Fetch privileges from ADMIN bucket
+        CynaraAdmin::getInstance().ListPolicies(CynaraAdmin::Buckets.at(Bucket::ADMIN), filter.appId, filter.user, filter.privilege, listOfPolicies);
+    }
+    else {
+        //Fetch privileges from PRIVACY_MANAGER bucket
+        CynaraAdmin::getInstance().ListPolicies(CynaraAdmin::Buckets.at(Bucket::PRIVACY_MANAGER), filter.appId, uidStr, filter.privilege, listOfPolicies);
+    };
+
+    for (auto &policy : listOfPolicies) {
+        //ignore "jump to bucket" entries
+        if (policy.result ==  CYNARA_ADMIN_BUCKET)
+            continue;
+        std::string extra;
+        int result;
+        policy_entry pe;
+        pe.user = std::string(policy.user);
+        pe.appId = std::string(policy.client);
+        pe.privilege = std::string(policy.privilege);
+        pe.currentLevel = CynaraAdmin::getInstance().convertToPolicyDescription(policy.result);
+        //TODO: Ignore contents of ADMIN bucket for admin policy
+        CynaraAdmin::getInstance().Check(pe.appId, pe.privilege, pe.user, CynaraAdmin::Buckets.at(Bucket::MAIN), result, extra, true);
+        pe.maxLevel = CynaraAdmin::getInstance().convertToPolicyDescription(result);
+        policyEntries.push_back(std::move(pe));
+    };
+
+    return SECURITY_MANAGER_API_SUCCESS;
+}
+
+int getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, const std::string &smackLabel, std::vector<policy_entry> &policyEntries)
+{
+    CynaraAdmin &ca = CynaraAdmin::getInstance();
+    std::vector<uid_t> listOfUsers;
+
+    if (Cynara::getInstance().check(smackLabel, ADMIN_PRIVILEGE, std::to_string(uid), std::to_string(pid).c_str())) {
+        if (filter.user.compare(CYNARA_ADMIN_WILDCARD)) {
+            //TODO: handle std::invalid_argument
+            listOfUsers.push_back(static_cast<uid_t>(std::stoul(filter.user)));
+        } else {
+            //TODO: switch to fetching users from GUMD
+            PrivilegeDb::getInstance().BeginTransaction();
+            PrivilegeDb::getInstance().GetListOfUsers(listOfUsers);
+            PrivilegeDb::getInstance().CommitTransaction();
+        };
+    } else {
+        LogDebug("Not enough privilege to fetch admin policy by user : " << uid);
+        LogDebug("Fetching personal policy for user: " << uid);
+        listOfUsers.push_back(uid);
+    };
+    LogDebug("Fetching policy for " << listOfUsers.size() << " users");
+
+    for (auto &user : listOfUsers) {
+        std::vector<std::string> listOfApps;
+        PrivilegeDb::getInstance().GetUserApps(uid, listOfApps);
+
+        for (auto &app : listOfApps) {
+            std::vector<CynaraAdminPolicy> listOfPolicies;
+            std::string smackLabelForApp;
+            generateAppLabel(app, smackLabelForApp);
+            //fetch app privileges from MANIFESTS bucket
+            CynaraAdmin::getInstance().ListPolicies(CynaraAdmin::Buckets.at(Bucket::MANIFESTS), smackLabelForApp, CYNARA_ADMIN_ANY, filter.privilege, listOfPolicies);
+            for (auto &policy : listOfPolicies) {
+                //ignore "jump to bucket" policies
+                if (policy.result ==  CYNARA_ADMIN_BUCKET)
+                    continue;
+                std::string extra;
+                int result;
+                policy_entry pe;
+                pe.user= user;
+                pe.appId = app;
+                pe.privilege = policy.privilege;
+                CynaraAdmin::getInstance().Check(pe.appId, pe.privilege, pe.user, CynaraAdmin::Buckets.at(Bucket::PRIVACY_MANAGER), result, extra, true);
+                pe.currentLevel = CynaraAdmin::getInstance().convertToPolicyDescription(result);
+                CynaraAdmin::getInstance().Check(pe.appId, pe.privilege, pe.user, CynaraAdmin::Buckets.at(Bucket::MAIN), result, extra, true);
+                pe.maxLevel = CynaraAdmin::getInstance().convertToPolicyDescription(result);
+                LogDebug("[policy_entry] app: " << pe.appId << " user: " << pe.user << " privilege: " << pe.privilege << " current: "
+                    << pe.currentLevel << " max: " << pe.maxLevel);
+                policyEntries.push_back(std::move(pe));
+            };
+        };
+    };
+
+    return SECURITY_MANAGER_API_SUCCESS;
 }
 
 } /* namespace ServiceImpl */
