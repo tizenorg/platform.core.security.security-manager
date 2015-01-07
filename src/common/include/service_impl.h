@@ -175,6 +175,39 @@ int policyUpdateForAdmin(const std::vector<SecurityManager::PolicyUpdateUnit> &p
  */
 int policyUpdateForSelf(const std::vector<SecurityManager::PolicyUpdateUnit> &policyUnits, uid_t uid);
 
+/**
+ * Fetch all configured privileges from the ADMIN bucket
+ *
+ * @param[in] uid identifier of queried user
+ * @param[out] policyEntries vector of policy entries with result
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int getAdminConfigurablePolicy(uid_t uid, std::vector<CynaraAdminPolicy> &policy)
+
+/**
+ * Fetch all configured privileges from the PRIVACY_MANAGER bucket
+ *
+ * @param[in] uid identifier of queried user
+ * @param[out] policyEntries vector of policy entries with result
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int getUserConfigurablePolicy(uid_t uid, std::vector<CynaraAdminPolicy> &policy)
+
+/**
+ * Fetch all privileges for all apps installed for specific user.
+ *
+ * @param[in] uid identifier of queried user
+ * @param[in] type query type: AS_ADMIN - query for all users, all of their apps and the apps' privileges,
+ *                                        proper privilege is necessary to perform this call
+ *                             AS_USER - query only for the specific user, its apps and the apps' privileges.
+ * @param[out] policyEntries vector of policy entries with result
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int getWholePolicy(uid_t uid, int type, std::vector<PolicyEntry> &policyEntries)
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 
