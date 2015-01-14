@@ -30,9 +30,11 @@
 
 #include <cstring>
 #include <algorithm>
+#include <fstream>
 
 #include <dpl/log/log.h>
 #include <tzplatform_config.h>
+#include <boost/algorithm/string.hpp>
 
 #include "protocols.h"
 #include "privilege_db.h"
@@ -46,6 +48,11 @@
 
 namespace SecurityManager {
 namespace ServiceImpl {
+
+static const std::string privilegesListFileName = "privileges-tizen-3.0.list";
+static const std::string privilegesListFile = std::string(USERTYPE_POLICY_PATH) +
+                                              "/" + privilegesListFileName;
+static std::vector<std::string> privileges;
 
 static uid_t getGlobalUserId(void)
 {
@@ -478,6 +485,41 @@ int reloadUserTypePolicy(uid_t uid)
         };
         closedir(dir);
     } else ret = SECURITY_MANAGER_API_ERROR_FILE_NOT_EXIST;
+
+    return ret;
+}
+
+int loadPrivileges(bool reload)
+{
+    if ((privileges.size() == 0) || (reload)) {
+        LogDebug("Loading privileges file '" << privilegesListFileName << "'");
+        privileges.clear();
+        std::ifstream fs(privilegesListFile);
+        if (!fs.is_open())
+            return SECURITY_MANAGER_API_ERROR_FILE_NOT_EXIST;
+        for (std::string line; std::getline(fs, line); ) {
+            boost::algorithm::trim(line);
+            if (line.empty() || (line[0] == '\''))
+                continue;
+            LogDebug(privilegesListFileName << ": " << line);
+            privileges.push_back(line);
+        }
+    } else {
+        LogDebug("Privileges list is already loaded and not forced to reload.");
+    }
+    return privileges.size() > 0 ?
+           SECURITY_MANAGER_API_SUCCESS :
+           SECURITY_MANAGER_API_ERROR_LOADING_PRIVILEGES_LIST;
+}
+
+int getPrivileges(std::vector<std::string> &privilegesList)
+{
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+
+    if (privileges.size() == 0)
+        ret = loadPrivileges();
+    if (SECURITY_MANAGER_API_SUCCESS == ret)
+        privilegesList = privileges;
 
     return ret;
 }

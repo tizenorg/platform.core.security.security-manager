@@ -99,6 +99,9 @@
 /*! \brief   indicating file contents format error  */
 #define SECURITY_MANAGER_API_ERROR_FILE_FORMAT_MALFORMED -29
 
+/*! \brief   indicating privileges list loading error */
+#define SECURITY_MANAGER_API_ERROR_LOADING_PRIVILEGES_LIST -30
+
 /*! \brief   indicating the error with unknown reason */
 #define SECURITY_MANAGER_API_ERROR_UNKNOWN -255
 /** @}*/
