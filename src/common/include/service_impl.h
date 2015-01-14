@@ -27,6 +27,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 
+#include <string>
+#include <vector>
 #include <unordered_set>
 
 #include "security-manager.h"
@@ -110,6 +112,25 @@ int userDelete(uid_t uidDeleted, uid_t uid);
  * @return API return code, as defined in protocols.h
  */
 int reloadUserTypePolicy(uid_t uid);
+
+/**
+ * Load Tizen privileges list
+ *
+ * @param[in] reload decides if privileges' list should be reloaded.
+ *                   It is optional. Default value if false.
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int loadPrivileges(bool reload = false);
+
+/**
+ * Get Tizen privileges list
+ *
+ * @param[in] privileges reference to a vector with resulting privileges list
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int getAllSystemPrivileges(std::vector<std::string> &privilegesList);
 
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
