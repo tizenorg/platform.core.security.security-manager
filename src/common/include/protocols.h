@@ -96,6 +96,9 @@
 /*! \brief   indicating file deletion error  */
 #define SECURITY_MANAGER_API_ERROR_FILE_DELETION_FAILED -28
 
+/*! \brief   indicating privileges list loading error */
+#define SECURITY_MANAGER_API_ERROR_LOADING_PRIVILEGES_LIST -29
+
 /*! \brief   indicating the error with unknown reason */
 #define SECURITY_MANAGER_API_ERROR_UNKNOWN -255
 /** @}*/
