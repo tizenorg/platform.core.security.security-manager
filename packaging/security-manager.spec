@@ -48,6 +48,7 @@ Development files needed for using the security manager client
 Summary:    Security manager policy
 Group:      Security/Development
 Requires:   security-manager = %{version}-%{release}
+Requires:   cyad
 
 %description -n security-manager-policy
 Set of security rules that constitute security policy in the system
@@ -158,3 +159,4 @@ fi
 %files -n security-manager-policy
 %manifest %{name}.manifest
 /usr/share/security-manager/policy
+%attr(755,root,root) %{_bindir}/security-manager-policy-reload

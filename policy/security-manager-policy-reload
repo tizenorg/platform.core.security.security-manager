@@ -1,0 +1,48 @@
+#!/bin/sh -e
+
+USERTYPE_POLICY_PATH=/usr/security-manager/policy
+
+# Create default buckets
+while read bucket default_policy
+do
+    [ "$bucket" = "PRIVACY_MANAGER" ] && bucket=""
+    cyad --set-bucket="$bucket" --policy="$default_policy"
+done <<END
+PRIVACY_MANAGER DENY
+ADMIN NONE
+MAIN DENY
+MANIFESTS DENY
+END
+
+# Link buckets together
+while read bucket_src bucket_dst
+do
+    [ "$bucket_src" = "PRIVACY_MANAGER" ] && bucket_src=""
+    cyad --set-policy --client="*" --user="*" --privilege="*" --policy=BUCKET \
+        --bucket="$bucket_src" --metadata="$bucket_dst"
+done <<END
+MAIN MANIFESTS
+PRIVACY_MANAGER MAIN
+END
+
+# Import user-type policies
+find "$USERTYPE_POLICY_PATH" -name "usertype-*.profile" |
+while read file
+do
+    user=`echo $file | sed -r 's|.*/usertype-(.*).profile$|\1|' | tr [a-z] [A-Z]`
+    bucket="USER_TYPE_$user"
+
+    cyad --delete-bucket=$bucket || true
+    cyad --set-bucket=$bucket --policy=DENY
+    cyad --set-policy --client="*" --user="*" --privilege="*" --policy=BUCKET \
+        --bucket="$bucket" --metadata="ADMIN"
+
+    # TODO: use cyad --set-policy --bulk for better performance.
+    # Waiting for cyad to change bulk input format for policy type.
+    grep -v ^\' $file |
+    while read app privilege
+    do
+        cyad --set-policy --client="$app" --user="*" --privilege="$privilege" \
+            --policy=ALLOW --bucket="$bucket"
+    done
+done
