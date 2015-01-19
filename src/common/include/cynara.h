@@ -135,6 +135,14 @@ public:
     static void DefineUserTypePolicy(const std::string &usertype,
         const std::vector<UserTypePrivilege> &privileges);
 
+    /**
+     * Create basic set of buckets according to policies schema -
+     * MAIN, USERTYPE_ADMIN, USERTYPE_NORMAL, USERTYPE_GUEST, USERTYPE_SYSTEM,
+     * ADMIN, MANIFESTS. PRIVACY_MANAGER is the first bucket in the flow,
+     * and it's not created - instead default bucket ("") is used.
+     */
+    void InitBuckets();
+
 private:
     CynaraAdmin();
 
