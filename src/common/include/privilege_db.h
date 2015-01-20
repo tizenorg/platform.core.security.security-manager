@@ -53,6 +53,7 @@ enum class QueryType {
     EGetPkgId,
     EGetPrivilegeGroups,
     EGetUserApps,
+    EGetAllUsers,
 };
 
 class PrivilegeDb {
@@ -79,6 +80,7 @@ private:
         { QueryType::EGetPkgId, " SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
         { QueryType::EGetPrivilegeGroups, " SELECT name FROM privilege_group_view WHERE privilege_name = ?" },
         { QueryType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
+        { QueryType::EGetAllUsers, "SELECT DISTINCT uid FROM app" },
     };
 
     /**
@@ -232,6 +234,17 @@ public:
      * @exception DB::SqlConnection::Exception::InternalError on internal error
      */
     void GetUserApps(uid_t uid, std::vector<std::string> &apps);
+
+    /**
+     * This is a temporary method - GUMD will provide a call for us,
+     * which we are going to use. Until then, we'll fetch the list of users
+     * from security-manager's database.
+     *
+     * Retrieve list of all users
+     *
+     * @param[out] userList - list of all users
+     */
+    void GetListOfUsers(std::vector<uid_t> &userList);
 };
 
 } //namespace SecurityManager

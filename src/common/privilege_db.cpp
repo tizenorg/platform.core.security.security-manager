@@ -266,5 +266,16 @@ void PrivilegeDb::GetUserApps(uid_t uid, std::vector<std::string> &apps)
     });
 }
 
+void PrivilegeDb::GetListOfUsers(std::vector<uid_t> &userList)
+{
+   try_catch<void>([&] {
+        auto &command = getQuery(QueryType::EGetAllUsers);
+        while (command->Step()) {
+            uid_t uid = command->GetColumnInteger(0);
+            LogDebug("User " << uid << " found");
+            userList.push_back(uid);
+        };
+    });
+}
 
 } //namespace SecurityManager
