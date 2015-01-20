@@ -303,4 +303,16 @@ void PrivilegeDb::GetAppIdsForPkgId(const std::string &pkgId,
     });
 }
 
+void PrivilegeDb::GetListOfUsers(std::vector<uid_t> &userList)
+{
+   try_catch<void>([&] {
+        auto &command = getQuery(QueryType::EGetAllUsers);
+        while (command->Step()) {
+            uid_t uid = command->GetColumnInteger(0);
+            LogDebug("User " << uid << " found");
+            userList.push_back(uid);
+        };
+    });
+}
+
 } //namespace SecurityManager
