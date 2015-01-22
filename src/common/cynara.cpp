@@ -134,11 +134,14 @@ static bool checkCynaraError(int result, const std::string &msg)
     }
 }
 
-static void linkBuckets(const std::string &bucket,
-                       const std::string &goToBucket)
+/*
+ * This function creates generic rule that redirects from bucket to goToBucket and adds
+ * it to the CynaraAdminPolicy policies vector
+ * */
+static inline void linkBuckets(std::vector<CynaraAdminPolicy> &policies,
+                               const std::string &bucket,
+                               const std::string &goToBucket)
 {
-    std::vector<CynaraAdminPolicy> policies;
-
     policies.push_back(CynaraAdminPolicy(
                 CYNARA_ADMIN_WILDCARD,
                 CYNARA_ADMIN_WILDCARD,
@@ -146,8 +149,6 @@ static void linkBuckets(const std::string &bucket,
                 goToBucket,
                 bucket
     ));
-
-    CynaraAdmin::getInstance().SetPolicies(policies);
 }
 
 CynaraAdmin::CynaraAdmin()
@@ -292,12 +293,14 @@ void CynaraAdmin::InitBuckets()
     CreateBucket(Buckets.at(Bucket::USER_TYPE_SYSTEM), CynaraAdminPolicy::Operation::Deny);
     CreateBucket(Buckets.at(Bucket::MAIN), CynaraAdminPolicy::Operation::Deny);
 
-    linkBuckets(Buckets.at(Bucket::USER_TYPE_ADMIN), Buckets.at(Bucket::ADMIN));
-    linkBuckets(Buckets.at(Bucket::USER_TYPE_NORMAL), Buckets.at(Bucket::ADMIN));
-    linkBuckets(Buckets.at(Bucket::USER_TYPE_GUEST), Buckets.at(Bucket::ADMIN));
-    linkBuckets(Buckets.at(Bucket::USER_TYPE_SYSTEM), Buckets.at(Bucket::ADMIN));
-    linkBuckets(Buckets.at(Bucket::MAIN), Buckets.at(Bucket::MANIFESTS));
-    linkBuckets(CYNARA_ADMIN_DEFAULT_BUCKET, Buckets.at(Bucket::MAIN));
+    std::vector<CynaraAdminPolicy> policies;
+    linkBuckets(policies, Buckets.at(Bucket::USER_TYPE_ADMIN), Buckets.at(Bucket::ADMIN));
+    linkBuckets(policies, Buckets.at(Bucket::USER_TYPE_NORMAL), Buckets.at(Bucket::ADMIN));
+    linkBuckets(policies, Buckets.at(Bucket::USER_TYPE_GUEST), Buckets.at(Bucket::ADMIN));
+    linkBuckets(policies, Buckets.at(Bucket::USER_TYPE_SYSTEM), Buckets.at(Bucket::ADMIN));
+    linkBuckets(policies, Buckets.at(Bucket::MAIN), Buckets.at(Bucket::MANIFESTS));
+    linkBuckets(policies, CYNARA_ADMIN_DEFAULT_BUCKET, Buckets.at(Bucket::MAIN));
+    CynaraAdmin::getInstance().SetPolicies(policies);
 }
 
 void CynaraAdmin::DefineUserTypePolicy(
@@ -317,8 +320,10 @@ void CynaraAdmin::DefineUserTypePolicy(
     } catch (CynaraException::BucketNotFound) {
         //Bucket didn't exist
     };
+
+    linkBuckets(policies, usertype, Buckets.at(Bucket::ADMIN));
+
     CynaraAdmin::getInstance().SetPolicies(policies);
-    linkBuckets(usertype, Buckets.at(Bucket::ADMIN));
 }
 
 Cynara::Cynara()
