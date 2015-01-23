@@ -335,6 +335,32 @@ void CynaraAdmin::UserInit(uid_t uid, security_manager_user_type userType)
     CynaraAdmin::getInstance().SetPolicies(policies);
 }
 
+void CynaraAdmin::UserRemove(uid_t uid)
+{
+    std::vector<CynaraAdminPolicy> policies;
+    std::string user = std::to_string(static_cast<unsigned int>(uid));
+
+    policies.push_back(CynaraAdminPolicy(CYNARA_ADMIN_ANY,
+                                            user,
+                                            CYNARA_ADMIN_ANY,
+                                            CynaraAdminPolicy::Operation::Delete,
+                                            Buckets.at(Bucket::MAIN)));
+    policies.push_back(CynaraAdminPolicy(CYNARA_ADMIN_ANY,
+                                            user,
+                                            CYNARA_ADMIN_ANY,
+                                            CynaraAdminPolicy::Operation::Delete,
+                                            Buckets.at(Bucket::PRIVACY_MANAGER)));
+    policies.push_back(CynaraAdminPolicy(CYNARA_ADMIN_ANY,
+                                            user,
+                                            CYNARA_ADMIN_ANY,
+                                            CynaraAdminPolicy::Operation::Delete,
+                                            Buckets.at(Bucket::ADMIN)));
+    /* application's privileges will be removed during all user's apps
+     * uninstallation, so there is no need to remove manifest entries here. */
+
+    CynaraAdmin::getInstance().SetPolicies(policies);
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(

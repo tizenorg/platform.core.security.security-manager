@@ -135,6 +135,14 @@ public:
      */
     void UserInit(uid_t uid, security_manager_user_type userType);
 
+    /**
+     * removes entries for a user from cynara database from buckets: main,
+     * privacy_manager, admin
+     *
+     * @param uid removed user uid
+     */
+    void UserRemove(uid_t uid);
+
 private:
     CynaraAdmin();
     struct cynara_admin *m_CynaraAdmin;
