@@ -152,6 +152,14 @@ public:
         const std::string &privilege,
         std::vector<CynaraAdminPolicy> &policies);
 
+    /**
+     * Removes entries for a user from cynara database from buckets: main,
+     * privacy_manager, admin
+     *
+     * @param uid removed user uid
+     */
+    void UserRemoveAllEntries(uid_t uid);
+
 private:
     CynaraAdmin();
 

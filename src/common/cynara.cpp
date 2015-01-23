@@ -371,6 +371,16 @@ void CynaraAdmin::EmptyBucket(const std::string &bucketName, bool recursive, con
             client + ", " + user + ", " + privilege);
 }
 
+void CynaraAdmin::UserRemoveAllEntries(uid_t uid)
+{
+    std::vector<CynaraAdminPolicy> policies;
+    std::string user = std::to_string(static_cast<unsigned int>(uid));
+
+    EmptyBucket(Buckets.at(Bucket::PRIVACY_MANAGER),1,
+            CYNARA_ADMIN_ANY, user, CYNARA_ADMIN_ANY);
+
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(
