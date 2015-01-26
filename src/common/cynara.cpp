@@ -184,6 +184,25 @@ CynaraAdminPolicy::~CynaraAdminPolicy()
     free(this->result_extra);
 }
 
+CynaraAdminPolicyDescr::CynaraAdminPolicyDescr(const int result, const std::string &name)
+{
+    this->result = result;
+    this->name = strdup(name.c_str());
+}
+
+CynaraAdminPolicyDescr::CynaraAdminPolicyDescr(CynaraAdminPolicyDescr &&that)
+{
+    result = that.result;
+    name = that.name;
+
+    that.name = nullptr;
+}
+
+CynaraAdminPolicyDescr::~CynaraAdminPolicyDescr()
+{
+    free(this->name);
+}
+
 static bool checkCynaraError(int result, const std::string &msg)
 {
     switch (result) {
@@ -333,6 +352,23 @@ void CynaraAdmin::UserInit(uid_t uid, security_manager_user_type userType)
                                             Buckets.at(Bucket::MAIN)));
 
     CynaraAdmin::getInstance().SetPolicies(policies);
+}
+
+void CynaraAdmin::ListPoliciesDescriptions(std::vector<CynaraAdminPolicyDescr> &policiesDescriptions)
+{
+    struct cynara_admin_policy_descr **descriptions = nullptr;
+
+    checkCynaraError(
+        cynara_admin_list_policies_descriptions(m_CynaraAdmin, &descriptions),
+        "Error while getting list of policies descriptions from Cynara.");
+
+    for (std::size_t i = 0; descriptions[i] != nullptr; i++) {
+        policiesDescriptions.push_back(std::move(*static_cast<CynaraAdminPolicyDescr*>(descriptions[i])));
+
+        free(descriptions[i]);
+    }
+
+    free(descriptions);
 }
 
 Cynara::Cynara()

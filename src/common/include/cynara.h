@@ -83,6 +83,19 @@ struct CynaraAdminPolicy : cynara_admin_policy
     ~CynaraAdminPolicy();
 };
 
+struct CynaraAdminPolicyDescr : cynara_admin_policy_descr
+{
+    CynaraAdminPolicyDescr(const int result, const std::string &name);
+
+    /* Don't provide copy constructor, it would cause pointer trouble. */
+    CynaraAdminPolicyDescr(const CynaraAdminPolicyDescr &that) = delete;
+
+    /* Move constructor is the way to go. */
+    CynaraAdminPolicyDescr(CynaraAdminPolicyDescr &&that);
+
+    ~CynaraAdminPolicyDescr();
+};
+
 class CynaraAdmin
 {
 public:
@@ -134,6 +147,15 @@ public:
      * @param userType type as enumerated in security-manager.h
      */
     void UserInit(uid_t uid, security_manager_user_type userType);
+
+    /**
+     * Wrapper for Cynara API function cynara_admin_list_policies_descriptions.
+     * It collects all policies descriptions, converts them to wrapper class
+     * CynaraAdminPolicyDescr and free's Cynara structures and array.
+     *
+     * @param policiesDescriptions empty vector for policies descriptions.
+     */
+    void ListPoliciesDescriptions(std::vector<CynaraAdminPolicyDescr> &policiesDescriptions);
 
 private:
     CynaraAdmin();
