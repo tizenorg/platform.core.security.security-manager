@@ -83,6 +83,13 @@ struct CynaraAdminPolicy : cynara_admin_policy
     ~CynaraAdminPolicy();
 };
 
+struct CynaraAdminPolicyDescr : cynara_admin_policy_descr
+{
+    CynaraAdminPolicyDescr(const int result, const std::string &name);
+
+    ~CynaraAdminPolicyDescr();
+};
+
 class CynaraAdmin
 {
 public:
@@ -134,6 +141,16 @@ public:
      * @param userType type as enumerated in security-manager.h
      */
     void UserInit(uid_t uid, security_manager_user_type userType);
+
+    /**
+     * Wrapper for Cynara API function cynara_admin_list_policies_descriptions.
+     * It collects all policies descriptions, converts them to wrapper class
+     * CynaraAdminPolicyDescr, sorts them, free's Cynara structures and array.
+     * Then extracts names of policies and returns as std strings.
+     *
+     * @param policiesDescriptions empty vector for policies descriptions.
+     */
+    void ListPoliciesDescriptions(std::vector<std::string> &policiesDescriptions);
 
 private:
     CynaraAdmin();

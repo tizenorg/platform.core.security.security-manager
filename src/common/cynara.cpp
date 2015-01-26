@@ -23,6 +23,7 @@
 
 #include <cstring>
 #include "cynara.h"
+#include <algorithm>
 
 #include <dpl/log/log.h>
 
@@ -184,6 +185,17 @@ CynaraAdminPolicy::~CynaraAdminPolicy()
     free(this->result_extra);
 }
 
+CynaraAdminPolicyDescr::CynaraAdminPolicyDescr(const int result, const std::string &name)
+{
+    this->result = result;
+    this->name = strdup(name.c_str());
+}
+
+CynaraAdminPolicyDescr::~CynaraAdminPolicyDescr()
+{
+    free(this->name);
+}
+
 static bool checkCynaraError(int result, const std::string &msg)
 {
     switch (result) {
@@ -333,6 +345,35 @@ void CynaraAdmin::UserInit(uid_t uid, security_manager_user_type userType)
                                             Buckets.at(Bucket::MAIN)));
 
     CynaraAdmin::getInstance().SetPolicies(policies);
+}
+
+void CynaraAdmin::ListPoliciesDescriptions(std::vector<std::string> &policiesDescriptions)
+{
+    struct cynara_admin_policy_descr **descriptions = nullptr;
+    std::vector<CynaraAdminPolicyDescr> temp_vec;
+
+    checkCynaraError(
+        cynara_admin_list_policies_descriptions(m_CynaraAdmin, &descriptions),
+        "Error while getting list of policies descriptions from Cynara.");
+
+    // insert structs into vector
+    for (std::size_t i = 0; descriptions[i] != nullptr; i++) {
+        temp_vec.push_back(*static_cast<CynaraAdminPolicyDescr*>(descriptions[i]));
+        free(descriptions[i]);
+    }
+
+    free(descriptions);
+
+    // sort the vector
+    std::sort(temp_vec.begin(), temp_vec.end(), [](const CynaraAdminPolicyDescr &left, const CynaraAdminPolicyDescr &right) {
+        return left.result < right.result;
+    });
+
+    // extract strings
+    for(std::vector<CynaraAdminPolicyDescr>::iterator it = temp_vec.begin(); it != temp_vec.end(); ++it) {
+        policiesDescriptions.push_back(std::string(it->name));
+    }
+
 }
 
 Cynara::Cynara()
