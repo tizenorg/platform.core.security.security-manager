@@ -380,6 +380,37 @@ void CynaraAdmin::EmptyBucket(const std::string &bucketName, bool recursive, con
             client + ", " + user + ", " + privilege);
 }
 
+void CynaraAdmin::ListPoliciesDescriptions(std::vector<std::string> &policiesDescriptions)
+{
+    struct cynara_admin_policy_descr **descriptions = nullptr;
+    int descriptionsSize = 0;
+
+    checkCynaraError(
+        cynara_admin_list_policies_descriptions(m_CynaraAdmin, &descriptions),
+        "Error while getting list of policies descriptions from Cynara.");
+
+    //  count size of array
+    for (descriptionsSize = 0; descriptions[descriptionsSize] != nullptr; ++descriptionsSize);
+
+    policiesDescriptions.clear();
+
+    if(descriptionsSize == 0)
+    {
+        LogError("Fetching policies levels descriptions from Cynara returned empty list. "
+                "There should be at least 2 entries - Allow and Deny");
+        return;
+    }
+
+    // extract strings
+    for(int i = 0; descriptions[i] != nullptr; i++) {
+        policiesDescriptions.push_back(std::move(descriptions[i]->name));
+        free(descriptions[i]->name);
+        free(descriptions[i]);
+    }
+
+    free(descriptions);
+}
+
 Cynara::Cynara()
 {
     checkCynaraError(

@@ -159,6 +159,15 @@ public:
         const std::string &privilege,
         std::vector<CynaraAdminPolicy> &policies);
 
+    /**
+     * Wrapper for Cynara API function cynara_admin_list_policies_descriptions.
+     * It collects all policies descriptions, extracts names
+     * of policies and returns as std strings.
+     *
+     * @param policiesDescriptions empty vector for policies descriptions.
+     */
+    void ListPoliciesDescriptions(std::vector<std::string> &policiesDescriptions);
+
 private:
     CynaraAdmin();
 
