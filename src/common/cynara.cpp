@@ -23,6 +23,7 @@
 
 #include <cstring>
 #include "cynara.h"
+#include <algorithm>
 
 #include <dpl/log/log.h>
 
@@ -378,6 +379,35 @@ void CynaraAdmin::EmptyBucket(const std::string &bucketName, bool recursive, con
             client.c_str(), user.c_str(), privilege.c_str()),
         "Error while emptying bucket: " + bucketName + ", filter (C, U, P): " +
             client + ", " + user + ", " + privilege);
+}
+
+void CynaraAdmin::ListPoliciesDescriptions(std::vector<std::string> &policiesDescriptions)
+{
+    struct cynara_admin_policy_descr **descriptions = nullptr;
+    int descriptionsSize = -1;
+
+    checkCynaraError(
+        cynara_admin_list_policies_descriptions(m_CynaraAdmin, &descriptions),
+        "Error while getting list of policies descriptions from Cynara.");
+
+    //  count size of array
+    for (std::size_t i = 0; descriptions[i] != nullptr; i++) {
+        descriptionsSize++;
+    }
+
+    // sort the array
+    std::sort(descriptions, descriptions+descriptionsSize,
+              [](const cynara_admin_policy_descr *left, const cynara_admin_policy_descr *right) {
+        return left->result < right->result;
+    });
+
+    // extract strings
+    for(std::size_t i = 0; descriptions[i] != nullptr; i++) {
+        policiesDescriptions.push_back(std::move(descriptions[i]->name));
+        free(descriptions[i]);
+    }
+
+    free(descriptions);
 }
 
 Cynara::Cynara()
