@@ -126,6 +126,7 @@ enum class SecurityModuleCall
     APP_GET_GROUPS,
     USER_ADD,
     USER_DELETE,
+    NOOP = 0x90,
 };
 
 } // namespace SecurityManager
