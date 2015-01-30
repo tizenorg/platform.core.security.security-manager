@@ -634,3 +634,126 @@ int security_manager_user_delete(const user_req *p_req)
         }
     });
 }
+
+
+/***************************POLICY***************************************/
+
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_req_new(policy_update_req **pp_req)
+{
+    if (!pp_req)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    try {
+        *pp_req = new policy_update_req;
+    } catch (std::bad_alloc& ex) {
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+void security_manager_policy_update_req_free(policy_update_req *p_req)
+{
+    delete p_req;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_send_for_admin(policy_update_req *p_req)
+{
+    (void)p_req;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_send_for_self(policy_update_req *p_req)
+{
+    (void)p_req;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+
+SECURITY_MANAGER_API
+void security_manager_policy_entry_free(policy_entry *p_entry)
+{
+    (void) p_entry;
+
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_result_description_fetch(const result_t result, char **p_description)
+{
+    (void)result;
+    (void)p_description;
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_add_app_id(policy_entry *p_entry, const char *app_id)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_entry->appId = app_id;
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_add_user(policy_entry *p_entry, uid_t uid)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_entry->uid = uid;
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_add_privilege(policy_entry *p_entry, const char *privilege)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_entry->privilege = privilege;
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+//NON API todo place it in some better place and return proper value:
+result_t get_policy_val(const char *const policy_value){
+    (void)(policy_value);
+    return 1;
+}
+
+//NON API todo place it in some better place and return proper value:
+const char * get_policy_string(result_t val){
+    (void)(val);
+    return "DENY";
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_set_value(policy_entry *p_entry, const char *policy_value)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_entry->current_value = get_policy_val(policy_value);
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_get_value(policy_entry *p_entry, const char **policy_value)
+{
+    if (!p_entry || !policy_value)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    *policy_value = get_policy_string(p_entry->current_value);
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_get_max_value(policy_entry *p_entry, const char **policy_value)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    *policy_value = get_policy_string(p_entry->max_value);
+    return  SECURITY_MANAGER_SUCCESS;
+}
