@@ -677,6 +677,66 @@ int security_manager_policy_update_send_for_self(policy_update_req *p_req)
 }
 
 
+
+int security_manager_get_configured_policy_for_admin(
+        const char *const user_filter,
+        const char *const app_filter,
+        const char *const privilege_filter,
+        policy_entry **pp_privs_policy, size_t *p_size)
+{
+    (void)user_filter;
+    (void)app_filter;
+    (void)privilege_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+
+int security_manager_get_configured_policy_for_self(
+        const char *const app_filter,
+        const char *const privilege_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size)
+{
+    (void)app_filter;
+    (void)privilege_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+
+int security_manager_get_whole_policy(
+        const char *const user_filter,
+        const char *const app_filter,
+        const char *const privilege_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size)
+{
+    (void)user_filter;
+    (void)app_filter;
+    (void)privilege_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+
+int security_manager_get_whole_policy_for_self(
+        const char *const app_filter,
+        const char *const privilege_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size)
+{
+    (void)app_filter;
+    (void)privilege_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+
 SECURITY_MANAGER_API
 void security_manager_policy_entry_free(policy_entry *p_entry)
 {
@@ -757,3 +817,5 @@ int security_manager_policy_entry_get_max_value(policy_entry *p_entry, const cha
     *policy_value = get_policy_string(p_entry->max_value);
     return  SECURITY_MANAGER_SUCCESS;
 }
+
+
