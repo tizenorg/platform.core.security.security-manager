@@ -634,3 +634,110 @@ int security_manager_user_delete(const user_req *p_req)
         }
     });
 }
+
+
+/***************************POLICY***************************************/
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_req_new(policy_update_req **pp_req)
+{
+    if (!pp_req)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    try {
+        *pp_req = new policy_update_req;
+    } catch (std::bad_alloc& ex) {
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+void security_manager_policy_update_req_free(policy_update_req *p_req)
+{
+    delete p_req;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_send_for_admin(policy_update_req *p_req)
+{
+    (void)p_req;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_update_send_for_self(policy_update_req *p_req)
+{
+    (void)p_req;
+
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_new(policy_entry **p_entry)
+{
+    if (!p_entry)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    try {
+        *p_entry = new policy_entry;
+    } catch (std::bad_alloc& ex) {
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+void security_manager_policy_entry_free(policy_entry *p_entry)
+{
+    delete p_entry;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_set_application(policy_entry *p_entry, const char *app_id)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_entry->appId = app_id;
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_set_user(policy_entry *p_entry, const char *user)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_entry->user = user;
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_set_privilege(policy_entry *p_entry, const char *privilege)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_entry->privilege = privilege;
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_set_level(policy_entry *p_entry, const char *policy_level)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_entry->current_level = policy_level;
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_set_admin_level(policy_entry *p_entry, const char *policy_level)
+{
+    if (!p_entry)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_entry->max_level = policy_level;
+    return  SECURITY_MANAGER_SUCCESS;
+}
