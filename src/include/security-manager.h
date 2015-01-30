@@ -81,6 +81,22 @@ typedef struct app_inst_req app_inst_req;
 struct user_req;
 typedef struct user_req user_req;
 
+/*! \brief data structure responsible for handling policy updates
+ *  required to manage users' and applications' permissions */
+struct policy_update_req;
+typedef struct policy_update_req policy_update_req;
+
+
+struct policy_entry;
+typedef struct policy_entry policy_entry;
+
+/*! \brief wildcard to be used in policy update requests to match all possible values of
+ *         given field. Use it, for example when it is desired to apply policy change for all
+ *         users of chosen type or all apps for selected user. Please see documentation of the
+ *         security_manager_policy_add_unit() function for further details.
+ */
+#define SECURITY_MANAGER_ANY "#"
+
 /**
  * This function translates lib_retcode error codes to strings describing
  * errors.
@@ -305,6 +321,168 @@ int security_manager_user_add(const user_req *p_req);
  */
 int security_manager_user_delete(const user_req *p_req);
 
+/**
+ * \brief This function is responsible for initializing policy_update_req data structure.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * policy_update_req_free() for freeing allocated resources.
+ *
+ * \param[out] pp_req Address of pointer for handle policy_update_req structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_req_new(policy_update_req **pp_req);
+
+/**
+ * \brief This function is used to free resources allocated by calling policy_update_req_new().
+ * This will automatically free all entries that were included in req
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ */
+void security_manager_policy_update_req_free(policy_update_req *p_req);
+
+/**
+ * \brief This function is responsible for initializing policy_entry data structure.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * policy_policy_entry_free() for freeing allocated resources.
+ *
+ * \param[out] pp_entry Address of pointer for handle policy_entry structure
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_new(policy_entry **pp_entry);
+
+/**
+ * \brief This function is used to free resources allocated by calling
+ * policy_entry_req_new() or returned from security-manager API otherwise.
+ * This will automatically free all entries that were included in p_entry
+ * \param[in] p_entry Pointer handling allocated policy_entry structure
+ */
+void security_manager_policy_entry_free(policy_entry *p_entry);
+
+/**
+ * This function is used to set up application identifier in p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] app_id Application identifier to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_set_app_id(policy_entry *p_entry, const char *app_id);
+
+/**
+ * This function is used to set up user identifier in p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] user_id User identifier to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_set_user(policy_entry *p_entry, const char *user_id);
+
+/**
+ * This function is used to set up privilege in p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] privilege Privilege to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_set_privilege(policy_entry *p_entry, const char *privilege);
+
+/**
+ * This function is used to set up privilege level in p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] policy_level Policy level to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_set_level(policy_entry *p_entry, const char *policy_level);
+
+/**
+ * This function is used to set up privilege level for admin policy entries in p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] policy_level Policy level to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_set_admin_level(policy_entry *p_entry, const char *policy_level);
+
+/**
+ * This function is used to obtain current policy level from p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[out] policy_level pointer to which policy_level will be written to.
+ * Warning: pointer written to policy_level points to internal p_entry data.
+ * Accessing to it after calling security_manager_policy_entry_free on p_entry
+ * may lead to disaster. If one need to use policy_level longer than p_entry
+ * use security_manager_policy_entry_get_value of copy policy_level to own
+ * memory before freeing p_entry with security_manager_policy_entry_free.
+ *
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_fetch_level(policy_entry *p_entry, const char **policy_level);
+
+/**
+ * This function is used to obtain maximum policy level from p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure.
+ * \param[out] policy_level pointer to which policy_level will be written to.
+ * Warning: pointer written to policy_level points to internal p_entry data.
+ * Accessing to it after calling security_manager_policy_entry_free on p_entry
+ * may lead to disaster. If one need to use policy_level longer than p_entry
+ * use security_manager_policy_entry_get_value of copy policy_level to own
+ * memory before freeing p_entry with security_manager_policy_entry_free.
+ *
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_fetch_max_level(policy_entry *p_entry, const char **policy_level);
+
+/**
+ * This function is used to obtain current policy level from p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[out] policy_level pointer to which policy_level will be written to.
+ * Warning: memory pointed to by value written to policy_level needs to be freed
+ * after calling this function with free():
+ *            char *policy level;
+ *            security_manager_policy_entry_get_level(p_entry, &policy_level);
+ *            ...do sth...
+ *            free(policy_level);
+ *
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_get_level(policy_entry *p_entry, char **policy_level);
+
+/**
+ * This function is used to obtain maximum policy level from p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure.
+ * \param[out] policy_level pointer to which policy_level will be written to.
+ * Warning: memory pointed to by value written to policy_level needs to be freed
+ * after calling this function with free():
+ *            char *policy level;
+ *            security_manager_policy_entry_get_level(p_entry, &policy_level);
+ *            ...do sth...
+ *            free(policy_level);
+ *
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_get_max_level(policy_entry *p_entry, char **policy_level);
+
+/**
+ * \brief This function is used to send the prepared policy update request using privacy manager
+ *        entry point. The request should contain at least one policy update unit, otherwise
+ *        the SECURITY_MANAGER_ERROR_INPUT_PARAM is returned.
+ *
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ * \return API return code or error code
+ *
+ * Example:
+ *
+ * - to update policy for user by himself:
+ *
+ *
+ * - to update policy by administrator for some user:
+ *
+ *
+ */
+int security_manager_policy_update_send(policy_update_req *p_req);
 
 #ifdef __cplusplus
 }
