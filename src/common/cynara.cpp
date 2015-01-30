@@ -362,8 +362,6 @@ void CynaraAdmin::ListPolicies(
 
     for (std::size_t i = 0; pp_policies[i] != nullptr; i++) {
         policies.push_back(std::move(*static_cast<CynaraAdminPolicy*>(pp_policies[i])));
-
-        free(pp_policies[i]);
     }
 
     free(pp_policies);
