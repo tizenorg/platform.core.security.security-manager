@@ -379,6 +379,59 @@ int security_manager_policy_update_send_for_admin(policy_update_req *p_req);
  */
 int security_manager_policy_update_send_for_self(policy_update_req *p_req);
 
+/**
+ * \brief Function fetches all privileges that are edited (overwritten) by admin user.
+ *        The result is stored in the policy_entry structures array.
+ *
+ * \attention It should be called by admin user. Normal users may list edited policy entries
+ *            using security_manager_get_configured_policy_for_self() API function.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * security_manager_policy_entries_free() for freeing allocated resources.
+ *
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_configured_policy_for_admin(
+        policy_entry filter,
+        policy_entry **pp_privs_policy, size_t *p_size);
+
+/**
+ * \brief Function fetches all privileges that are edited (overwritte) by user in his
+ *        privacy manager. The result is stored in the policy_entry structures array.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * security_manager_policy_entries_free() for freeing allocated resources.
+ *
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_configured_policy_for_self(
+        policy_entry filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size);
+
+/**
+ * \brief Function gets the whole policy for all users, their applications and privileges.
+ *        The result is stored in the policy_entry structures array.
+ *
+ * \attention It should be called by admin user. Normal users may list policy of privileges
+ *            and applications using security_manager_get_whole_policy_for_self() API function.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * security_manager_policy_entries_free() for freeing allocated resources.
+ *
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_policy(
+        policy_entry filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size);
+
 #ifdef __cplusplus
 }
 #endif
