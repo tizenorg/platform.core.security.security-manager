@@ -112,6 +112,8 @@ CynaraAdmin::BucketsMap CynaraAdmin::Buckets =
     { Bucket::MANIFESTS, std::string("MANIFESTS")},
 };
 
+CynaraAdmin::TypeToDescriptionsMap CynaraAdmin::TypeToDescriptionsMapping = {};
+CynaraAdmin::DescriptionsToTypeMap CynaraAdmin::DescriptionsToTypeMapping = {};
 
 CynaraAdminPolicy::CynaraAdminPolicy(const std::string &client, const std::string &user,
         const std::string &privilege, int operation,
@@ -403,12 +405,28 @@ void CynaraAdmin::ListPoliciesDescriptions(std::vector<std::string> &policiesDes
 
     // extract strings
     for(std::size_t i = 0; descriptions[i] != nullptr; i++) {
+        std::string descriptionName(descriptions[i]->name);
+
+        DescriptionsToTypeMapping[descriptionName] = descriptions[i]->result;
+        TypeToDescriptionsMapping[descriptions[i]->result] = descriptionName;
+
         policiesDescriptions.push_back(std::move(descriptions[i]->name));
         free(descriptions[i]);
     }
 
     free(descriptions);
 }
+
+std::string CynaraAdmin::convertToPolicyDescription(const int policyType)
+{
+    return TypeToDescriptionsMapping.at(policyType);
+}
+
+int CynaraAdmin::convertToPolicyType(const std::string &policy)
+{
+    return DescriptionsToTypeMapping.at(policy);
+}
+
 
 Cynara::Cynara()
 {
