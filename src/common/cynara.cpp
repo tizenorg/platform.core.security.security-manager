@@ -112,6 +112,8 @@ CynaraAdmin::BucketsMap CynaraAdmin::Buckets =
     { Bucket::MANIFESTS, std::string("MANIFESTS")},
 };
 
+CynaraAdmin::TypeToDescriptionsMap CynaraAdmin::TypeToDescriptionsMapping = {};
+CynaraAdmin::DescriptionsToTypeMap CynaraAdmin::DescriptionsToTypeMapping = {};
 
 CynaraAdminPolicy::CynaraAdminPolicy(const std::string &client, const std::string &user,
         const std::string &privilege, int operation,
@@ -207,6 +209,7 @@ static bool checkCynaraError(int result, const std::string &msg)
 }
 
 CynaraAdmin::CynaraAdmin()
+    : m_policyDescriptionsInitialized(false)
 {
     checkCynaraError(
         cynara_admin_initialize(&m_CynaraAdmin),
@@ -381,10 +384,11 @@ void CynaraAdmin::EmptyBucket(const std::string &bucketName, bool recursive, con
             client + ", " + user + ", " + privilege);
 }
 
-void CynaraAdmin::ListPoliciesDescriptions(std::vector<std::string> &policiesDescriptions)
+void CynaraAdmin::FetchCynaraPolicyDescriptions()
 {
     struct cynara_admin_policy_descr **descriptions = nullptr;
     int descriptionsSize = 0;
+    m_policyDescriptionsInitialized = true;
 
     checkCynaraError(
         cynara_admin_list_policies_descriptions(m_CynaraAdmin, &descriptions),
@@ -401,12 +405,44 @@ void CynaraAdmin::ListPoliciesDescriptions(std::vector<std::string> &policiesDes
 
     // extract strings
     for(std::size_t i = 0; descriptions[i] != nullptr; i++) {
-        policiesDescriptions.push_back(std::move(descriptions[i]->name));
+        std::string descriptionName(descriptions[i]->name);
+
+        DescriptionsToTypeMapping[descriptionName] = descriptions[i]->result;
+        TypeToDescriptionsMapping[descriptions[i]->result] = descriptionName;
+
+        free(descriptions[i]->name);
         free(descriptions[i]);
     }
 
     free(descriptions);
 }
+
+void CynaraAdmin::ListPoliciesDescriptions(std::vector<std::string> &policiesDescriptions)
+{
+    if(!m_policyDescriptionsInitialized)
+        FetchCynaraPolicyDescriptions();
+
+    for( TypeToDescriptionsMap::iterator it = TypeToDescriptionsMapping.begin(); it != TypeToDescriptionsMapping.end(); ++it ) {
+        policiesDescriptions.push_back( it->second );
+    }
+}
+
+std::string CynaraAdmin::convertToPolicyDescription(const int policyType)
+{
+    if(!m_policyDescriptionsInitialized)
+        FetchCynaraPolicyDescriptions();
+
+    return TypeToDescriptionsMapping.at(policyType);
+}
+
+int CynaraAdmin::convertToPolicyType(const std::string &policy)
+{
+    if(!m_policyDescriptionsInitialized)
+        FetchCynaraPolicyDescriptions();
+
+    return DescriptionsToTypeMapping.at(policy);
+}
+
 
 Cynara::Cynara()
 {
