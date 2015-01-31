@@ -91,6 +91,12 @@ public:
     typedef std::map<Bucket, const std::string > BucketsMap;
     static BucketsMap Buckets;
 
+    typedef  std::map<int, std::string> TypeToDescriptionsMap;
+    static TypeToDescriptionsMap TypeToDescriptionsMapping;
+
+    typedef  std::map<std::string, int> DescriptionsToTypeMap;
+    static DescriptionsToTypeMap DescriptionsToTypeMapping;
+
     virtual ~CynaraAdmin();
 
     static CynaraAdmin &getInstance();
@@ -167,6 +173,9 @@ public:
      * @param policiesDescriptions empty vector for policies descriptions.
      */
     void ListPoliciesDescriptions(std::vector<std::string> &policiesDescriptions);
+
+    std::string convertToPolicyDescription(const int policyType);
+    int convertToPolicyType(const std::string &policy);
 
 private:
     CynaraAdmin();
