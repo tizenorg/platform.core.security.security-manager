@@ -15,7 +15,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License
  *
- *	Security Manager library header
+ *  Security Manager library header
  */
 /*
  * @file        client-security-manager.cpp
@@ -60,6 +60,24 @@ static std::map<enum lib_retcode, std::string> lib_retcode_string_map = {
     {SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED, "User does not have sufficient "
                                                    "rigths to perform an operation"}
 };
+
+policy_entry *allocate_and_copy_entries(const std::vector<policy_entry> &entries)
+{
+    if (entries.size() == 0)
+        return nullptr;
+
+    policy_entry *result = new policy_entry[entries.size()];
+
+    for(size_t i = 0; i < entries.size(); i++) {
+        result[i].user = std::string(entries[i].user);
+        result[i].appId = std::string(entries[i].appId);
+        result[i].privilege = std::string(entries[i].privilege);
+        result[i].currentLevel = std::string(entries[i].currentLevel);
+        result[i].maxLevel = std::string(entries[i].maxLevel);
+    }
+
+    return result;
+}
 
 SECURITY_MANAGER_API
 const char *security_manager_strerror(enum lib_retcode rc)
@@ -635,7 +653,6 @@ int security_manager_user_delete(const user_req *p_req)
     });
 }
 
-
 /***************************POLICY***************************************/
 
 SECURITY_MANAGER_API
@@ -662,9 +679,78 @@ void security_manager_policy_update_req_free(policy_update_req *p_req)
 SECURITY_MANAGER_API
 int security_manager_policy_update_send(policy_update_req *p_req)
 {
-    (void)p_req;
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
 
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    if (p_req == nullptr || p_req->units.size() == 0)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    return try_catch([&] {
+
+        //put request into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::POLICY_UPDATE));
+        Serialization::Serialize(send, p_req->units);
+
+        //send it to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+            case SECURITY_MANAGER_API_SUCCESS:
+                return SECURITY_MANAGER_SUCCESS;
+            case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+                return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+            default:
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
+}
+
+inline int security_manager_get_policy_internal(
+        SecurityManager::SecurityModuleCall call_type,
+        policy_entry *p_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size)
+{
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
+
+    if (pp_privs_policy == nullptr || p_size == nullptr)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    return try_catch([&] {
+        //put request into buffer
+        Serialization::Serialize(send, static_cast<int>(call_type));
+        Serialization::Serialize(send, *p_filter);
+        //send it to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        switch(retval) {
+            case SECURITY_MANAGER_API_SUCCESS: {
+                //extract and allocate buffers for privs policy entries
+                std::vector<policy_entry> entries;
+                Deserialization::Deserialize(recv, entries);
+                *pp_privs_policy = allocate_and_copy_entries(entries);
+                *p_size = entries.size();
+                return SECURITY_MANAGER_SUCCESS;
+            }
+            case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+                return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+
+            default:
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+    });
 }
 
 SECURITY_MANAGER_API
@@ -673,10 +759,7 @@ int security_manager_get_configured_policy_for_admin(
         policy_entry **pp_privs_policy,
         size_t *p_size)
 {
-    (void)p_filter;
-    (void)pp_privs_policy;
-    (void)p_size;
-    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_policy_internal(SecurityModuleCall::GET_CONF_POLICY_ADMIN, p_filter, pp_privs_policy, p_size);
 }
 
 SECURITY_MANAGER_API
@@ -685,23 +768,17 @@ int security_manager_get_configured_policy_for_self(
         policy_entry **pp_privs_policy,
         size_t *p_size)
 {
-    (void)p_filter;
-    (void)pp_privs_policy;
-    (void)p_size;
-    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+    return security_manager_get_policy_internal(SecurityModuleCall::GET_CONF_POLICY_SELF, p_filter, pp_privs_policy, p_size);
 }
 
-
+SECURITY_MANAGER_API
 int security_manager_get_policy(
         policy_entry *p_filter,
         policy_entry **pp_privs_policy,
         size_t *p_size)
 {
-    (void)p_filter;
-    (void)pp_privs_policy;
-    (void)p_size;
-    return  SECURITY_MANAGER_ERROR_UNKNOWN;
-}
+    return security_manager_get_policy_internal(SecurityModuleCall::GET_POLICY, p_filter, pp_privs_policy, p_size);
+};
 
 SECURITY_MANAGER_API
 int security_manager_policy_entry_new(policy_entry **p_entry)
