@@ -91,6 +91,12 @@ public:
     typedef std::map<Bucket, const std::string > BucketsMap;
     static BucketsMap Buckets;
 
+    typedef  std::map<int, std::string> TypeToDescriptionsMap;
+    static TypeToDescriptionsMap TypeToDescriptionsMapping;
+
+    typedef  std::map<std::string, int> DescriptionsToTypeMap;
+    static DescriptionsToTypeMap DescriptionsToTypeMapping;
+
     virtual ~CynaraAdmin();
 
     static CynaraAdmin &getInstance();
@@ -168,6 +174,29 @@ public:
      */
     void ListPoliciesDescriptions(std::vector<std::string> &policiesDescriptions);
 
+    /**
+     * Function translates internal Cynara policy type integer to string
+     * description. Descriptions are retrieved from Cynara using
+     * ListPoliciesDescriptions() function.
+     *
+     * @throws std::out_of_range
+     *
+     * @param policyType Cynara policy result type.
+     */
+    std::string convertToPolicyDescription(const int policyType);
+
+    /**
+     * Function translates Cynara policy result string
+     * description to internal Cynara policy type integer.
+     * Descriptions are retrieved from Cynara using
+     * ListPoliciesDescriptions() function.
+     *
+     * @throws std::out_of_range
+     *
+     * @param policy Cynara policy result string description.
+     */
+    int convertToPolicyType(const std::string &policy);
+
 private:
     CynaraAdmin();
 
@@ -183,7 +212,15 @@ private:
     void EmptyBucket(const std::string &bucketName, bool recursive,
         const std::string &client, const std::string &user, const std::string &privilege);
 
+    /**
+     * Get Cynara policies result descriptions and cache them in std::map
+     *
+     * @param force true if you want to reinitialize mappings
+     */
+    void FetchCynaraPolicyDescriptions(bool force = false);
+
     struct cynara_admin *m_CynaraAdmin;
+    bool m_policyDescriptionsInitialized;
 };
 
 class Cynara
