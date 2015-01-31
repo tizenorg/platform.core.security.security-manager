@@ -126,6 +126,11 @@ enum class SecurityModuleCall
     APP_GET_GROUPS,
     USER_ADD,
     USER_DELETE,
+    POLICY_UPDATE,
+    GET_POLICY,
+    GET_CONF_POLICY_ADMIN,
+    GET_CONF_POLICY_SELF,
+    POLICY_GET_DESCRIPTIONS
 };
 
 } // namespace SecurityManager
