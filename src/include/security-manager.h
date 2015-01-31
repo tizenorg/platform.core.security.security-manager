@@ -634,6 +634,27 @@ int security_manager_get_policy(
  */
 void security_manager_policy_entries_free(policy_entry *p_entries, const size_t size);
 
+/**
+ * This function returns array of available policies in form of simple
+ * text descriptions. Use
+ *
+ * @param descriptions pointer to array of strings.
+ * @param descriptions_count number of strings in descriptions array.
+ * @return API return code or error code.
+ */
+int security_manager_policy_get_descriptions(char ***descriptions, int *descriptions_count);
+
+/**
+ * This function free memory allocated by security_manager_policy_get_descriptions()
+ * function.
+ *
+ * @param descriptions array of strings returned by
+ * security_manager_policy_get_descriptions() function.
+ * @return API return code or error code.
+ */
+void security_manager_policy_descriptions_free(char **descriptions, int descriptions_count);
+
+
 #ifdef __cplusplus
 }
 #endif

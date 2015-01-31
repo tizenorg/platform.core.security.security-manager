@@ -700,6 +700,7 @@ int security_manager_policy_update_send(policy_update_req *p_req)
 
         //receive response from server
         Deserialization::Deserialize(recv, retval);
+
         switch(retval) {
             case SECURITY_MANAGER_API_SUCCESS:
                 return SECURITY_MANAGER_SUCCESS;
@@ -906,4 +907,74 @@ void security_manager_policy_entries_free(policy_entry *p_entries, const size_t 
     delete &p_entries[i];
     }
     delete [] p_entries;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_get_descriptions(char ***descriptions, int *descriptions_count)
+{
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
+    if (!descriptions || !descriptions_count)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    return try_catch([&] {
+
+        //put data into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::POLICY_GET_DESCRIPTIONS));
+
+        //send buffer to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+
+        switch(retval) {
+            case SECURITY_MANAGER_API_SUCCESS:
+                // success - continue
+                break;
+            case SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY:
+                return SECURITY_MANAGER_ERROR_MEMORY;
+            case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+            case SECURITY_MANAGER_API_ERROR_NO_SUCH_SERVICE:
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+            default:
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        int descCnt;
+        Deserialization::Deserialize(recv, descCnt);
+        *descriptions_count = descCnt;
+        LogInfo("Number of policy descriptions: " << descCnt);
+
+        char **array = new char *[descCnt];
+        std::vector<std::string> descriptionsVector;
+        Deserialization::Deserialize(recv, descriptionsVector);
+
+        for (int i = 0; i < descCnt; ++i) {
+            if (descriptionsVector[i].empty()) {
+                LogError("Unexpected empty description");
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+            }
+
+            array[i] = strdup(descriptionsVector[i].c_str());
+        }
+
+        *descriptions = array;
+
+        return SECURITY_MANAGER_SUCCESS;
+    });
+}
+
+SECURITY_MANAGER_API
+void security_manager_policy_descriptions_free(char **descriptions, int descriptions_count)
+{
+    for(int i = 0; i < descriptions_count; i++)
+    {
+        delete descriptions[i];
+    }
+    delete descriptions;
 }

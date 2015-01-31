@@ -422,5 +422,28 @@ int userDelete(uid_t uidDeleted, uid_t uid)
     return ret;
 }
 
+int policyGetDesc(std::vector<std::string> &descriptions)
+{
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+
+    try {
+        CynaraAdmin::getInstance().ListPoliciesDescriptions(descriptions);
+    } catch (const CynaraException::OutOfMemory &e) {
+        LogError("Error - out of memory while querying Cynara for policy descriptions list: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+    } catch (const CynaraException::InvalidParam &e) {
+        LogError("Error - invalid parameter while querying Cynara for policy descriptions list: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
+    } catch (const CynaraException::ServiceNotAvailable &e) {
+        LogError("Error - service not available while querying Cynara for policy descriptions list: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_NO_SUCH_SERVICE;
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while getting policy descriptions list from Cynara: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    return ret;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
