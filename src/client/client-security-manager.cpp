@@ -634,3 +634,61 @@ int security_manager_user_delete(const user_req *p_req)
         }
     });
 }
+
+SECURITY_MANAGER_API
+int security_manager_policy_get_descriptions(char ***descriptions, int *descriptions_count)
+{
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
+    if (!descriptions || !descriptions_count)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    return try_catch([&] {
+
+        //put data into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::POLICY_GET_DESCRIPTIONS));
+
+        //send buffer to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        if (retval != SECURITY_MANAGER_API_SUCCESS)
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+
+        int descCnt;
+        Deserialization::Deserialize(recv, descCnt);
+        *descriptions_count = descCnt;
+        LogInfo("Number of policy descriptions: " << descCnt);
+
+        char **array = (char **)malloc(descCnt * sizeof(char *));
+        for (int i = 0; i < descCnt; ++i) {
+            std::string description;
+            Deserialization::Deserialize(recv, description);
+
+            if (description.empty()) {
+                LogError("Unexpected empty description");
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+            }
+
+            array[i] = strdup(description.c_str());
+        }
+
+        *descriptions = array;
+
+        return SECURITY_MANAGER_SUCCESS;
+    });
+}
+
+SECURITY_MANAGER_API
+void security_manager_policy_descriptions_free(char **descriptions, int descriptions_count)
+{
+    for(int i = 0; i < descriptions_count; i++)
+    {
+        delete descriptions[i];
+    }
+    delete descriptions;
+}
