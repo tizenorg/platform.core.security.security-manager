@@ -25,9 +25,12 @@
 #ifndef _SECURITY_MANAGER_PROTOCOLS_
 #define _SECURITY_MANAGER_PROTOCOLS_
 
+#include "security-manager.h"
+
 #include <sys/types.h>
 #include <vector>
 #include <string>
+#include <dpl/serialization.h>
 
 /**
  * \name Return Codes
@@ -126,16 +129,65 @@ enum class SecurityModuleCall
     APP_GET_GROUPS,
     USER_ADD,
     USER_DELETE,
+    POLICY_UPDATE,
+    GET_POLICY,
+    GET_CONF_POLICY_ADMIN,
+    GET_CONF_POLICY_SELF,
 };
 
 } // namespace SecurityManager
 
-struct policy_entry {
+using namespace SecurityManager;
+
+struct policy_entry : ISerializable {
     std::string user;           // uid converted to string
     std::string appId;          // application identifier
-    std::string privilege;      // cynara privilege
+    std::string privilege;      // Cynara privilege
     std::string currentLevel;   // current level of privielege, or level asked to be set in privacy manager bucket
     std::string maxLevel;       // holds read maximum policy status or status to be set in admin bucket
+
+    /* default constructor is needed in Deserialization */
+    policy_entry() : user(""), appId(""), privilege(""), currentLevel(""), maxLevel("")
+    {}
+
+    policy_entry(const policy_entry &source) = delete; /* no copy constructor */
+    policy_entry &operator=(const policy_entry &second) = delete; /* no copy operator */
+
+    /* The move constructor is used when pushing objects to vector */
+    policy_entry(const policy_entry &&source) : user(source.user),
+                                              appId(std::move(source.appId)),
+                                              privilege(std::move(source.privilege)),
+                                              currentLevel(source.currentLevel),
+                                              maxLevel(source.maxLevel)
+    {}
+
+    /* The move assignment is used when receiving object from buffer */
+    policy_entry &operator=(const policy_entry &&second)
+    {
+        user          = std::move(second.user);
+        appId         = std::move(second.appId);
+        privilege     = std::move(second.privilege);
+        currentLevel = std::move(second.currentLevel);
+        maxLevel     = std::move(second.maxLevel);
+        return *this;
+    }
+
+    policy_entry(IStream &stream) {
+        Deserialization::Deserialize(stream, user);
+        Deserialization::Deserialize(stream, appId);
+        Deserialization::Deserialize(stream, privilege);
+        Deserialization::Deserialize(stream, currentLevel);
+        Deserialization::Deserialize(stream, maxLevel);
+    }
+
+    virtual void Serialize(IStream &stream) const {
+        Serialization::Serialize(stream, user);
+        Serialization::Serialize(stream, appId);
+        Serialization::Serialize(stream, privilege);
+        Serialization::Serialize(stream, currentLevel);
+        Serialization::Serialize(stream, maxLevel);
+    }
+
 };
 typedef struct policy_entry policy_entry;
 
@@ -143,6 +195,5 @@ typedef struct policy_entry policy_entry;
 struct policy_update_req {
     std::vector<const policy_entry *> units;
 };
-
 
 #endif // _SECURITY_MANAGER_PROTOCOLS_
