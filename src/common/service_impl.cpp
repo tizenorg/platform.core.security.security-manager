@@ -422,5 +422,19 @@ int userDelete(uid_t uidDeleted, uid_t uid)
     return ret;
 }
 
+int policyGetDesc(std::vector<std::string> &descriptions)
+{
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+
+    try {
+        CynaraAdmin::getInstance().ListPoliciesDescriptions(descriptions);
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while getting policies descriptions from Cynara: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    return ret;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
