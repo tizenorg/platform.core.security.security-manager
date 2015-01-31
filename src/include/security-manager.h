@@ -420,6 +420,28 @@ int security_manager_policy_entry_admin_set_level(policy_entry *p_entry, const c
 int security_manager_policy_update_req_add_entry(policy_update_req *p_req, const policy_entry *p_entry);
 
 /**
+ * This function is used to obtain current policy level from p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[out] policy_level pointer to which policy_level will be written to.
+ * \attention Warning: memory pointed to by value written to policy_level needs to be freed
+ *
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_get_level(policy_entry *p_entry, char **policy_level);
+
+/**
+ * This function is used to obtain maximal policy level from p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure.
+ * \param[out] policy_level pointer to which policy_level will be written to.
+ * \attention Warning: memory pointed to by value written to policy_level needs to be freed
+ *
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_get_max_level(policy_entry *p_entry, char **policy_level);
+
+/**
  * \brief This function is used to send the prepared policy update request using privacy manager
  *        entry point. The request should contain at least one policy update unit, otherwise
  *        the SECURITY_MANAGER_ERROR_INPUT_PARAM is returned.
@@ -514,6 +536,64 @@ int security_manager_policy_update_req_add_entry(policy_update_req *p_req, const
  *
  */
 int security_manager_policy_update_send(policy_update_req *p_req);
+
+/**
+ * \brief Function fetches all privileges enforced by admin user.
+ *        The result is stored in the policy_entry structures array.
+ *
+ * \note It should be called by user with http://tizen.org/privilege/systemsettings.admin privilege.
+ *       Normal users may list their personal policy entries using
+ *       security_manager_get_configured_policy_for_self() API function.
+ *
+ * \attention Developer is responsible for calling security_manager_policy_entries_free()
+ *            for freeing allocated resources.
+ *
+ * \param[in]  p_filter        Pointer to filter struct
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_configured_policy_for_admin(
+        policy_entry *p_filter,
+        policy_entry **pp_privs_policy, size_t *p_size);
+
+/**
+ * \brief Function fetches all privileges that are configured by user in his/her
+ *        privacy manager. The result is stored in the policy_entry structures array.
+ *        User may only modify privileges for his own UID.
+ *
+ * \attention Developer is responsible for calling security_manager_policy_entries_free()
+ *            for freeing allocated resources.
+ *
+ * \param[in]  p_filter        Pointer to filter struct
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_configured_policy_for_self(
+        policy_entry *p_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size);
+
+/**
+ * \brief Function gets the whole policy for all users, their applications and privileges.
+ *        The result is stored in the policy_entry structures array.
+ *
+ * \attention It should be called by admin user. Normal users may list policy of privileges
+ *            and applications using security_manager_get_whole_policy_for_self() API function.
+ *
+ * It uses dynamic allocation inside and it is user's responsibility to call
+ * security_manager_policy_entries_free() for freeing allocated resources.
+ *
+ * \param[in]  p_filter        Pointer to filter struct
+ * \param[out] pp_privs_policy Pointer handling allocated policy_entry structures array
+ * \param[out] p_size          Pointer where the size of allocated array will be stored
+ * \return API return code or error code
+ */
+int security_manager_get_policy(
+        policy_entry *p_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size);
 
 #ifdef __cplusplus
 }
