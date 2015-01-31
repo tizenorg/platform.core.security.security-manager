@@ -675,6 +675,41 @@ int security_manager_policy_update_send_for_self(policy_update_req *p_req)
     return SECURITY_MANAGER_ERROR_UNKNOWN;
 }
 
+SECURITY_MANAGER_API
+int security_manager_get_configured_policy_for_admin(
+        policy_entry *p_filter,
+        policy_entry **pp_privs_policy,
+	size_t *p_size)
+{
+    (void)p_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+SECURITY_MANAGER_API
+int security_manager_get_configured_policy_for_self(
+        policy_entry *p_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size)
+{
+    (void)p_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+
+int security_manager_get_policy(
+        policy_entry *p_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size)
+{
+    (void)p_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
 
 SECURITY_MANAGER_API
 int security_manager_policy_entry_new(policy_entry **p_entry)
@@ -749,5 +784,23 @@ int security_manager_policy_update_req_add_entry(policy_update_req *p_req, const
         return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
     p_req->units.push_back(*p_entry);//todo maybe it would be better to keep just pointers in vector?
 
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_get_level(policy_entry *p_entry, char **policy_level)
+{
+    if (!p_entry || !policy_level)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    *policy_level = strdup(p_entry->current_level.c_str());
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_get_max_level(policy_entry *p_entry, char **policy_level)
+{
+    if (!p_entry || !policy_level)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    *policy_level = strdup(p_entry->current_level.c_str());
     return  SECURITY_MANAGER_SUCCESS;
 }
