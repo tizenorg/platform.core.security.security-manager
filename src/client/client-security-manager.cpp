@@ -676,6 +676,51 @@ int security_manager_policy_update_send_for_self(policy_update_req *p_req)
 }
 
 
+
+int security_manager_get_configured_policy_for_admin(
+        const char *const user_filter,
+        const char *const app_filter,
+        const char *const privilege_filter,
+        policy_entry **pp_privs_policy, size_t *p_size)
+{
+    (void)user_filter;
+    (void)app_filter;
+    (void)privilege_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+
+int security_manager_get_configured_policy_for_self(
+        const char *const app_filter,
+        const char *const privilege_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size)
+{
+    (void)app_filter;
+    (void)privilege_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+
+int security_manager_get_whole_policy(
+        const char *const user_filter,
+        const char *const app_filter,
+        const char *const privilege_filter,
+        policy_entry **pp_privs_policy,
+        size_t *p_size)
+{
+    (void)user_filter;
+    (void)app_filter;
+    (void)privilege_filter;
+    (void)pp_privs_policy;
+    (void)p_size;
+    return  SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
 SECURITY_MANAGER_API
 int security_manager_policy_entry_new(policy_entry **p_entry)
 {
@@ -739,5 +784,41 @@ int security_manager_policy_entry_set_admin_level(policy_entry *p_entry, const c
     if (!p_entry)
         return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
     p_entry->max_level = policy_level;
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_fetch_level(policy_entry *p_entry, const char **policy_level)
+{
+    if (!p_entry || !policy_level)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    *policy_level = p_entry->current_level.c_str();
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_fetch_max_level(policy_entry *p_entry, const char **policy_level)
+{
+    if (!p_entry || !policy_level)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    *policy_level =  p_entry->max_level.c_str();
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_get_level(policy_entry *p_entry, char **policy_level)
+{
+    if (!p_entry || !policy_level)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    *policy_level = strdup(p_entry->current_level.c_str());
+    return  SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_policy_entry_get_max_level(policy_entry *p_entry, char **policy_level)
+{
+    if (!p_entry || !policy_level)
+        return  SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    *policy_level = strdup(p_entry->current_level.c_str());
     return  SECURITY_MANAGER_SUCCESS;
 }
