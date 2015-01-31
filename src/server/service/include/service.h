@@ -94,6 +94,13 @@ private:
 
     void processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_t uid);
 
+    /**
+     * Process getting policies descriptions as strings from Cynara
+     *
+     * @param  send   Raw data buffer to be sent
+     */
+    void processPolicyGetDesc(MessageBuffer &send);
+
 };
 
 } // namespace SecurityManager

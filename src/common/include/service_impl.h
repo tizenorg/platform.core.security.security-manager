@@ -102,6 +102,15 @@ int userAdd(uid_t uidAdded, int userType, uid_t uid);
  */
 int userDelete(uid_t uidDeleted, uid_t uid);
 
+/**
+ * Process getting policy descriptions list.
+ *
+ * @param[in] descriptions empty vector for descriptions strings
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int policyGetDesc(std::vector<std::string> &descriptions);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 
