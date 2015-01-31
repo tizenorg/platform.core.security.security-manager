@@ -81,6 +81,21 @@ typedef struct app_inst_req app_inst_req;
 struct user_req;
 typedef struct user_req user_req;
 
+/*! \brief data structure responsible for handling policy updates
+ *  required to manage users' and applications' permissions */
+struct policy_update_req;
+typedef struct policy_update_req policy_update_req;
+
+/*! \brief data structure responsible for handling single policy entry*/
+struct policy_entry;
+typedef struct policy_entry policy_entry;
+
+/*! \brief wildcard to be used in policy update requests to match all possible values of
+ *         given field. Use it, for example when it is desired to apply policy change for all
+ *         users or all apps for selected user.
+ */
+#define SECURITY_MANAGER_ANY "#"
+
 /**
  * This function translates lib_retcode error codes to strings describing
  * errors.
@@ -305,6 +320,200 @@ int security_manager_user_add(const user_req *p_req);
  */
 int security_manager_user_delete(const user_req *p_req);
 
+/**
+ * \brief This function is responsible for initializing policy_update_req data structure.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * policy_update_req_free() for freeing allocated resources.
+ *
+ * \param[out] pp_req Address of pointer for handle policy_update_req structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_req_new(policy_update_req **pp_req);
+
+/**
+ * \brief This function is used to free resources allocated by calling policy_update_req_new().
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ */
+void security_manager_policy_update_req_free(policy_update_req *p_req);
+
+/**
+ * \brief This function is responsible for initializing policy_entry data structure.
+ *
+ * It uses dynamic allocation inside and user responsibility is to call
+ * policy_policy_entry_free() for freeing allocated resources.
+ *
+ * \param[out] pp_entry Address of pointer for handle policy_entry structure
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_new(policy_entry **pp_entry);
+
+/**
+ * \brief This function is used to free resources allocated by calling
+ * policy_entry_req_new().
+ * \param[in] p_entry Pointer handling allocated policy_entry structure
+ */
+void security_manager_policy_entry_free(policy_entry *p_entry);
+
+/**
+ * This function is used to set up application identifier in p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] app_id Application identifier to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_set_application(policy_entry *p_entry, const char *app_id);
+
+/**
+ * This function is used to set up user identifier in p_entry structure
+ * Calling this function may be omitted if user wants to set policies for himself
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] user_id User identifier to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_set_user(policy_entry *p_entry, const char *user_id);
+
+/**
+ * This function is used to set up privilege in p_entry structure
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] privilege Privilege to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_set_privilege(policy_entry *p_entry, const char *privilege);
+
+/**
+ * This function is used to set up privilege level in p_entry structure.
+ * This api is intend to be used to decrease user's own level of privilege
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] policy_level Policy level to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_set_level(policy_entry *p_entry, const char *policy_level);
+
+/**
+ * This function is used to set up privilege level for admin policy entries in p_entry structure
+ * This function is intend to be used by admin to change level of privilege.
+ * If it is used by user that has no privilege http://tizen.org/privilege/systemsettings.admin
+ * then security_manager_policy_update_send will return error code.
+ *
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \param[in] policy_level Policy level to be set
+ * \return API return code or error code
+ */
+int security_manager_policy_entry_admin_set_level(policy_entry *p_entry, const char *policy_level);
+
+/**
+ * This function is used to add policy entry to policy update request.
+ *
+ * Note, that this function does not make a copy of object pointed to by p_entry
+ * and does not change owner of this handler.
+ * User is responsible to keep p_entry untouched until @ref security_manager_policy_update_send
+ * is called on p_req. After that p_entry still needs to be freed.
+ * (see examples in documentation of @ref security_manager_policy_update_send)
+ *
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ * \param[in] p_entry Pointer handling policy_entry structure
+ * \return API return code or error code
+ */
+int security_manager_policy_update_req_add_entry(policy_update_req *p_req, const policy_entry *p_entry);
+
+/**
+ * \brief This function is used to send the prepared policy update request using privacy manager
+ *        entry point. The request should contain at least one policy update unit, otherwise
+ *        the SECURITY_MANAGER_ERROR_INPUT_PARAM is returned.
+ *
+ * \param[in] p_req Pointer handling allocated policy_update_req structure
+ * \return API return code or error code
+ *
+ * Example:
+ * (warning: checking return codes are omitted in examples just for visibility reasons)
+ *
+ * - to update policy for user by himself:
+ *   (Deny access from app MyApp1 to privielge http://tizen.org/privilege/systemsettings,
+ *   deny access from app MyApp2 to privielge http://tizen.org/privilege/systemsettings,
+ *   deny access from app MyApp3 to privielge http://tizen.org/privilege/notificationmanager)
+ *
+ *      extern char *level_deny; //already contain string that represents denying level of policy
+ *      policy_update_req *policy_update_request;
+ *      policy_entry *entry1;
+ *      policy_entry *entry2;
+ *      policy_entry *entry3;
+ *
+ *      security_manager_policy_update_req_new(&policy_update_request);
+ *      security_manager_policy_entry_new(&entry1);
+ *      security_manager_policy_entry_new(&entry2);
+ *      security_manager_policy_entry_new(&entry3);
+ *
+ *      security_manager_policy_entry_set_application(entry1, "MyApp1");
+ *      security_manager_policy_entry_set_privilege(entry1, "http://tizen.org/privilege/systemsettings");
+ *      security_manager_policy_entry_set_level(entry1, level_deny);
+ *
+ *      security_manager_policy_entry_set_application(entry2, "MyApp2");
+ *      security_manager_policy_entry_set_privilege(entry2, "http://tizen.org/privilege/systemsettings");
+ *      security_manager_policy_entry_set_level(entry2, level_deny);
+ *
+ *      security_manager_policy_entry_set_application(entry3, "MyApp3");
+ *      security_manager_policy_entry_set_privilege(entry3, "http://tizen.org/privilege/notificationmanager");
+ *      security_manager_policy_entry_set_level(entry3, level_deny);
+ *
+ *      security_manager_policy_update_req_add_entry(policy_update_request, entry1);
+ *      security_manager_policy_update_req_add_entry(policy_update_request, entry2);
+ *      security_manager_policy_update_req_add_entry(policy_update_request, entry3);
+ *
+ *      //do not change entry1, entry2 or entry3!
+ *
+ *      security_manager_policy_update_send(policy_update_request);
+ *
+ *      security_manager_policy_entry_free(entry1);
+ *      security_manager_policy_entry_free(entry2);
+ *      security_manager_policy_entry_free(entry3);
+ *      security_manager_policy_update_free(policy_update_request);
+ *
+ *
+ * - to update policy by administrator for some user:
+ *   (Deny access of user of uid 2001 from any app to privilege http://tizen.org/privilege/vibrator,
+ *   (allow access of user of uid 2002 using app "App1" to privilege http://tizen.org/privilege/email.admin)
+ *
+ *      extern char *level_deny; //already contain string that represents denying level of policy
+ *      extern char *level_allow; //already contain string that represents allowing level of policy
+ *      policy_update_req *policy_update_request;
+ *
+ *      security_manager_policy_update_req_new(&policy_update_request);
+
+ *      policy_entry *entry1;
+ *      policy_entry *entry2;
+ *      char *adminswife = "2001";
+ *      char *adminsfriend = "2002";
+ *
+ *      security_manager_policy_entry_new(&entry1);
+ *      security_manager_policy_entry_new(&entry2);
+ *
+ *      security_manager_policy_entry_set_user(entry1, adminswife);
+ *      security_manager_policy_entry_set_application(entry1, SECURITY_MANAGER_ANY);
+ *      security_manager_policy_entry_set_privilege(entry1, "http://tizen.org/privilege/vibrator");
+ *      security_manager_policy_entry_admin_set_level(entry1, level_deny);
+ *
+ *      security_manager_policy_entry_set_user(entry2, adminsfriend);
+ *      security_manager_policy_entry_set_application(entry2, "App1");
+ *      security_manager_policy_entry_set_privilege(entry2, "http://tizen.org/privilege/email.admin");
+ *      security_manager_policy_entry_admin_set_level(entry2, level_allow);
+ *
+ *      security_manager_policy_update_req_add_entry(policy_update_request, entry1);
+ *      security_manager_policy_update_req_add_entry(policy_update_request, entry2);
+ *
+ *      //do not change entry1 or entry2!
+ *
+ *      security_manager_policy_update_send(policy_update_request);
+ *
+ *
+ *      security_manager_policy_entry_free(entry1);
+ *      security_manager_policy_entry_free(entry2);
+ *      security_manager_policy_update_free(policy_update_request);
+ *
+ */
+int security_manager_policy_update_send(policy_update_req *p_req);
 
 #ifdef __cplusplus
 }
