@@ -112,6 +112,8 @@ CynaraAdmin::BucketsMap CynaraAdmin::Buckets =
     { Bucket::MANIFESTS, std::string("MANIFESTS")},
 };
 
+CynaraAdmin::TypeToDescriptionsMap CynaraAdmin::TypeToDescriptionsMapping = {};
+CynaraAdmin::DescriptionsToTypeMap CynaraAdmin::DescriptionsToTypeMapping = {};
 
 CynaraAdminPolicy::CynaraAdminPolicy(const std::string &client, const std::string &user,
         const std::string &privilege, int operation,
@@ -386,6 +388,17 @@ void CynaraAdmin::ListPoliciesDescriptions(std::vector<std::string> &policiesDes
     struct cynara_admin_policy_descr **descriptions = nullptr;
     int descriptionsSize = -1;
 
+    // if we already fetched list from Cynara - just copy strings from cached map
+    if(DescriptionsToTypeMapping.size() != 0)
+    {
+        for( CynaraAdmin::DescriptionsToTypeMap::iterator it = DescriptionsToTypeMapping.begin();
+                it != DescriptionsToTypeMapping.end(); ++it ) {
+            policiesDescriptions.push_back( it->first );
+        }
+
+        return;
+    }
+
     checkCynaraError(
         cynara_admin_list_policies_descriptions(m_CynaraAdmin, &descriptions),
         "Error while getting list of policies descriptions from Cynara.");
@@ -403,13 +416,30 @@ void CynaraAdmin::ListPoliciesDescriptions(std::vector<std::string> &policiesDes
 
     // extract strings
     for(std::size_t i = 0; descriptions[i] != nullptr; i++) {
-        policiesDescriptions.push_back(std::string(descriptions[i]->name));
+        std::string descriptionName(descriptions[i]->name);
+
+        policiesDescriptions.push_back(descriptionName);
+
+        DescriptionsToTypeMapping[descriptionName] = descriptions[i]->result;
+        TypeToDescriptionsMapping[descriptions[i]->result] = descriptionName;
+
         free(descriptions[i]->name);
         free(descriptions[i]);
     }
 
     free(descriptions);
 }
+
+std::string CynaraAdmin::convertToPolicyDescription(const int policyType)
+{
+    return TypeToDescriptionsMapping.at(policyType);
+}
+
+int CynaraAdmin::convertToPolicyType(const std::string &policy)
+{
+    return DescriptionsToTypeMapping.at(policy);
+}
+
 
 Cynara::Cynara()
 {
