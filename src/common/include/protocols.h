@@ -114,6 +114,8 @@ struct user_req {
     int utype;
 };
 
+typedef int result_t;
+
 namespace SecurityManager {
 
 extern char const * const SERVICE_SOCKET;
@@ -129,5 +131,21 @@ enum class SecurityModuleCall
 };
 
 } // namespace SecurityManager
+
+struct policy_entry {
+    std::string user;           // uid converted to string
+    std::string appId;          // application identifier
+    std::string privilege;      // Cynara privilege
+    std::string current_level;  // current level of privielege, or level asked to be set in policy
+    std::string max_level;      // holds the maximum policy status type allowed to be set for this entry
+};
+typedef struct policy_entry policy_entry;
+
+
+struct policy_update_req {
+    //TODO: maybe it would be better to have vector of pointers here?
+    std::vector<policy_entry> units;
+};
+
 
 #endif // _SECURITY_MANAGER_PROTOCOLS_
