@@ -46,6 +46,8 @@ namespace SecurityManager {
 bool setupPath(const std::string &pkgId, const std::string &path,
     app_install_path_type pathType);
 
+bool setupPath2(const std::string &Id, const std::string &path,
+    app_install_path_type pathType);
 /**
  * Generates label for an application with a specific application ID
  * read from @ref appId and assigns it to @ref label.

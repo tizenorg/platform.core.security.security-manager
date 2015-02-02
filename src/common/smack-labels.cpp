@@ -187,6 +187,30 @@ bool setupPath(const std::string &pkgId, const std::string &path,
     return labelDir(path, label, label_transmute, label_executables);
 }
 
+bool setupPath2(const std::string &id, const std::string &path,
+    app_install_path_type pathType)
+{
+    std::string label;
+    bool label_executables, label_transmute;
+
+    switch (pathType) {
+    case SECURITY_MANAGER_PATH_PRIVATE:
+        label = id;
+        label_executables = true;
+        label_transmute = false;
+        break;
+    case SECURITY_MANAGER_PATH_PUBLIC:
+        label = id;
+        label_executables = false;
+        label_transmute = true;
+        break;
+    default:
+        LogError("Path type not known.");
+        return false;
+    }
+    return labelDir(path, label, label_transmute, label_executables);
+}
+
 bool generateAppLabel(const std::string &appId, std::string &label)
 {
     (void) appId;
