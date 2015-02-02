@@ -47,6 +47,16 @@ bool setupPath(const std::string &pkgId, const std::string &path,
     app_install_path_type pathType);
 
 /**
+ * Sets Smack labels on a <ROOT_APP>/<pkg_id> and <ROOT_APP>/<pkg_id>/<app_id>
+ * non-recursively
+ *
+ * @param pkgID[in] package identifier
+ * @param appID[in] application's identifier
+ * @param path[in] <ROOT_APP> path
+ */
+bool setupCorrectPath(const std::string &pkgID, const std::string &appID,
+        const std::string &path);
+/**
  * Generates label for an application with a specific application ID
  * read from @ref appId and assigns it to @ref label.
  *
