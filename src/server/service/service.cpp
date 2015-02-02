@@ -52,7 +52,7 @@ GenericSocketService::ServiceDescriptionVector Service::GetServiceDescription()
     };
 }
 
-static bool getPeerID(int sock, uid_t &uid, pid_t &pid, std::string &smack_label) {
+static bool getPeerID(int sock, uid_t &uid, pid_t &pid, std::string &smackLabel) {
     struct ucred cr;
 
     socklen_t len = sizeof(cr);
@@ -62,7 +62,7 @@ static bool getPeerID(int sock, uid_t &uid, pid_t &pid, std::string &smack_label
         ssize_t ret = smack_new_label_from_socket(sock, &smk);
         if (ret < 0)
             return false;
-        smack_label = smk;
+        smackLabel = smk;
         uid = cr.uid;
         pid = cr.pid;
         free(smk);
@@ -87,9 +87,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
 
     uid_t uid;
     pid_t pid;
-    std::string smack_label;
+    std::string smackLabel;
 
-    if (!getPeerID(conn.sock, uid, pid, smack_label)) {
+    if (!getPeerID(conn.sock, uid, pid, smackLabel)) {
         LogError("Closing socket because of error: unable to get peer's uid, pid or smack label");
         m_serviceManager->Close(conn);
         return false;
@@ -128,7 +128,16 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                     processUserDelete(buffer, send, uid);
                     break;
                 case SecurityModuleCall::POLICY_UPDATE:
-                    processPolicyUpdate(buffer, send, uid, pid, smack_label);
+                    processPolicyUpdate(buffer, send, uid, pid, smackLabel);
+                    break;
+                case SecurityModuleCall::GET_CONF_POLICY_ADMIN:
+                    processGetConfiguredPolicy(buffer, send, uid, pid, smackLabel, true);
+                    break;
+                case SecurityModuleCall::GET_CONF_POLICY_SELF:
+                    processGetConfiguredPolicy(buffer, send, uid, pid, smackLabel, false);
+                    break;
+                case SecurityModuleCall::GET_POLICY:
+                    processGetPolicy(buffer, send, uid, pid, smackLabel);
                     break;
                 default:
                     LogError("Invalid call: " << call_type_int);
@@ -235,7 +244,6 @@ void Service::processUserDelete(MessageBuffer &buffer, MessageBuffer &send, uid_
     Serialization::Serialize(send, ret);
 }
 
-
 void Service::processPolicyUpdate(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid, const std::string &smackLabel)
 {
     int ret;
@@ -245,6 +253,34 @@ void Service::processPolicyUpdate(MessageBuffer &buffer, MessageBuffer &send, ui
 
     ret = ServiceImpl::policyUpdate(policyEntries, uid, pid, smackLabel);
     Serialization::Serialize(send, ret);
+}
+
+void Service::processGetConfiguredPolicy(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid, const std::string &smackLabel, bool forAdmin)
+{
+    int ret;
+    policy_entry filter;
+    Deserialization::Deserialize(buffer, filter);
+    std::vector<policy_entry> policyEntries;
+    ret = ServiceImpl::getConfiguredPolicy(forAdmin, filter, uid, pid, smackLabel, policyEntries);
+    Serialization::Serialize(send, ret);
+    Serialization::Serialize(send, policyEntries.size());
+    for (const auto &policyEntry : policyEntries) {
+        Serialization::Serialize(send, policyEntry);
+    };
+}
+
+void Service::processGetPolicy(MessageBuffer &buffer, MessageBuffer &send, uid_t uid, pid_t pid, const std::string &smackLabel)
+{
+    int ret;
+    policy_entry filter;
+    Deserialization::Deserialize(buffer, filter);
+    std::vector<policy_entry> policyEntries;
+    ret = ServiceImpl::getPolicy(filter, uid, pid, smackLabel, policyEntries);
+    Serialization::Serialize(send, ret);
+    Serialization::Serialize(send, policyEntries.size());
+    for (const auto &policyEntry : policyEntries) {
+        Serialization::Serialize(send, policyEntry);
+    };
 }
 
 } // namespace SecurityManager
