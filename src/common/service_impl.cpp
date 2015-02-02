@@ -50,6 +50,18 @@ static uid_t getGlobalUserId(void)
     return globaluid;
 }
 
+static bool getGlobalUserHome(std::string &userHome)
+{
+    const char *globalUserHome = tzplatform_getenv(TZ_SYS_RW_APP);
+
+    if (!globalUserHome)
+        return false;
+
+    userHome = globalUserHome;
+
+    return true;
+}
+
 /**
  * Unifies user data of apps installed for all users
  * @param  uid            peer's uid - may be changed during process
@@ -74,26 +86,146 @@ static inline bool isSubDir(const char *parent, const char *subdir)
     return (*subdir == '/');
 }
 
-static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
+static bool createTzConfigCtx(struct tzplatform_context **tz_ctx)
 {
-    struct passwd *pwd;
-    do {
-        errno = 0;
-        pwd = getpwuid(uid);
-        if (!pwd && errno != EINTR) {
-            LogError("getpwuid failed with '" << uid
-                    << "' as parameter: " << strerror(errno));
+    LogDebug("Creating tizen config context");
+
+    if (tzplatform_context_create(tz_ctx))
+        return false;
+
+     return true;
+}
+
+
+static bool setTzConfigCtxUser(struct tzplatform_context *tz_ctx, const uid_t &uid)
+{
+    LogDebug("Setting user uid: " << uid << " for tizen config context");
+
+    if (tzplatform_context_set_user(tz_ctx, uid))
+         return false;
+
+     return true;
+}
+
+static bool getSingleUserHome(const uid_t &uid, std::string &userHome)
+{
+    struct tzplatform_context *tz_ctx = nullptr;
+
+    if (!createTzConfigCtx(&tz_ctx)) {
+        LogError("Failed creating tzconfig context");
+        return false;
+    }
+
+    std::unique_ptr<tzplatform_context, std::function<void(tzplatform_context*)>> tz_ctx_ptr(
+            tz_ctx, tzplatform_context_destroy);
+
+    if (!setTzConfigCtxUser(tz_ctx_ptr.get(), uid)) {
+        LogError("Failed setting tzconfig context user for uid: " << uid);
+        return false;
+    }
+
+    const char *home = tzplatform_context_getenv(tz_ctx_ptr.get(), TZ_USER_HOME);
+    if (!home) {
+        LogError("Failed checking HOME from tzconfig context for user with uid: " << uid);
+        return false;
+    }
+
+    userHome = home;
+
+    return true;
+}
+
+static bool getSingleUserAppDir(const uid_t &uid, std::string &userAppDir)
+{
+    struct tzplatform_context *tz_ctx = nullptr;
+
+    if (!createTzConfigCtx(&tz_ctx)) {
+        LogError("Failed creating tzconfig context");
+        return false;
+    }
+
+    std::unique_ptr<tzplatform_context, std::function<void(tzplatform_context*)>> tz_ctx_ptr(
+            tz_ctx, tzplatform_context_destroy);
+
+    if (!setTzConfigCtxUser(tz_ctx_ptr.get(), uid)) {
+        LogError("Failed setting tzconfig context user for uid: " << uid);
+        return false;
+    }
+
+    const char *appDir = tzplatform_context_getenv(tz_ctx_ptr.get(), TZ_USER_APP);
+    if (!appDir) {
+        LogError("Failed checking app dir from tzconfig context for user with uid: " << uid);
+        return false;
+    }
+
+    userAppDir = appDir;
+
+    return true;
+}
+static bool getUserHome(const uid_t &uid, std::string &userHome, bool &isGlobalInstallation)
+{
+    if (isGlobalInstallation) {
+        if (!getGlobalUserHome(userHome)) {
+            LogError("Failed checking HOME path for global user");
             return false;
         }
-    } while (!pwd);
+    } else {
+        if (!getSingleUserHome(uid, userHome)) {
+            LogError("Failed checking HOME path for single user");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid, bool &isCorrectPath, std::string &appPath)
+{
+    std::string userHome;
+    std::string userAppDir;
+    std::stringstream correctPath;
+    bool isGlobalInstallation = true;
+
+    if (uid != getGlobalUserId()) {
+        LogDebug("Installation type: single user");
+        isGlobalInstallation = false;
+    } else
+        LogDebug("Installation type: global installation");
+
+    if (!getUserHome(uid, userHome, isGlobalInstallation)) {
+        LogError("Failed getting HOME for user uid: " << uid);
+        return false;
+    }
+
+    if (isGlobalInstallation)
+        userAppDir = userHome;
+    else {
+        if (!getSingleUserAppDir(uid, userAppDir)) {
+            LogError("Failed getting app dir for user uid: " << uid);
+            return false;
+        }
+    }
 
     std::unique_ptr<char, std::function<void(void*)>> home(
-        realpath(pwd->pw_dir, NULL), free);
+        realpath(userHome.c_str(), NULL), free);
     if (!home.get()) {
-            LogError("realpath failed with '" << pwd->pw_dir
+            LogError("realpath failed with '" << userHome
                     << "' as parameter: " << strerror(errno));
             return false;
     }
+
+    std::unique_ptr<char, std::function<void(void*)>> app(
+        realpath(userAppDir.c_str(), NULL), free);
+    if (!app.get()) {
+            LogError("realpath failed with '" << userAppDir
+                    << "' as parameter: " << strerror(errno));
+            return false;
+    }
+
+    appPath = app.get();
+    correctPath.clear();
+    correctPath << app.get() << "/" << req.pkgId << "/" << req.appId;
+    LogDebug("correctPath: " << correctPath.str());
 
     for (const auto &appPath : req.appPaths) {
         std::unique_ptr<char, std::function<void(void*)>> real_path(
@@ -104,11 +236,17 @@ static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid)
             return false;
         }
         LogDebug("Requested path is '" << appPath.first.c_str()
-                << "'. User's HOME is '" << pwd->pw_dir << "'");
+                << "'. User's HOME is '" << userHome << "'");
         if (!isSubDir(home.get(), real_path.get())) {
             LogWarning("User's apps may have registered folders only in user's home dir");
             return false;
         }
+
+        if (!isSubDir(correctPath.str().c_str(), real_path.get())) {
+            LogWarning("Installation is outside correct path: " << correctPath.str());
+            //return false;
+        } else
+            isCorrectPath = true;
 
         app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
         if (pathType == SECURITY_MANAGER_PATH_PUBLIC) {
@@ -125,6 +263,8 @@ int appInstall(const app_inst_req &req, uid_t uid)
     std::vector<std::string> removedPermissions;
     std::vector<std::string> pkgContents;
     std::string uidstr;
+    bool isCorrectPath = false;
+    std::string appPath;
     if (uid) {
         if (uid != req.uid) {
             LogError("User " << uid <<
@@ -137,7 +277,7 @@ int appInstall(const app_inst_req &req, uid_t uid)
     }
     checkGlobalUser(uid, uidstr);
 
-    if (!installRequestAuthCheck(req, uid)) {
+    if (!installRequestAuthCheck(req, uid, isCorrectPath, appPath)) {
         LogError("Request from uid " << uid << " for app installation denied");
         return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
     }
@@ -197,6 +337,12 @@ int appInstall(const app_inst_req &req, uid_t uid)
         LogError("Memory allocation while setting Cynara rules for application: " << e.what());
         return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
     }
+
+    if (isCorrectPath)
+        if (!setupCorrectPath(req.pkgId, req.appId, appPath)) {
+            LogError("Can't setup <APP_ROOT> dirs");
+            return false;
+        }
 
     // register paths
     for (const auto &appPath : req.appPaths) {
