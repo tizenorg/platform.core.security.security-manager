@@ -123,6 +123,16 @@ static bool dirSetSmack(const std::string &path, const std::string &label,
     return true;
 }
 
+static bool pathSetSmack(const std::string &path, const std::string &label,
+        const char *xattr_name)
+{
+    if (lsetxattr(path.c_str(), xattr_name, label.c_str(), label.length(), 0) != 0) {
+        LogError("lsetxattr failed.");
+        return false;
+    }
+
+    return true;
+}
 
 static bool labelDir(const std::string &path, const std::string &label,
         bool set_transmutable, bool set_executables)
@@ -157,6 +167,31 @@ static bool labelDir(const std::string &path, const std::string &label,
     return ret;
 }
 
+static bool labelPath(const std::string &path, const std::string &label,
+        bool set_transmutable, bool set_executables)
+{
+    if (!pathSetSmack(path, label, XATTR_NAME_SMACK)) {
+        LogError("pathSetSmack failed (access label)");
+        return false;
+    }
+
+    if (set_transmutable) {
+        if (!pathSetSmack(path, "TRUE", XATTR_NAME_SMACKTRANSMUTE)) {
+            LogError("pathSetSmack failed (transmute");
+            return false;
+        }
+    }
+
+    if (set_executables) {
+        if (!pathSetSmack(path, label, XATTR_NAME_SMACKEXEC)) {
+            LogError("pathSetSmack failed (execs)");
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool setupPath(const std::string &pkgId, const std::string &path,
     app_install_path_type pathType)
 {
@@ -185,6 +220,30 @@ bool setupPath(const std::string &pkgId, const std::string &path,
         return false;
     }
     return labelDir(path, label, label_transmute, label_executables);
+}
+
+bool setupCorrectPath(const std::string &pkgID, const std::string &appID, const std::string &appPath)
+{
+    bool ret = false;
+    std::string tmpPath;
+
+    tmpPath.clear();
+    tmpPath = appPath + "/" + pkgID;
+
+    ret = labelPath(tmpPath, pkgID, false, false);
+    if (!ret) {
+        LogError("Can't label path: " << tmpPath << " with label: " << appID);
+        return false;
+    }
+
+    tmpPath += "/" + appID;
+    ret = labelPath(tmpPath, pkgID, false, true);
+    if (!ret) {
+        LogError("Can't label path: " << tmpPath << " with label: " << pkgID);
+        return false;
+    }
+
+    return ret;
 }
 
 bool generateAppLabel(const std::string &appId, std::string &label)
