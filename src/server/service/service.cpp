@@ -27,6 +27,7 @@
 
 #include <dpl/log/log.h>
 #include <dpl/serialization.h>
+#include <fstream>
 
 #include "protocols.h"
 #include "service.h"
@@ -62,6 +63,13 @@ static bool getPeerID(int sock, uid_t &uid, pid_t &pid) {
     }
 
     return false;
+}
+
+void getPidSmackLabel(pid_t &pid, std::string &label)
+{
+    char path[128];
+    sprintf(path, "/proc/%d/attr/current", static_cast<int>(pid));
+    std::getline(std::ifstream(path), label);
 }
 
 bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
