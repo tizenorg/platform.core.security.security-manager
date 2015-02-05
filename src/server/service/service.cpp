@@ -64,6 +64,16 @@ static bool getPeerID(int sock, uid_t &uid, pid_t &pid) {
     return false;
 }
 
+static std::string getPidSmackLabel(pid_t &pid)
+{
+    std::string pid_smack_label;
+    char path[128];
+    sprintf(path, "/proc/%d/attr/current", static_cast<int>(pid));
+    std::getline(std::ifstream(path), pid_smack_label);
+
+    return pid_smack_label;
+}
+
 bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                                   InterfaceID interfaceID)
 {
