@@ -8,6 +8,7 @@ Source0:    %{name}-%{version}.tar.gz
 Source1:    security-manager.manifest
 Source3:    libsecurity-manager-client.manifest
 Requires(post): smack
+Requires:       gumd
 BuildRequires: cmake
 BuildRequires: zip
 BuildRequires: libattr-devel
