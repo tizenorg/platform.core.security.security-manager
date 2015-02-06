@@ -195,15 +195,13 @@ std::string generateAppNameFromLabel(const std::string &label)
 
 bool generateAppLabel(const std::string &appId, std::string &label)
 {
-    (void) appId;
-    label = "User";
+    label = appId;
     return true;
 }
 
 bool generatePkgLabel(const std::string &pkgId, std::string &label)
 {
-    (void) pkgId;
-    label = "User";
+    label = pkgId;
     return (true);
 }
 
