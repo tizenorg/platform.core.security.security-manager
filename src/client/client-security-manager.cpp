@@ -711,7 +711,7 @@ static inline int security_manager_get_policy_internal(
         switch(retval) {
             case SECURITY_MANAGER_API_SUCCESS: {
                 //extract and allocate buffers for privs policy entries
-                size_t entriesCnt = 0;
+                int entriesCnt = 0;
                 policy_entry **entries = nullptr;
                 Deserialization::Deserialize(recv, entriesCnt);
                 try {
