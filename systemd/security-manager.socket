@@ -10,6 +10,8 @@ Service=security-manager.service
 [Unit]
 Wants=security-manager.target
 Before=security-manager.target
+ConditionVirtualization=!lxc
+ConditionPathExists=!/var/.zone/enabled
 
 [Install]
 WantedBy=sockets.target
