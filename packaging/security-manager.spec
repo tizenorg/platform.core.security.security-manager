@@ -87,6 +87,8 @@ cp app-rules-template.smack %{buildroot}/%{TZ_SYS_SMACK}
 
 mkdir -p %{buildroot}/%{_unitdir}/sockets.target.wants
 ln -s ../security-manager.socket %{buildroot}/%{_unitdir}/sockets.target.wants/security-manager.socket
+ln -s ../security-manager-master.socket %{buildroot}/%{_unitdir}/sockets.target.wants/security-manager-master.socket
+ln -s ../security-manager-slave.socket %{buildroot}/%{_unitdir}/sockets.target.wants/security-manager-slave.socket
 
 %clean
 rm -rf %{buildroot}
@@ -135,8 +137,15 @@ fi
 %attr(755,root,root) %{_sysconfdir}/gumd/userdel.d/50_security-manager-remove.pre
 
 %{_libdir}/libsecurity-manager-commons.so.*
-%attr(-,root,root) %{_unitdir}/security-manager.*
-%attr(-,root,root) %{_unitdir}/sockets.target.wants/security-manager.*
+%attr(-,root,root) %{_unitdir}/security-manager.service
+%attr(-,root,root) %{_unitdir}/security-manager.socket
+%attr(-,root,root) %{_unitdir}/security-manager-master.service
+%attr(-,root,root) %{_unitdir}/security-manager-master.socket
+%attr(-,root,root) %{_unitdir}/security-manager-slave.service
+%attr(-,root,root) %{_unitdir}/security-manager-slave.socket
+%attr(-,root,root) %{_unitdir}/sockets.target.wants/security-manager.socket
+%attr(-,root,root) %{_unitdir}/sockets.target.wants/security-manager-master.socket
+%attr(-,root,root) %{_unitdir}/sockets.target.wants/security-manager-slave.socket
 %attr(-,root,root) %{TZ_SYS_SMACK}/app-rules-template.smack
 %config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db
 %config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db-journal
