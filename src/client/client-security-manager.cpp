@@ -693,7 +693,9 @@ static inline int security_manager_get_policy_internal(
     using namespace SecurityManager;
     MessageBuffer send, recv;
 
-    if (ppp_privs_policy == nullptr || p_size == nullptr)
+    if (ppp_privs_policy == nullptr
+        || p_size == nullptr
+        || p_filter == nullptr)
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
 
     return try_catch([&] {
