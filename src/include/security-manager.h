@@ -483,7 +483,6 @@ int security_manager_policy_update_req_add_entry(policy_update_req *p_req, const
  * This function is used to obtain user ID from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure
- * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
  * \return user uid
  */
@@ -493,7 +492,6 @@ const char *security_manager_policy_entry_get_user(policy_entry *p_entry);
  * This function is used to obtain application name from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure
- * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
  * \return application name
  */
@@ -503,7 +501,6 @@ const char *security_manager_policy_entry_get_application(policy_entry *p_entry)
  * This function is used to obtain privilege name from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure
- * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
  * \return privilege name
  */
@@ -512,7 +509,6 @@ const char *security_manager_policy_entry_get_privilege(policy_entry *p_entry);
  * This function is used to obtain current policy level from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure
- * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
  * \return Current policy level
  */
@@ -522,7 +518,6 @@ const char *security_manager_policy_entry_get_level(policy_entry *p_entry);
  * This function is used to obtain maximal policy level from p_entry structure
  *
  * \param[in] p_entry Pointer handling policy_entry structure.
- * \attention Warning: memory pointed to by value written to policy_level needs to be freed
  *
  * \return Maximal policy level
  */
