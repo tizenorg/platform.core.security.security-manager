@@ -29,6 +29,7 @@
 #include <vector>
 #include <string>
 #include <dpl/serialization.h>
+#include <security-manager.h>
 
 /**
  * \name Return Codes
@@ -145,7 +146,11 @@ struct policy_entry : ISerializable {
     std::string currentLevel;   // current level of privielege, or level asked to be set in privacy manager bucket
     std::string maxLevel;       // holds read maximum policy status or status to be set in admin bucket
 
-    policy_entry() : user(""), appId(""), privilege(""), currentLevel(""), maxLevel("")
+    policy_entry() : user(SECURITY_MANAGER_ANY),
+                    appId(SECURITY_MANAGER_ANY),
+                    privilege(SECURITY_MANAGER_ANY),
+                    currentLevel(""),
+                    maxLevel("")
     {}
 
     policy_entry(IStream &stream) {
