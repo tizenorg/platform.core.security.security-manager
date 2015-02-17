@@ -332,7 +332,7 @@ int appInstall(const app_inst_req &req, uid_t uid)
         for (const auto &appPath : req.appPaths) {
             const std::string &path = appPath.first;
             app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
-            SmackLabels::setupPath(req.pkgId, path, pathType);
+            SmackLabels::setupPath(req.appId, path, pathType);
         }
 
         LogDebug("Adding Smack rules for new appId: " << req.appId << " with pkgId: "
