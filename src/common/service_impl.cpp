@@ -47,7 +47,6 @@
 #include "master-req.h"
 
 namespace SecurityManager {
-namespace ServiceImpl {
 
 static const std::string ADMIN_PRIVILEGE = "http://tizen.org/privilege/systemsettings.admin";
 static const std::string SELF_PRIVILEGE = "http://tizen.org/privilege/systemsettings";
@@ -132,7 +131,15 @@ static inline int validatePolicy(policy_entry &policyEntry, std::string uidStr, 
 }
 } // end of anonymous namespace
 
-static uid_t getGlobalUserId(void)
+ServiceImpl::ServiceImpl()
+{
+}
+
+ServiceImpl::~ServiceImpl()
+{
+}
+
+uid_t ServiceImpl::getGlobalUserId(void)
 {
     static uid_t globaluid = tzplatform_getuid(TZ_SYS_GLOBALAPP_USER);
     return globaluid;
@@ -143,7 +150,7 @@ static uid_t getGlobalUserId(void)
  * @param  uid            peer's uid - may be changed during process
  * @param  cynaraUserStr  string to which cynara user parameter will be put
  */
-static void checkGlobalUser(uid_t &uid, std::string &cynaraUserStr)
+void ServiceImpl::checkGlobalUser(uid_t &uid, std::string &cynaraUserStr)
 {
     static uid_t globaluid = getGlobalUserId();
     if (uid == 0 || uid == globaluid) {
@@ -153,7 +160,8 @@ static void checkGlobalUser(uid_t &uid, std::string &cynaraUserStr)
         cynaraUserStr = std::to_string(static_cast<unsigned int>(uid));
     }
 }
-static inline bool isSubDir(const char *parent, const char *subdir)
+
+bool ServiceImpl::isSubDir(const char *parent, const char *subdir)
 {
     while (*parent && *subdir)
         if (*parent++ != *subdir++)
@@ -162,21 +170,7 @@ static inline bool isSubDir(const char *parent, const char *subdir)
     return (*subdir == '/');
 }
 
-bool getPeerID(int sock, uid_t &uid, pid_t &pid)
-{
-    struct ucred cr;
-    socklen_t len = sizeof(cr);
-
-    if (!getsockopt(sock, SOL_SOCKET, SO_PEERCRED, &cr, &len)) {
-        uid = cr.uid;
-        pid = cr.pid;
-        return true;
-    }
-
-    return false;
-}
-
-static bool getUserAppDir(const uid_t &uid, std::string &userAppDir)
+bool ServiceImpl::getUserAppDir(const uid_t &uid, std::string &userAppDir)
 {
     struct tzplatform_context *tz_ctx = nullptr;
 
@@ -206,7 +200,7 @@ static bool getUserAppDir(const uid_t &uid, std::string &userAppDir)
     return true;
 }
 
-static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid, bool &isCorrectPath, std::string &appPath)
+bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, bool &isCorrectPath, std::string &appPath)
 {
     std::string userHome;
     std::string userAppDir;
@@ -257,7 +251,7 @@ static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid, b
     return true;
 }
 
-static inline bool getZoneId(std::string &zoneId)
+bool ServiceImpl::getZoneId(std::string &zoneId)
 {
     if (!getZoneIdFromPid(getpid(), zoneId)) {
         LogError("Failed to get zone ID from current PID");
@@ -273,7 +267,7 @@ static inline bool getZoneId(std::string &zoneId)
     return true;
 }
 
-int appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
+int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
 {
     std::vector<std::string> addedPermissions;
     std::vector<std::string> removedPermissions;
@@ -415,7 +409,7 @@ int appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int appUninstall(const std::string &appId, uid_t uid, bool isSlave)
+int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
 {
     std::string pkgId;
     std::string smackLabel;
@@ -526,7 +520,7 @@ int appUninstall(const std::string &appId, uid_t uid, bool isSlave)
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int getPkgId(const std::string &appId, std::string &pkgId)
+int ServiceImpl::getPkgId(const std::string &appId, std::string &pkgId)
 {
     LogDebug("appId: " << appId);
 
@@ -545,7 +539,7 @@ int getPkgId(const std::string &appId, std::string &pkgId)
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, bool isSlave,
+int ServiceImpl::getAppGroups(const std::string &appId, uid_t uid, pid_t pid, bool isSlave,
         std::unordered_set<gid_t> &gids)
 {
     // FIXME Temporary solution, see below
@@ -623,7 +617,7 @@ int getAppGroups(const std::string &appId, uid_t uid, pid_t pid, bool isSlave,
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int userAdd(uid_t uidAdded, int userType, uid_t uid, bool isSlave)
+int ServiceImpl::userAdd(uid_t uidAdded, int userType, uid_t uid, bool isSlave)
 {
     if (uid != 0)
         return SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED;
@@ -646,7 +640,7 @@ int userAdd(uid_t uidAdded, int userType, uid_t uid, bool isSlave)
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int userDelete(uid_t uidDeleted, uid_t uid, bool isSlave)
+int ServiceImpl::userDelete(uid_t uidDeleted, uid_t uid, bool isSlave)
 {
     int ret = SECURITY_MANAGER_API_SUCCESS;
     if (uid != 0)
@@ -682,7 +676,7 @@ int userDelete(uid_t uidDeleted, uid_t uid, bool isSlave)
     return ret;
 }
 
-int policyUpdate(const std::vector<policy_entry> &policyEntries, uid_t uid, pid_t pid, const std::string &smackLabel)
+int ServiceImpl::policyUpdate(const std::vector<policy_entry> &policyEntries, uid_t uid, pid_t pid, const std::string &smackLabel)
 {
     enum {
         NOT_CHECKED,
@@ -742,7 +736,7 @@ int policyUpdate(const std::vector<policy_entry> &policyEntries, uid_t uid, pid_
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int getConfiguredPolicy(bool forAdmin, const policy_entry &filter, uid_t uid, pid_t pid,
+int ServiceImpl::getConfiguredPolicy(bool forAdmin, const policy_entry &filter, uid_t uid, pid_t pid,
     const std::string &smackLabel, std::vector<policy_entry> &policyEntries)
 {
     try {
@@ -852,7 +846,7 @@ int getConfiguredPolicy(bool forAdmin, const policy_entry &filter, uid_t uid, pi
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, const std::string &smackLabel, std::vector<policy_entry> &policyEntries)
+int ServiceImpl::getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, const std::string &smackLabel, std::vector<policy_entry> &policyEntries)
 {
     try {
         std::string uidStr = std::to_string(uid);
@@ -969,7 +963,7 @@ int getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, const std::strin
     return SECURITY_MANAGER_API_SUCCESS;
 }
 
-int policyGetDesc(std::vector<std::string> &levels)
+int ServiceImpl::policyGetDesc(std::vector<std::string> &levels)
 {
     int ret = SECURITY_MANAGER_API_SUCCESS;
 
@@ -992,5 +986,4 @@ int policyGetDesc(std::vector<std::string> &levels)
     return ret;
 }
 
-} /* namespace ServiceImpl */
 } /* namespace SecurityManager */
