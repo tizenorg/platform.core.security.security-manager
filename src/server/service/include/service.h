@@ -141,6 +141,12 @@ private:
      */
     void processPolicyGetDesc(MessageBuffer &send);
 
+    /**
+     * Process getting groups bound with privileges
+     *
+     * @param  send   Raw data buffer to be sent
+     */
+    void processGroupsGet(MessageBuffer &send);
 };
 
 } // namespace SecurityManager

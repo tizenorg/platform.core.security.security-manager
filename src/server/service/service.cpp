@@ -154,6 +154,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::POLICY_GET_DESCRIPTIONS:
                     processPolicyGetDesc(send);
                     break;
+                case SecurityModuleCall::GROUPS_GET:
+                    processGroupsGet(send);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -331,6 +334,21 @@ void Service::processPolicyGetDesc(MessageBuffer &send)
 
         for(std::vector<std::string>::size_type i = 0; i != descriptions.size(); i++) {
             Serialization::Serialize(send, descriptions[i]);
+        }
+    }
+}
+
+void Service::processGroupsGet(MessageBuffer &send)
+{
+    std::vector<std::string> groups;
+    int ret = ServiceImpl::policyGetGroups(groups);
+
+    Serialization::Serialize(send, ret);
+    if (ret == SECURITY_MANAGER_API_SUCCESS) {
+        Serialization::Serialize(send, static_cast<int>(groups.size()));
+
+        for(std::vector<std::string>::size_type i = 0; i != groups.size(); i++) {
+            Serialization::Serialize(send, groups[i]);
         }
     }
 }

@@ -978,3 +978,73 @@ void security_manager_policy_levels_free(char **levels, size_t levels_count)
 
     delete[] levels;
 }
+
+SECURITY_MANAGER_API
+int security_manager_groups_get(char ***groups, size_t *groups_count)
+{
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
+    if (!groups || !groups_count)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    return try_catch([&] {
+
+        //put data into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::GROUPS_GET));
+
+        //send buffer to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+
+        switch(retval) {
+            case SECURITY_MANAGER_API_SUCCESS:
+                // success - continue
+                break;
+            case SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY:
+                return SECURITY_MANAGER_ERROR_MEMORY;
+            case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+            default:
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        int count;
+        Deserialization::Deserialize(recv, count);
+        *groups_count = count;
+        LogInfo("Number of groups: " << *groups_count);
+
+        char **array = new char *[*groups_count];
+
+        for (unsigned int i = 0; i < *groups_count; ++i) {
+            std::string group;
+            Deserialization::Deserialize(recv, group);
+
+            if (group.empty()) {
+                LogError("Unexpected empty group");
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+            }
+
+            array[i] = strdup(group.c_str());
+            if (array[i] == nullptr)
+                return SECURITY_MANAGER_ERROR_MEMORY;
+        }
+
+        *groups = array;
+
+        return SECURITY_MANAGER_SUCCESS;
+    });
+}
+
+SECURITY_MANAGER_API
+void security_manager_groups_free(char **groups, size_t groups_count)
+{
+    for (unsigned int i = 0; i < groups_count; i++)
+        free(groups[i]);
+
+    delete[] groups;
+}

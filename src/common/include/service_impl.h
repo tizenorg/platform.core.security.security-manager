@@ -169,6 +169,15 @@ int getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, const std::strin
  */
 int policyGetDesc(std::vector<std::string> &descriptions);
 
+/**
+ * Process getting group list.
+ *
+ * @param[in] groups empty vector for group strings
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int policyGetGroups(std::vector<std::string> &groups);
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
 

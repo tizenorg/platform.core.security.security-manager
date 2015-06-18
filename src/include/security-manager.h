@@ -731,6 +731,28 @@ int security_manager_policy_levels_get(char ***levels, size_t *levels_count);
  */
 void security_manager_policy_levels_free(char **levels, size_t levels_count);
 
+/**
+ * This function returns array of groups bound to privileges.
+ *
+ * Caller needs to free memory allocated for the list using
+ * security_manager_groups_free().
+ *
+ * @param groups pointer to array of strings.
+ * @param groups_count number of strings in levels array.
+ * @return API return code or error code.
+ */
+int security_manager_groups_get(char ***groups, size_t *groups_count);
+
+/**
+ * This function frees memory allocated by security_manager_groups_get()
+ * function.
+ *
+ * @param groups array of strings returned by
+ * security_manager_groups_get() function.
+ * @return API return code or error code.
+ */
+void security_manager_groups_free(char **groups, size_t groups_count);
+
 #ifdef __cplusplus
 }
 #endif

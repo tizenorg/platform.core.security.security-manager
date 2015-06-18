@@ -304,4 +304,17 @@ void PrivilegeDb::GetAppIdsForPkgId(const std::string &pkgId,
     });
 }
 
+void PrivilegeDb::GetGroups(std::vector<std::string> &groups)
+{
+   try_catch<void>([&] {
+        auto &command = getQuery(QueryType::EGetGroups);
+
+        while (command->Step()) {
+            std::string groupName = command->GetColumnString(0);
+            LogDebug("Group " << groupName);
+            groups.push_back(groupName);
+        };
+    });
+}
+
 } //namespace SecurityManager

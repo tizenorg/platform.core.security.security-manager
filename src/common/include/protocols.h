@@ -136,6 +136,7 @@ enum class SecurityModuleCall
     GET_CONF_POLICY_ADMIN,
     GET_CONF_POLICY_SELF,
     POLICY_GET_DESCRIPTIONS,
+    GROUPS_GET,
     NOOP = 0x90,
 };
 

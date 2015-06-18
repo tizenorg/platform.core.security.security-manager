@@ -992,5 +992,18 @@ int policyGetDesc(std::vector<std::string> &levels)
     return ret;
 }
 
+int policyGetGroups(std::vector<std::string> &groups) {
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+
+    try {
+        PrivilegeDb::getInstance().GetGroups(groups);
+    } catch (const PrivilegeDb::Exception::Base &e) {
+        LogError("Error while getting groups from database: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    return ret;
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
