@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2014 Samsung Electronics Co., Ltd All Rights Reserved
+ *  Copyright (c) 2014-2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  *  Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -986,6 +986,19 @@ int policyGetDesc(std::vector<std::string> &levels)
         return SECURITY_MANAGER_API_ERROR_NO_SUCH_SERVICE;
     } catch (const CynaraException::Base &e) {
         LogError("Error while getting policy descriptions list from Cynara: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    }
+
+    return ret;
+}
+
+int policyGetGroups(std::vector<std::string> &groups) {
+    int ret = SECURITY_MANAGER_API_SUCCESS;
+
+    try {
+        PrivilegeDb::getInstance().GetGroups(groups);
+    } catch (const PrivilegeDb::Exception::Base &e) {
+        LogError("Error while getting groups from database: " << e.DumpToString());
         return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
     }
 

@@ -1,7 +1,7 @@
 /*
  * security-manager, database access
  *
- * Copyright (c) 2000 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
+ * Copyright (c) 2000 - 2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  * Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -300,6 +300,19 @@ void PrivilegeDb::GetAppIdsForPkgId(const std::string &pkgId,
             std::string appId = command->GetColumnString (0);
             LogDebug ("Got appid: " << appId << " for pkgId " << pkgId);
             appIds.push_back(appId);
+        };
+    });
+}
+
+void PrivilegeDb::GetGroups(std::vector<std::string> &groups)
+{
+   try_catch<void>([&] {
+        auto &command = getQuery(QueryType::EGetGroups);
+
+        while (command->Step()) {
+            std::string groupName = command->GetColumnString(0);
+            LogDebug("Group " << groupName);
+            groups.push_back(groupName);
         };
     });
 }

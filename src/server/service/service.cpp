@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2000 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
+ *  Copyright (c) 2000 - 2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  *  Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -153,6 +153,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                     break;
                 case SecurityModuleCall::POLICY_GET_DESCRIPTIONS:
                     processPolicyGetDesc(send);
+                    break;
+                case SecurityModuleCall::GROUPS_GET:
+                    processGroupsGet(send);
                     break;
                 default:
                     LogError("Invalid call: " << call_type_int);
@@ -332,6 +335,17 @@ void Service::processPolicyGetDesc(MessageBuffer &send)
         for(std::vector<std::string>::size_type i = 0; i != descriptions.size(); i++) {
             Serialization::Serialize(send, descriptions[i]);
         }
+    }
+}
+
+void Service::processGroupsGet(MessageBuffer &send)
+{
+    std::vector<std::string> groups;
+    int ret = ServiceImpl::policyGetGroups(groups);
+
+    Serialization::Serialize(send, ret);
+    if (ret == SECURITY_MANAGER_API_SUCCESS) {
+        Serialization::Serialize(send, groups);
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2000 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
+ *  Copyright (c) 2000 - 2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  *  Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -977,4 +977,86 @@ void security_manager_policy_levels_free(char **levels, size_t levels_count)
         free(levels[i]);
 
     delete[] levels;
+}
+
+SECURITY_MANAGER_API
+int security_manager_groups_get(char ***groups, size_t *groups_count)
+{
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
+    if (!groups || !groups_count)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    return try_catch([&] {
+
+        //put data into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::GROUPS_GET));
+
+        //send buffer to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+
+        switch(retval) {
+            case SECURITY_MANAGER_API_SUCCESS:
+                // success - continue
+                break;
+            case SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY:
+                return SECURITY_MANAGER_ERROR_MEMORY;
+            case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+            default:
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        std::vector<std::string> vgroups;
+        Deserialization::Deserialize(recv, vgroups);
+        LogInfo("Number of groups: " << vgroups.size());
+
+        auto groupsDeleter = [] (char **groups) {
+            if (groups == nullptr)
+                return;
+            for (size_t i = 0; groups[i] != nullptr; ++i)
+                free(groups[i]);
+            free(groups);
+        };
+
+        std::unique_ptr<char *, decltype(groupsDeleter)> array(
+            static_cast<char **>(calloc(vgroups.size(), sizeof(char *))),
+            groupsDeleter);
+
+        if (array == nullptr)
+            return SECURITY_MANAGER_ERROR_MEMORY;
+
+        for (size_t i = 0; i < vgroups.size(); ++i) {
+            const auto &group = vgroups.at(i);
+
+            if (group.empty()) {
+                LogError("Unexpected empty group");
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+            }
+
+            array.get()[i] = strdup(group.c_str());
+            if (array.get()[i] == nullptr)
+                return SECURITY_MANAGER_ERROR_MEMORY;
+        }
+
+        *groups_count = vgroups.size();
+        *groups = array.release();
+
+        return SECURITY_MANAGER_SUCCESS;
+    });
+}
+
+SECURITY_MANAGER_API
+void security_manager_groups_free(char **groups, size_t groups_count)
+{
+    for (size_t i = 0; i < groups_count; i++)
+        free(groups[i]);
+
+    delete[] groups;
 }

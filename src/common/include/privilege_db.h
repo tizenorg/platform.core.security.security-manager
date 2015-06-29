@@ -1,7 +1,7 @@
 /*
  * security-manager, database access
  *
- * Copyright (c) 2000 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
+ * Copyright (c) 2000 - 2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  * Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -54,7 +54,8 @@ enum class QueryType {
     EGetPkgId,
     EGetPrivilegeGroups,
     EGetUserApps,
-    EGetAppsInPkg
+    EGetAppsInPkg,
+    EGetGroups
 };
 
 class PrivilegeDb {
@@ -83,6 +84,7 @@ private:
         { QueryType::EGetPrivilegeGroups, " SELECT group_name FROM privilege_group_view WHERE privilege_name = ?" },
         { QueryType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
         { QueryType::EGetAppsInPkg, " SELECT app_name FROM app_pkg_view WHERE pkg_name = ?" },
+        { QueryType::EGetGroups, " SELECT group_name FROM privilege_group_view" },
     };
 
     /**
@@ -255,6 +257,14 @@ public:
      */
     void GetAppIdsForPkgId (const std::string &pkgId,
         std::vector<std::string> &appIds);
+
+    /**
+     * Retrieve list of groups
+     *
+     * @param[out] grp_names - list of group names
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetGroups(std::vector<std::string> &grp_names);
 };
 
 } //namespace SecurityManager
