@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2014 Samsung Electronics Co., Ltd All Rights Reserved
+ *  Copyright (c) 2014-2015 Samsung Electronics Co., Ltd All Rights Reserved
  *
  *  Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -168,6 +168,15 @@ int getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, const std::strin
  * @return API return code, as defined in protocols.h
  */
 int policyGetDesc(std::vector<std::string> &descriptions);
+
+/**
+ * Process getting group list.
+ *
+ * @param[out] groups empty vector for group strings
+ *
+ * @return API return code, as defined in protocols.h
+ */
+int policyGetGroups(std::vector<std::string> &groups);
 
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
