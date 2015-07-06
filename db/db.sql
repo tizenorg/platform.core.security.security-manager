@@ -27,6 +27,12 @@ name VARCHAR NOT NULL ,
 UNIQUE (name)
 );
 
+CREATE TABLE IF NOT EXISTS version (
+version_id INTEGER PRIMARY KEY,
+name VARCHAR NOT NULL,
+UNIQUE (name)
+);
+
 CREATE TABLE IF NOT EXISTS app_privilege (
 app_id INTEGER NOT NULL,
 privilege_id INTEGER NOT NULL ,
@@ -40,6 +46,20 @@ privilege_id INTEGER NOT NULL,
 group_name VARCHAR NOT NULL,
 PRIMARY KEY (privilege_id, group_name),
 FOREIGN KEY (privilege_id) REFERENCES privilege (privilege_id)
+);
+
+CREATE TABLE IF NOT EXISTS privilege_mapping (
+version_from_id INTEGER NOT NULL,
+privilege_id INTEGER NOT NULL,
+version_to_id INTEGER NOT NULL,
+privilege_mapping_id INTEGER NOT NULL,
+FOREIGN KEY (version_from_id) REFERENCES version (version_id)
+FOREIGN KEY (privilege_mapping_id) REFERENCES privilege (privilege_id)
+FOREIGN KEY (version_to_id) REFERENCES version (version_id)
+);
+
+CREATE TABLE IF NOT EXISTS privilege_to_map (
+privilege_name VARCHAR
 );
 
 DROP VIEW IF EXISTS app_privilege_view;
@@ -116,6 +136,34 @@ INSTEAD OF INSERT ON privilege_group_view
 BEGIN
     INSERT OR IGNORE INTO privilege(name) VALUES (NEW.privilege_name);
     INSERT OR IGNORE INTO privilege_group(privilege_id, group_name) VALUES ((SELECT privilege_id FROM privilege WHERE name=NEW.privilege_name), NEW.group_name);
+END;
+
+DROP VIEW IF EXISTS privilege_mapping_view;
+CREATE VIEW privilege_mapping_view AS
+SELECT
+        version1.name AS version_from_name,
+        version2.name AS version_to_name,
+        privilege1.name AS privilege_name,
+        privilege2.name AS privilege_mapping_name
+FROM privilege_mapping
+LEFT JOIN privilege AS privilege1 ON privilege_mapping.privilege_id = privilege1.privilege_id
+LEFT JOIN privilege AS privilege2 ON privilege_mapping.privilege_mapping_id = privilege2.privilege_id
+LEFT JOIN version AS version1 ON privilege_mapping.version_from_id = version1.version_id
+LEFT JOIN version AS version2 ON privilege_mapping.version_to_id = version2.version_id;
+
+DROP TRIGGER IF EXISTS privilege_mapping_insert_trigger;
+CREATE TRIGGER privilege_mapping_insert_trigger
+INSTEAD OF INSERT ON privilege_mapping_view
+BEGIN
+        INSERT OR IGNORE INTO privilege(name) VALUES (NEW.privilege_name);
+        INSERT OR IGNORE INTO privilege(name) VALUES (NEW.privilege_mapping_name);
+        INSERT OR IGNORE INTO version(name) VALUES (NEW.version_from_name);
+        INSERT OR IGNORE INTO version(name) VALUES (NEW.version_to_name);
+        INSERT OR IGNORE INTO privilege_mapping(privilege_id, version_from_id, privilege_mapping_id, version_to_id) VALUES
+            ((SELECT privilege_id FROM privilege WHERE name=NEW.privilege_name),
+             (SELECT version_id FROM version WHERE name=NEW.version_from_name),
+             (SELECT privilege_id FROM privilege WHERE name=NEW.privilege_mapping_name),
+             (SELECT version_id FROM version WHERE name=NEW.version_to_name));
 END;
 
 COMMIT TRANSACTION;
