@@ -978,3 +978,39 @@ void security_manager_policy_levels_free(char **levels, size_t levels_count)
 
     delete[] levels;
 }
+
+SECURITY_MANAGER_API
+int security_manager_get_privilege_mapping(const char *from_version,
+                                            const char *to_version,
+                                            const char *privilege,
+                                            char ***privilege_mapping,
+                                            size_t *mapping_count)
+{
+    (void)to_version;
+    if (from_version == nullptr || privilege == nullptr ||
+        privilege_mapping == nullptr || mapping_count == nullptr) {
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    }
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+
+}
+SECURITY_MANAGER_API
+int security_manager_get_privileges_mapping(const char *from_version,
+                                             const char *to_version,
+                                             const char **privileges,
+                                             char ***privilege_mapping,
+                                             size_t *mapping_count)
+{
+    (void)to_version;
+    if (from_version == nullptr || privileges == nullptr ||
+        privilege_mapping == nullptr || mapping_count == nullptr) {
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    }
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+SECURITY_MANAGER_API
+void security_manager_privilege_mapping_free(char **privilege_mapping, size_t mapping_count)
+{
+    (void)privilege_mapping;
+    (void)mapping_count;
+}
