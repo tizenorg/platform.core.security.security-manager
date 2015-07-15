@@ -150,6 +150,7 @@ private:
      */
     void processPrivilegesMappings(MessageBuffer &recv, MessageBuffer &send);
 
+
 };
 
 } // namespace SecurityManager
