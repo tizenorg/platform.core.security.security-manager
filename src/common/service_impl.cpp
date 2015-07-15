@@ -992,5 +992,19 @@ int policyGetDesc(std::vector<std::string> &levels)
     return ret;
 }
 
+int getPrivilegesMappings(const std::string &version_from,
+                          const std::string &version_to,
+                          const std::vector<std::string> &privileges,
+                          std::vector<std::string> &mappings)
+{
+    if (privileges.size() == 1) {
+        PrivilegeDb::getInstance().GetPrivilegeMappings(version_from, version_to, privileges.front(), mappings);
+    } else {
+        PrivilegeDb::getInstance().GetPrivilegesMappings(version_from, version_to, privileges, mappings);
+    }
+    return SECURITY_MANAGER_API_SUCCESS;
+
+}
+
 } /* namespace ServiceImpl */
 } /* namespace SecurityManager */
