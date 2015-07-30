@@ -115,13 +115,25 @@ private:
     void initDataCommands();
 
     /**
+     * Wrapper for prepared statement, it will reset statement at destruction.
+     */
+    class StatementWrapper {
+    public:
+        StatementWrapper(DB::SqlConnection::DataCommandAutoPtr &ref) : ref(ref) {}
+        ~StatementWrapper();
+        DB::SqlConnection::DataCommand* operator->();
+    private:
+        DB::SqlConnection::DataCommandAutoPtr &ref;
+    };
+
+    /**
      * Return prepared query for given query type.
      * The query will be reset before returning.
      *
      * @param queryType query identifier
      * @return reference to prepared, reset query
      */
-    DB::SqlConnection::DataCommandAutoPtr & getStatement(StmtType queryType);
+    StatementWrapper getStatement(StmtType queryType);
 
     /**
      * Check if pkgId is already registered in database
