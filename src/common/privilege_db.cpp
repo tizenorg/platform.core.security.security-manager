@@ -121,7 +121,9 @@ bool PrivilegeDb::PkgIdExists(const std::string &pkgId)
     return try_catch<bool>([&] {
         auto &command = getStatement(StmtType::EPkgIdExists);
         command->BindString(1, pkgId);
-        return command->Step();
+        bool ret = command->Step();
+        command->Reset();
+        return ret;
     });
 }
 
@@ -133,12 +135,13 @@ bool PrivilegeDb::GetAppPkgId(const std::string &appId, std::string &pkgId)
 
         if (!command->Step()) {
             // No application with such appId
+            command->Reset();
             return false;
         }
 
         // application package found in the database, get it
         pkgId = command->GetColumnString(0);
-
+        command->Reset();
         return true;
     });
 }
@@ -158,6 +161,7 @@ void PrivilegeDb::AddApplication(const std::string &appId,
         };
 
         LogDebug("Added appId: " << appId << ", pkgId: " << pkgId);
+        command->Reset();
     });
 }
 
@@ -183,6 +187,7 @@ void PrivilegeDb::RemoveApplication(const std::string &appId, uid_t uid,
         LogDebug("Removed appId: " << appId);
 
         pkgIdIsNoMore = !(this->PkgIdExists(pkgId));
+        command->Reset();
     });
 }
 
@@ -199,6 +204,7 @@ void PrivilegeDb::GetPkgPrivileges(const std::string &pkgId, uid_t uid,
             LogDebug("Got privilege: " << privilege);
             currentPrivileges.push_back(privilege);
         };
+        command->Reset();
     });
 }
 
@@ -219,6 +225,7 @@ void PrivilegeDb::GetAppPrivileges(const std::string &appId, uid_t uid,
             LogDebug("Got privilege: " << privilege);
             currentPrivileges.push_back(privilege);
         };
+        command->Reset();
     });
 }
 
@@ -234,6 +241,7 @@ void PrivilegeDb::RemoveAppPrivileges(const std::string &appId, uid_t uid)
         }
 
         LogDebug("Removed all privileges for appId: " << appId);
+        command->Reset();
     });
 }
 
@@ -253,6 +261,7 @@ void PrivilegeDb::UpdateAppPrivileges(const std::string &appId, uid_t uid,
             command->Reset();
             LogDebug("Added privilege: " << privilege << " to appId: " << appId);
         }
+        command->Reset();
     });
 }
 
@@ -268,6 +277,7 @@ void PrivilegeDb::GetPrivilegeGroups(const std::string &privilege,
             LogDebug("Privilege " << privilege << " gives access to group: " << groupName);
             groups.push_back(groupName);
         };
+        command->Reset();
     });
 }
 
@@ -282,6 +292,7 @@ void PrivilegeDb::GetUserApps(uid_t uid, std::vector<std::string> &apps)
             LogDebug("User " << uid << " has app " << app << " installed");
             apps.push_back(app);
         };
+        command->Reset();
     });
 }
 
@@ -320,6 +331,7 @@ void PrivilegeDb::GetDefaultMapping(const std::string &version_from,
                     <<" to version " << version_to << " is " << mapping);
             mappings.push_back(mapping);
         }
+        command->Reset();
     });
 }
 
@@ -341,6 +353,7 @@ void PrivilegeDb::GetPrivilegeMappings(const std::string &version_from,
                     <<" has mapping " << mapping << " in version " << version_to);
             mappings.push_back(mapping);
         }
+        command->Reset();
     });
 }
 
@@ -376,6 +389,9 @@ void PrivilegeDb::GetPrivilegesMappings(const std::string &version_from,
                      <<" has mapping " << mapping << " in version " << version_to);
              mappings.push_back(mapping);
         }
+        queryCmd->Reset();
+        insertCmd->Reset();
+        deleteCmd->Reset();
     });
 }
 
