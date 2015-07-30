@@ -110,7 +110,7 @@ SqlConnection::DataCommand::~DataCommand()
 {
     LogPedantic("SQL data command finalizing");
 
-    if (sqlite3_finalize(m_stmt) != SQLITE_OK) {
+    while (sqlite3_finalize(m_stmt) != SQLITE_OK) {
         LogPedantic("Failed to finalize data command");
     }
 
