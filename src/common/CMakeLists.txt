@@ -5,6 +5,7 @@ PKG_CHECK_MODULES(COMMON_DEP
     REQUIRED
     libsystemd-journal
     libsmack
+    libtzplatform-config
     db-util
     cynara-admin
     cynara-client-async
