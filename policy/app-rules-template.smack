@@ -1,4 +1,5 @@
 System ~APP~ rwx
+System User::App::Shared rwx
 ~APP~ System wx
 ~APP~ System::Shared rxl
 ~APP~ System::Run rwxat
