@@ -167,15 +167,13 @@ void setupCorrectPath(const std::string &pkgId, const std::string &appId, const 
     setupCorrectPath(pkgId, appId, basePath, std::string());
 }
 
-void setupCorrectPath(const std::string &pkgId, const std::string &appId, const std::string &basePath,
+void setupCorrectPath(const std::string &pkgId, const std::string &, const std::string &basePath,
         const std::string& zoneId)
 {
     std::string pkgPath = basePath + "/" + pkgId;
-    std::string appPath = pkgPath + "/" + appId;
 
     pathSetSmack(pkgPath.c_str(), zoneSmackLabelGenerate(generatePkgLabel(pkgId), zoneId), XATTR_NAME_SMACK);
-    pathSetSmack(appPath.c_str(), zoneSmackLabelGenerate(generateAppLabel(appId), zoneId), XATTR_NAME_SMACK);
-    pathSetSmack(appPath.c_str(), "TRUE", XATTR_NAME_SMACKTRANSMUTE);
+    pathSetSmack(pkgPath.c_str(), "TRUE", XATTR_NAME_SMACKTRANSMUTE);
 }
 
 std::string generateAppNameFromLabel(const std::string &label)

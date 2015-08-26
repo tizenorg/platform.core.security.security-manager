@@ -225,7 +225,7 @@ static inline bool installRequestAuthCheck(const app_inst_req &req, uid_t uid, b
 
     appPath = userAppDir;
     correctPath.clear();
-    correctPath << userAppDir << "/" << req.pkgId << "/" << req.appId;
+    correctPath << userAppDir << "/" << req.pkgId;
     LogDebug("correctPath: " << correctPath.str());
 
     for (const auto &appPath : req.appPaths) {
