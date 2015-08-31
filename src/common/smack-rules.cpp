@@ -164,6 +164,11 @@ void SmackRules::addFromTemplateFile(const std::string &appId, const std::string
 void SmackRules::addFromTemplate(const std::vector<std::string> &templateRules,
         const std::string &appId, const std::string &pkgId, const std::string &zoneId)
 {
+#define REPLACE_PREFIX(STR, PREFIX, REPLACE) {      \
+    if (STR.compare(0, sizeof(PREFIX) - 1, PREFIX)) \
+        STR.replace(0, sizeof(PREFIX) - 1, REPLACE);\
+}
+
     for (auto rule : templateRules) {
         if (rule.empty())
             continue;
@@ -177,17 +182,10 @@ void SmackRules::addFromTemplate(const std::vector<std::string> &templateRules,
             ThrowMsg(SmackException::FileError, "Invalid rule template: " << rule);
         }
 
-        if (subject == SMACK_APP_LABEL_TEMPLATE)
-            subject = SmackLabels::generateAppLabel(appId);
-
-        if (subject == SMACK_PKG_LABEL_TEMPLATE)
-            subject = SmackLabels::generatePkgLabel(pkgId);
-
-        if (object == SMACK_APP_LABEL_TEMPLATE)
-            object = SmackLabels::generateAppLabel(appId);
-
-        if (object == SMACK_PKG_LABEL_TEMPLATE)
-            object = SmackLabels::generatePkgLabel(pkgId);
+        REPLACE_PREFIX(subject, SMACK_APP_LABEL_TEMPLATE, SmackLabels::generateAppLabel(appId));
+        REPLACE_PREFIX(subject, SMACK_PKG_LABEL_TEMPLATE, SmackLabels::generatePkgLabel(pkgId));
+        REPLACE_PREFIX(object,  SMACK_APP_LABEL_TEMPLATE, SmackLabels::generateAppLabel(appId));
+        REPLACE_PREFIX(object,  SMACK_PKG_LABEL_TEMPLATE, SmackLabels::generatePkgLabel(pkgId));
 
         if (!zoneId.empty()) {
             // FIXME replace with vasum calls. See zone-utils.h
