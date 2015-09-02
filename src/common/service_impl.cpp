@@ -168,7 +168,7 @@ bool ServiceImpl::isSubDir(const char *parent, const char *subdir)
         if (*parent++ != *subdir++)
             return false;
 
-    return (*subdir == '/');
+    return (*subdir == '/' || *parent == *subdir);
 }
 
 bool ServiceImpl::getUserAppDir(const uid_t &uid, std::string &userAppDir)
@@ -232,13 +232,8 @@ bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, st
         }
         LogDebug("Requested path is '" << appPath.first.c_str()
                 << "'. User's APPS_DIR is '" << userAppDir << "'");
-        if (!isSubDir(userAppDir.c_str(), real_path.get())) {
-            LogWarning("User's apps may have registered folders only in user's APPS_DIR");
-            return false;
-        }
-
         if (!isSubDir(correctPath.str().c_str(), real_path.get())) {
-            LogWarning("Installation is outside correct path: " << correctPath.str());
+            LogWarning("Installation is outside correct path: " << correctPath.str() << "," << real_path.get());
             return false;
         }
     }
