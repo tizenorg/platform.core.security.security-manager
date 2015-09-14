@@ -22,6 +22,7 @@
  */
 
 #include <cstring>
+#include <algorithm>
 #include "cynara.h"
 
 #include <dpl/log/log.h>
@@ -286,13 +287,22 @@ void CynaraAdmin::SetPolicies(const std::vector<CynaraAdminPolicy> &policies)
 void CynaraAdmin::UpdateAppPolicy(
     const std::string &label,
     const std::string &user,
-    const std::vector<std::string> &oldPrivileges,
-    const std::vector<std::string> &newPrivileges)
+    const std::vector<std::string> &roldPrivileges,
+    const std::vector<std::string> &rnewPrivileges)
 {
     std::vector<CynaraAdminPolicy> policies;
 
+	//Make roldPrivileges and rnewPrivileges to sorted list without duplicates.
+	std::vector<std::string> oldPrivileges;
+	std::vector<std::string> newPrivileges;
+	oldPrivileges.assign(roldPrivileges.begin(), roldPrivileges.end());
+	newPrivileges.assign(rnewPrivileges.begin(), rnewPrivileges.end());
+	std::sort(oldPrivileges.begin(), oldPrivileges.end());
+	std::sort(newPrivileges.begin(), newPrivileges.end());
+	oldPrivileges.erase( unique( oldPrivileges.begin(), oldPrivileges.end() ), oldPrivileges.end() );
+	newPrivileges.erase( unique( newPrivileges.begin(), newPrivileges.end() ), newPrivileges.end() );
+
     // Perform sort-merge join on oldPrivileges and newPrivileges.
-    // Assume that they are already sorted and without duplicates.
     auto oldIter = oldPrivileges.begin();
     auto newIter = newPrivileges.begin();
 

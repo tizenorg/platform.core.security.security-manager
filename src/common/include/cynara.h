@@ -128,16 +128,14 @@ public:
      * @param label application Smack label
      * @param user user identifier
      * @param oldPrivileges previously enabled privileges for the package.
-     *        Must be sorted and without duplicates.
      * @param newPrivileges currently enabled privileges for the package.
-     *        Must be sorted and without duplicates.
      *
      * TODO: drop oldPrivileges argument and get them directly from Cynara.
      * Appropriate Cynara interface is needed first.
      */
     void UpdateAppPolicy(const std::string &label, const std::string &user,
-        const std::vector<std::string> &oldPrivileges,
-        const std::vector<std::string> &newPrivileges);
+        const std::vector<std::string> &roldPrivileges,
+        const std::vector<std::string> &rnewPrivileges);
 
     /**
      * Depending on user type, create link between MAIN bucket and appropriate
