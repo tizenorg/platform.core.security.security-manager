@@ -40,9 +40,7 @@ namespace MasterReq {
  * @param[in]  appID            Application ID
  * @param[in]  uidstr           String containing user identifier
  * @param[in]  oldPkgPrivileges Previously enabled privileges for the package,
- *                              Must be sorted and without duplicates
  * @param[in]  newPkgPrivileges Currently enabled privileges for the package,
- *                              Must be sorted and without duplicates
  *
  * @see CynaraAdmin::UpdateAppPolicy
  */
