@@ -140,6 +140,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::GROUPS_GET:
                     processGroupsGet(send);
                     break;
+                case SecurityModuleCall::GET_PKGID_FROM_SMACKLABEL:
+                    processGetSmackLabelPkgId(buffer, send);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -345,6 +348,19 @@ void Service::processGroupsGet(MessageBuffer &send)
     if (ret == SECURITY_MANAGER_API_SUCCESS) {
         Serialization::Serialize(send, groups);
     }
+}
+
+void Service::processGetSmackLabelPkgId(MessageBuffer &recv, MessageBuffer &send)
+{
+    std::string label;
+    std::string pkgId;
+    int ret;
+
+    Deserialization::Deserialize(recv, label);
+    ret = serviceImpl.getPkgIdFromSmackLabel(label, pkgId);
+    Serialization::Serialize(send, ret);
+    if (ret == SECURITY_MANAGER_API_SUCCESS)
+        Serialization::Serialize(send, pkgId);
 }
 
 } // namespace SecurityManager

@@ -168,7 +168,13 @@ std::string generateAppNameFromLabel(const std::string &label)
     if (label.compare(0, sizeof(prefix) - 1, prefix))
         ThrowMsg(SmackException::InvalidLabel, "Cannot extract appId from Smack label " << label);
 
-    return label.substr(sizeof(prefix) - 1);
+    std::string ret = label.substr(sizeof(prefix) - 1);
+
+    if (ret.size() == 0) {
+        ThrowMsg(SmackException::InvalidLabel, "No appId in Smack label " << label);
+    }
+
+    return ret;
 }
 
 std::string generateAppLabel(const std::string &appId)

@@ -1149,3 +1149,61 @@ void security_manager_groups_free(char **groups, size_t groups_count)
 
     free(groups);
 }
+
+SECURITY_MANAGER_API
+int security_manager_get_pkgid_from_smacklabel(char **pkg_id, const char *label)
+{
+    using namespace SecurityManager;
+    MessageBuffer send, recv;
+
+    return try_catch([&] {
+        //checking parameters
+
+        LogDebug("security_manager_get_pkgid_from_smacklabel() called");
+
+        if (label == NULL) {
+            LogError("label is NULL");
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+        }
+
+        if (pkg_id == NULL) {
+            LogError("pkg_id is NULL");
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+        }
+
+        //put data into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::GET_PKGID_FROM_SMACKLABEL),
+            std::string(label));
+
+        //send buffer to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+        if (retval == SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT)
+            return SECURITY_MANAGER_ERROR_NO_SUCH_OBJECT;
+
+        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        std::string pkgIdString;
+        Deserialization::Deserialize(recv, pkgIdString);
+        if (pkgIdString.empty()) {
+            LogError("Unexpected empty pkgId");
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        *pkg_id = strdup(pkgIdString.c_str());
+        if (*pkg_id == NULL) {
+            LogError("Failed to allocate memory for pkgId");
+            return SECURITY_MANAGER_ERROR_MEMORY;
+        }
+
+        return SECURITY_MANAGER_SUCCESS;
+    });
+}
