@@ -158,6 +158,14 @@ private:
      * @param  send   Raw data buffer to be sent
      */
     void processGroupsGet(MessageBuffer &send);
+
+    /**
+     * Process getting package id from smack label
+     *
+     * @param  buffer Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     */
+    void processGetSmackLabelPkgId(MessageBuffer &buffer, MessageBuffer &send);
 };
 
 } // namespace SecurityManager
