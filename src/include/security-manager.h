@@ -42,6 +42,7 @@ enum lib_retcode {
     SECURITY_MANAGER_ERROR_REQ_NOT_COMPLETE,
     SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED,
     SECURITY_MANAGER_ERROR_ACCESS_DENIED,
+    SECURITY_MANAGER_ERROR_NO_SUCH_OBJECT,
 };
 
 /*! \brief accesses types for application installation paths*/
@@ -777,6 +778,17 @@ int security_manager_groups_get(char ***groups, size_t *groups_count);
  * @param[in] groups_count size of the groups array
  */
 void security_manager_groups_free(char **groups, size_t groups_count);
+
+/**
+ * Get package id of an application with given smack label
+ *
+ * On successful call pkg_id should be freed by the caller using free() function
+ *
+ * \param[out] Pointer to package identifier string
+ * \param[in]  Smack label of an application
+ * \return API return code or error code
+ */
+int security_manager_get_smacklabel_pkgid(char **pkg_id, const char *label);
 
 #ifdef __cplusplus
 }

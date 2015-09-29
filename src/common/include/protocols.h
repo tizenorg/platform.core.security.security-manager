@@ -138,6 +138,7 @@ enum class SecurityModuleCall
     POLICY_GET_DESCRIPTIONS,
     GET_PRIVILEGES_MAPPING,
     GROUPS_GET,
+    APP_GET_SMACKLABEL_PKGID,
     NOOP = 0x90,
 };
 

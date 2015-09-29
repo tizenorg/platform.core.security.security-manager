@@ -196,6 +196,18 @@ public:
      * @return API return code, as defined in protocols.h
      */
     int policyGetGroups(std::vector<std::string> &groups);
+
+    /**
+    * Process package id query for given smack label.
+    * Retrieves the package id associated with an application.
+    * The application is identified with given smack label.
+    *
+    * @param[in] smackLabel smack label of an application
+    * @param[out] pkgId returned package identifier
+    *
+    * @return API return code, as defined in protocols.h
+    */
+    int getPkgIdFromSmackLabel(const std::string &samckLabel, std::string &pkgId);
 };
 } /* namespace SecurityManager */
 
