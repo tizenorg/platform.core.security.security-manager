@@ -1018,4 +1018,17 @@ int ServiceImpl::policyGetGroups(std::vector<std::string> &groups)
     return ret;
 }
 
+int ServiceImpl::getPkgIdFromSmackLabel(const std::string &smackLabel, std::string &pkgId, std::string &appId)
+{
+    LogDebug("smack label: " << smackLabel);
+
+    try {
+        appId = SmackLabels::generateAppNameFromLabel(smackLabel);
+        return getPkgId(appId, pkgId);
+    } catch (...) {
+        LogError("Failed to retrieve appId from smack label: " << smackLabel);
+        return SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT;
+    }
+}
+
 } /* namespace SecurityManager */
