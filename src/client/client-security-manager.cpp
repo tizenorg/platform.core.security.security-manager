@@ -26,6 +26,7 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -48,6 +49,7 @@
 #include <service_impl.h>
 #include <connection.h>
 #include <zone-utils.h>
+#include <check-proper-drop.h>
 
 #include <security-manager.h>
 #include <client-offline.h>
@@ -520,6 +522,11 @@ int security_manager_prepare_app(const char *app_id)
     }
 
     ret = security_manager_drop_process_privileges();
+
+    if (!check_proper_drop()) {
+        LogError("Privileges haven't been properly dropped for whole process");
+        exit(EXIT_FAILURE);
+    }
     return ret;
 }
 

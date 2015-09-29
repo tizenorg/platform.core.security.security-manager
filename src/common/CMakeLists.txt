@@ -42,6 +42,7 @@ SET(COMMON_SOURCES
     ${DPL_PATH}/core/src/string.cpp
     ${DPL_PATH}/db/src/naive_synchronization_object.cpp
     ${DPL_PATH}/db/src/sql_connection.cpp
+    ${COMMON_PATH}/check-proper-drop.cpp
     ${COMMON_PATH}/config.cpp
     ${COMMON_PATH}/connection.cpp
     ${COMMON_PATH}/cynara.cpp
@@ -53,6 +54,7 @@ SET(COMMON_SOURCES
     ${COMMON_PATH}/smack-labels.cpp
     ${COMMON_PATH}/smack-rules.cpp
     ${COMMON_PATH}/smack-check.cpp
+    ${COMMON_PATH}/stats.cpp
     ${COMMON_PATH}/service_impl.cpp
     ${COMMON_PATH}/zone-utils.cpp
     )
