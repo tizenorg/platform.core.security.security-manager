@@ -26,12 +26,15 @@
 
 #include <sys/stat.h>
 #include <sys/smack.h>
+#include <sys/socket.h>
 #include <sys/xattr.h>
 #include <linux/xattr.h>
 #include <memory>
 #include <fts.h>
 #include <cstring>
+#include <fstream>
 #include <string>
+#include <sstream>
 
 #include <dpl/log/log.h>
 
@@ -168,7 +171,13 @@ std::string generateAppNameFromLabel(const std::string &label)
     if (label.compare(0, sizeof(prefix) - 1, prefix))
         ThrowMsg(SmackException::InvalidLabel, "Cannot extract appId from Smack label " << label);
 
-    return label.substr(sizeof(prefix) - 1);
+    std::string ret = label.substr(sizeof(prefix) - 1);
+
+    if (ret.size() == 0) {
+        ThrowMsg(SmackException::InvalidLabel, "No appId in Smack label " << label);
+    }
+
+    return ret;
 }
 
 std::string generateAppLabel(const std::string &appId)
@@ -199,6 +208,38 @@ std::string generatePkgROLabel(const std::string &pkgId)
         ThrowMsg(SmackException::InvalidLabel, "Invalid Smack label generated from pkgId " << pkgId);
 
     return label;
+}
+
+std::string getSmackLabelFromSocket(int socketFd)
+{
+    char *label = nullptr;
+
+    ssize_t labelSize = smack_new_label_from_socket(socketFd, &label);
+    if (labelSize < 0) {
+        ThrowMsg(SmackException::Base,
+                "smack_new_label_from_socket error for socket: " << socketFd);
+    }
+
+    return label;
+}
+
+std::string getSmackLabelFromPid(pid_t pid)
+{
+    std::stringstream smackFileName;
+    smackFileName << "/proc/" << pid << "/attr/current";
+
+    std::ifstream smackFileStream(smackFileName.str());
+    if (!smackFileStream.is_open())
+        ThrowMsg(SmackException::Base,
+                "/attr/current file open error for pid: " << pid);
+
+    std::string result;
+    if (!std::getline(smackFileStream, result)) {
+        ThrowMsg(SmackException::Base,
+                "read Error: " << errno << " from file: " << smackFileName);
+    }
+
+    return result;
 }
 
 

@@ -86,6 +86,21 @@ std::string generatePkgLabel(const std::string &pkgId);
  */
 std::string generatePkgROLabel(const std::string &pkgId);
 
+/**
+ * Returns smack label for given socket
+ *
+ * @param[in] socket descriptor
+ * @return resulting Smack label
+ */
+std::string getSmackLabelFromSocket(int socketFd);
+
+/**
+ * Returns smack label for given process
+ *
+ * @param[in] process identifier
+ * @return resulting Smack label
+ */
+std::string getSmackLabelFromPid(pid_t pid);
 
 } // namespace SmackLabels
 } // namespace SecurityManager
