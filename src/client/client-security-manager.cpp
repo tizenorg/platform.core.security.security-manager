@@ -26,6 +26,7 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -48,6 +49,7 @@
 #include <service_impl.h>
 #include <connection.h>
 #include <zone-utils.h>
+#include <check-proper-drop.h>
 
 #include <security-manager.h>
 #include <client-offline.h>
@@ -506,21 +508,36 @@ int security_manager_drop_process_privileges(void)
 SECURITY_MANAGER_API
 int security_manager_prepare_app(const char *app_id)
 {
-    LogDebug("security_manager_prepare_app() called");
-    int ret;
+    return try_catch([&] {
+        LogDebug("security_manager_prepare_app() called");
+        int ret;
 
-    ret = security_manager_set_process_label_from_appid(app_id);
-    if (ret != SECURITY_MANAGER_SUCCESS)
+        ret = security_manager_set_process_label_from_appid(app_id);
+        if (ret != SECURITY_MANAGER_SUCCESS)
+            return ret;
+
+        ret = security_manager_set_process_groups_from_appid(app_id);
+        if (ret != SECURITY_MANAGER_SUCCESS) {
+            LogWarning("Unable to setup process groups for application. Privileges with direct access to resources will not work.");
+            ret = SECURITY_MANAGER_SUCCESS;
+        }
+
+        ret = security_manager_drop_process_privileges();
+
+        try {
+            CheckProperDrop cpd;
+            cpd.getThreads();
+            if (!cpd.checkThreads()) {
+                LogError("Privileges haven't been properly dropped for the whole process");
+                exit(EXIT_FAILURE);
+            }
+        } catch (const SecurityManager::Exception &e) {
+            LogError("Error while checking privileges of the process: " << e.DumpToString());
+            exit(EXIT_FAILURE);
+        }
+
         return ret;
-
-    ret = security_manager_set_process_groups_from_appid(app_id);
-    if (ret != SECURITY_MANAGER_SUCCESS) {
-        LogWarning("Unable to setup process groups for application. Privileges with direct access to resources will not work.");
-        ret = SECURITY_MANAGER_SUCCESS;
-    }
-
-    ret = security_manager_drop_process_privileges();
-    return ret;
+    });
 }
 
 SECURITY_MANAGER_API
