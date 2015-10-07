@@ -31,6 +31,7 @@
 #include <memory>
 #include <fts.h>
 #include <cstring>
+#include <fstream>
 #include <string>
 
 #include <dpl/log/log.h>
@@ -201,6 +202,17 @@ std::string generatePkgROLabel(const std::string &pkgId)
     return label;
 }
 
+std::string getProcessLabel(pid_t pid)
+{
+    std::string label;
+    std::ifstream ifs("/proc/" + std::to_string(pid) + "/attr/current");
+    std::getline(ifs, label);
+
+    if (smack_label_length(label.c_str()) <= 0)
+        ThrowMsg(SmackException::InvalidLabel, "Unable to get Smack label of process " << pid);
+
+    return label;
+}
 
 } // namespace SmackLabels
 } // namespace SecurityManager
