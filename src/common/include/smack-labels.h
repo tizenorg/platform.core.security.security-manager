@@ -86,6 +86,14 @@ std::string generatePkgLabel(const std::string &pkgId);
  */
 std::string generatePkgROLabel(const std::string &pkgId);
 
+/**
+ * Reads Smack label of a given process
+ *
+ * @param[in] pid process identifier (PID)
+ * @return Smack label
+ */
+std::string getProcessLabel(pid_t pid);
+
 
 } // namespace SmackLabels
 } // namespace SecurityManager

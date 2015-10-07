@@ -26,6 +26,7 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -48,6 +49,7 @@
 #include <service_impl.h>
 #include <connection.h>
 #include <zone-utils.h>
+#include <check-proper-drop.h>
 
 #include <security-manager.h>
 #include <client-offline.h>
@@ -520,6 +522,19 @@ int security_manager_prepare_app(const char *app_id)
     }
 
     ret = security_manager_drop_process_privileges();
+
+    try {
+        CheckProperDrop cpd;
+        cpd.getThreads();
+        if (!cpd.checkThreads()) {
+            LogError("Privileges haven't been properly dropped for the whole process");
+            exit(EXIT_FAILURE);
+        }
+    } catch (const SecurityManager::Exception &e) {
+        LogError("Error while checking privileges of the process: " << e.DumpToString());
+        exit(EXIT_FAILURE);
+    }
+
     return ret;
 }
 
