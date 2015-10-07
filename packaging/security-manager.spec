@@ -12,6 +12,7 @@ Requires(post): smack
 BuildRequires: cmake
 BuildRequires: zip
 BuildRequires: libattr-devel
+BuildRequires: pkgconfig(libprocps)
 BuildRequires: pkgconfig(libsmack)
 BuildRequires: pkgconfig(libcap)
 BuildRequires: pkgconfig(libsystemd-daemon)
