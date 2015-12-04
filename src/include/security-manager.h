@@ -211,6 +211,17 @@ int security_manager_app_uninstall(const app_inst_req *p_req);
 int security_manager_get_app_pkgid(char **pkg_id, const char *app_id);
 
 /**
+ * Get smack label of a given application
+ *
+ * On successful call app_lable should be freed by the caller using free() function
+ *
+ * \param[out] Pointer to application process label string
+ * \param[in]  Application identifier
+ * \return API return code or error code
+ */
+int security_manager_get_process_label_from_appid(char **app_label, const char *app_id);
+
+/**
  * Compute smack label for given application id and set it for
  * currently running process
  *
