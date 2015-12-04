@@ -292,6 +292,37 @@ int security_manager_get_app_pkgid(char **pkg_id, const char *app_id)
     });
 }
 
+SECURITY_MANAGER_API
+int security_manager_get_process_label_from_appid(char **app_label, const char *app_id)
+{
+    std::string appLabelString;
+
+    LogDebug("security_manager_get_process_label_from_appid() called");
+
+    std::string zoneId;
+    if(!getZoneIdFromPid(getpid(), zoneId)) {
+        LogError("Failed to get ID of zone");
+        return SECURITY_MANAGER_ERROR_REQ_NOT_COMPLETE;
+    }
+
+    try {
+        appLabelString = SecurityManager::zoneSmackLabelGenerate(
+                SecurityManager::SmackLabels::generateAppLabel(app_id), zoneId);
+
+    } catch (...) {
+        LogError("Failed to generate smack label for appId: " << app_id);
+        return SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT;
+    }
+
+    *app_label = strdup(appLabelString.c_str());
+    if(*app_label == NULL) {
+        LogError("Failed to allocate memory for app label");
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
 static bool setup_smack(const char *label)
 {
     int labelSize = strlen(label);
