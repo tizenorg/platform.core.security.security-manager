@@ -87,12 +87,15 @@ int SmackInstallRules(const std::string &appId, const std::string &pkgId,
  * @param[in]  pkgId       ID of package being removed
  * @param[in]  pkgContents A list of all applications in the package
  * @param[in]  removePkg   Flag stating if entire package should be removed
+ * @param[in]  sameAppForOtherUser   Flag stating if same application exists for other user
+ *                                   If set Smack rules for application shouldn't be removed
  * @return API return code, as defined in protocols.h
  *
  * @see SmackRules::uninstallPackageRules, SmackRules::uninstallApplicationRules
  */
 int SmackUninstallRules(const std::string &appId, const std::string &pkgId,
-                        const std::vector<std::string> &pkgContents, const bool removePkg);
+                        const std::vector<std::string> &pkgContents, const bool removePkg,
+                        const bool sameAppForOtherUser);
 
 /**
  * Forwards policyUpdate API to Master. Arguments are the same as policyUpdate.

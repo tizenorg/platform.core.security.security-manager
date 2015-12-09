@@ -391,6 +391,7 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
     std::string smackLabel;
     std::vector<std::string> pkgContents;
     bool appExists = true;
+    bool sameAppForOtherUser = false;
     bool removePkg = false;
     std::string uidstr;
     checkGlobalUser(uid, uidstr);
@@ -420,7 +421,7 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
                 package that the app appears in */
             PrivilegeDb::getInstance().GetAppIdsForPkgId(pkgId, pkgContents);
             PrivilegeDb::getInstance().UpdateAppPrivileges(appId, uid, std::vector<std::string>());
-            PrivilegeDb::getInstance().RemoveApplication(appId, uid, removePkg);
+            PrivilegeDb::getInstance().RemoveApplication(appId, uid, removePkg, sameAppForOtherUser);
 
             if (isSlave) {
                 int ret = MasterReq::CynaraPolicyUpdate(appId, uidstr, std::vector<std::string>());
@@ -462,7 +463,7 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
             if (isSlave) {
                 LogDebug("Delegating Smack rules removal for deleted pkgId " << pkgId <<
                          " to master");
-                int ret = MasterReq::SmackUninstallRules(appId, pkgId, pkgContents, removePkg);
+                int ret = MasterReq::SmackUninstallRules(appId, pkgId, pkgContents, removePkg, sameAppForOtherUser);
                 if (ret != SECURITY_MANAGER_API_SUCCESS) {
                     LogError("Error while processing uninstall request on master: " << ret);
                     return ret;
@@ -472,9 +473,13 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
                     LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
                     SmackRules::uninstallPackageRules(pkgId);
                 }
+                if (!sameAppForOtherUser) {
+                    LogDebug ("Removing smack rules for deleted appId " << appId);
+                    SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents, zoneId);
+                } else  {
+                    LogDebug ("Application " << appId << " still exists for other users. Keep the rules.");
+                }
 
-                LogDebug ("Removing smack rules for deleted appId " << appId);
-                SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents, zoneId);
             }
         } catch (const SmackException::Base &e) {
             LogError("Error while removing Smack rules for application: " << e.DumpToString());

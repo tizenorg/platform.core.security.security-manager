@@ -363,11 +363,13 @@ void MasterService::processSmackUninstallRules(MessageBuffer &buffer, MessageBuf
     std::string appId, pkgId;
     std::vector<std::string> pkgContents;
     bool removePkg = false;
+    bool sameAppForOtherUser = false;
 
     Deserialization::Deserialize(buffer, appId);
     Deserialization::Deserialize(buffer, pkgId);
     Deserialization::Deserialize(buffer, pkgContents);
     Deserialization::Deserialize(buffer, removePkg);
+    Deserialization::Deserialize(buffer, sameAppForOtherUser);
 
     try {
         if (removePkg) {
@@ -375,8 +377,12 @@ void MasterService::processSmackUninstallRules(MessageBuffer &buffer, MessageBuf
             SmackRules::uninstallPackageRules(pkgId);
         }
 
-        LogDebug ("Removing smack rules for deleted appId " << appId);
-        SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents, zoneId);
+        if (!sameAppForOtherUser) {
+            LogDebug ("Removing smack rules for deleted appId " << appId);
+            SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents, zoneId);
+        } else  {
+            LogDebug ("Application " << appId << " still exists for other users. Keep the rules.");
+        }
 
         // FIXME implement zoneSmackLabelUnmap and check if works when Smack Namespaces are implemented
         std::string zoneAppLabel = SmackLabels::generateAppLabel(appId);
