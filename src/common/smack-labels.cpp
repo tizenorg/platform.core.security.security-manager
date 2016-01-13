@@ -148,6 +148,10 @@ void setupPath(const std::string &pkgId, const std::string &path, app_install_pa
         label_executables = false;
         label_transmute = true;
         break;
+    case SECURITY_MANAGER_PATH_TRUSTED:
+        LogError("Trusted paths are not supported yet.");
+        Throw(SmackException::InvalidPathType);
+        break;
     default:
         LogError("Path type not known.");
         Throw(SmackException::InvalidPathType);
