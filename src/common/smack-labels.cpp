@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2014 Samsung Electronics Co., Ltd All Rights Reserved
+ *  Copyright (c) 2014-2016 Samsung Electronics Co., Ltd All Rights Reserved
  *
  *  Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -147,6 +147,10 @@ void setupPath(const std::string &pkgId, const std::string &path, app_install_pa
         label.assign(LABEL_FOR_APP_PUBLIC_RO_PATH);
         label_executables = false;
         label_transmute = true;
+        break;
+    case SECURITY_MANAGER_PATH_TRUSTED:
+        LogError("Trusted paths are not supported yet.");
+        Throw(SmackException::InvalidPathType);
         break;
     default:
         LogError("Path type not known.");
