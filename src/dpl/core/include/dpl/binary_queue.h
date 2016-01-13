@@ -33,7 +33,7 @@ namespace SecurityManager {
  * Binary queue auto pointer
  */
 class BinaryQueue;
-typedef std::auto_ptr<BinaryQueue> BinaryQueueAutoPtr;
+typedef std::unique_ptr<BinaryQueue> BinaryQueueAutoPtr;
 
 /**
  * Binary stream implemented as constant size bucket list
