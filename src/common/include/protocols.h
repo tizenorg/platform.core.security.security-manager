@@ -110,6 +110,7 @@ struct app_inst_req {
     std::vector<std::string> privileges;
     std::vector<std::pair<std::string, int>> appPaths;
     uid_t uid;
+    std::vector<unsigned char> authorId;
 };
 
 struct user_req {

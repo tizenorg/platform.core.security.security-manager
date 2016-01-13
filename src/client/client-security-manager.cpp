@@ -29,6 +29,7 @@
 #include <functional>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <unistd.h>
 #include <grp.h>
@@ -108,6 +109,19 @@ int security_manager_app_inst_req_set_uid(app_inst_req *p_req,
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
 
     p_req->uid = uid;
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_app_inst_req_set_author_id(app_inst_req *p_req,
+                                                const unsigned char *author_id,
+                                                unsigned int author_id_len)
+{
+    if (!p_req || !author_id || author_id_len == 0)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    p_req->authorId.assign(author_id, author_id + author_id_len);
 
     return SECURITY_MANAGER_SUCCESS;
 }
