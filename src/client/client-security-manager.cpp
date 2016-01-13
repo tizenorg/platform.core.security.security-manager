@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2000 - 2015 Samsung Electronics Co., Ltd All Rights Reserved
+ *  Copyright (c) 2000 - 2016 Samsung Electronics Co., Ltd All Rights Reserved
  *
  *  Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -110,6 +110,18 @@ int security_manager_app_inst_req_set_uid(app_inst_req *p_req,
     p_req->uid = uid;
 
     return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_app_inst_req_set_author_id(app_inst_req *p_req,
+                                                const void *author_id,
+                                                size_t author_id_len)
+{
+    if (!p_req || !author_id || author_id_len == 0)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    LogError("Not implemented");
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
 }
 
 SECURITY_MANAGER_API
