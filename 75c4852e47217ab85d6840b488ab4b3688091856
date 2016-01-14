@@ -1,0 +1,9 @@
+Verified+1: José Bollo <jobol@nonadev.net>
+Code-Review-1: Build Bot <b.bot@partner.samsung.com>
+Code-Review+1: Manuel Bachmann <manuel.bachmann@iot.bzh>
+Code-Review+2: Rafal Krypa <r.krypa@samsung.com>
+Submitted-by: Rafal Krypa <r.krypa@samsung.com>
+Submitted-at: Thu, 14 Jan 2016 08:54:00 -0800
+Reviewed-on: https://review.tizen.org/gerrit/56507
+Project: platform/core/security/security-manager
+Branch: refs/heads/tizen
