@@ -2,6 +2,7 @@ PKG_CHECK_MODULES(CLIENT_DEP
     REQUIRED
     libsmack
     libcap
+    libprocps
     )
 
 SET(CLIENT_VERSION_MAJOR 1)
@@ -23,6 +24,7 @@ SET(CLIENT_SOURCES
     ${CLIENT_PATH}/client-security-manager.cpp
     ${CLIENT_PATH}/client-common.cpp
     ${CLIENT_PATH}/client-offline.cpp
+    ${CLIENT_PATH}/check-proper-drop.cpp
     )
 
 ADD_LIBRARY(${TARGET_CLIENT} SHARED ${CLIENT_SOURCES})
