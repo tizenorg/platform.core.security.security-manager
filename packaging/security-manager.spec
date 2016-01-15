@@ -33,6 +33,7 @@ Group:      Security/Libraries
 Requires:   security-manager = %{version}-%{release}
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
+BuildRequires: pkgconfig(libcrypto)
 
 %description -n libsecurity-manager-client
 Tizen Security manager client library
