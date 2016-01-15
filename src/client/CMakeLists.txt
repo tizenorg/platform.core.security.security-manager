@@ -2,6 +2,7 @@ PKG_CHECK_MODULES(CLIENT_DEP
     REQUIRED
     libsmack
     libcap
+    libcrypto
     )
 
 SET(CLIENT_VERSION_MAJOR 1)

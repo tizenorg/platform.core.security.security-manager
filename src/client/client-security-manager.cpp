@@ -29,6 +29,7 @@
 #include <functional>
 #include <memory>
 #include <utility>
+#include <cassert>
 
 #include <unistd.h>
 #include <grp.h>
@@ -52,6 +53,10 @@
 #include <security-manager.h>
 #include <client-offline.h>
 
+#include <openssl/evp.h>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
+
 static const char *EMPTY = "";
 
 /**
@@ -67,6 +72,83 @@ static std::map<enum lib_retcode, std::string> lib_retcode_string_map = {
                                                    "rigths to perform an operation"},
     {SECURITY_MANAGER_ERROR_ACCESS_DENIED, "Insufficient privileges"},
 };
+
+namespace {
+
+typedef std::vector<unsigned char> buffer;
+
+DECLARE_EXCEPTION_TYPE(SecurityManager::Exception, UnificationException)
+
+buffer digest_message(const unsigned char *message, unsigned int len)
+{
+    std::unique_ptr<EVP_MD_CTX, std::function<void(EVP_MD_CTX*)>> ctx(EVP_MD_CTX_create(),
+                                                                      EVP_MD_CTX_destroy);
+    unsigned char md_value[EVP_MAX_MD_SIZE];
+    unsigned int md_len;
+
+    if(1 != EVP_DigestInit_ex(ctx.get(), EVP_sha512(), NULL))
+        ThrowMsg(UnificationException, "Digest context initialization failed");
+
+    if(1 != EVP_DigestUpdate(ctx.get(), message, len*sizeof(message[0])))
+        ThrowMsg(UnificationException, "Digest update failed");
+
+    if(1 != EVP_DigestFinal_ex(ctx.get(), md_value, &md_len))
+        ThrowMsg(UnificationException, "Digest finalization failed");
+
+    return buffer(md_value, md_value + md_len);
+}
+
+std::string base64(const buffer& b)
+{
+    assert(b.size() > 0);
+
+    typedef std::unique_ptr<BIO, std::function<void(BIO*)>> bio_ptr;
+    bio_ptr b64(BIO_new(BIO_f_base64()), BIO_free);
+    if(!b64)
+        ThrowMsg(UnificationException, "Base64 filter creation failed");
+
+    bio_ptr bmem(BIO_new(BIO_s_mem()), BIO_free);
+    if(!bmem)
+        ThrowMsg(UnificationException, "Memory BIO creation failed");
+
+    BIO_set_flags(b64.get(), BIO_FLAGS_BASE64_NO_NL);
+    if(!BIO_push(b64.get(), bmem.get()))
+        ThrowMsg(UnificationException, "BIO chain construction failed");
+
+    int data_size = b.size()*sizeof(b[0]);
+    int written = BIO_write(b64.get(), b.data(), data_size);
+    if(written < data_size)
+        ThrowMsg(UnificationException, "Writing BIO failed");
+
+    if(1 != BIO_flush(b64.get()))
+        ThrowMsg(UnificationException, "Flushing BIO failed");
+
+    BUF_MEM *bptr = nullptr;
+    BIO_get_mem_ptr(b64.get(), &bptr);
+    if(!bptr)
+        ThrowMsg(UnificationException, "Failed to get buffer pointer");
+
+    if(0 == bptr->length)
+        ThrowMsg(UnificationException, "Empty buffer");
+
+    return std::string(bptr->data, bptr->data + bptr->length);
+}
+
+std::string unify_author_id(const unsigned char *author_id, unsigned int len)
+{
+    // length of unified author id (in characters)
+    static const unsigned int UNIFIED_LEN = 32;
+    static_assert((UNIFIED_LEN & 0x3) == 0, "UNIFIED_LEN should be divisible by 4");
+    // UNIFIED_LEN/4*3 because of Base64
+    static const unsigned int DIGEST_LEN = (UNIFIED_LEN>>2)*3;
+
+    buffer digest = digest_message(author_id, len);
+
+    digest.resize(DIGEST_LEN,0);
+
+    return base64(digest);
+}
+} // anonymous namespace
 
 SECURITY_MANAGER_API
 const char *security_manager_strerror(enum lib_retcode rc)
@@ -120,8 +202,17 @@ int security_manager_app_inst_req_set_author_id(app_inst_req *p_req,
     if (!p_req || !author_id || author_id_len == 0)
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
 
-    LogError("Not implemented");
-    return SECURITY_MANAGER_ERROR_UNKNOWN;
+    try {
+        p_req->authorId = unify_author_id(author_id, author_id_len);
+    } catch(const SecurityManager::Exception& e) {
+        LogError("Author id unification failed: " << e.DumpToString());
+        return SECURITY_MANAGER_API_ERROR_UNKNOWN;
+    } catch (...) {
+        LogError("Unknown exception occurred");
+        return SECURITY_MANAGER_API_ERROR_UNKNOWN;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
 }
 
 SECURITY_MANAGER_API
