@@ -58,11 +58,6 @@ enum class StmtType {
     EGetPrivilegeGroups,
     EGetUserApps,
     EGetAppsInPkg,
-    EGetDefaultMappings,
-    EGetPrivilegeMappings,
-    EInsertPrivilegeToMap,
-    EGetPrivilegesMappings,
-    EDeletePrivilegesToMap,
     EGetGroups
 };
 
@@ -104,16 +99,7 @@ private:
         { StmtType::EGetPkgId, " SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
         { StmtType::EGetPrivilegeGroups, " SELECT group_name FROM privilege_group_view WHERE privilege_name = ?" },
         { StmtType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
-        { StmtType::EGetDefaultMappings, "SELECT DISTINCT privilege_mapping_name FROM privilege_mapping_view"
-                                         " WHERE version_from_name=? AND version_to_name=? AND privilege_name IS NULL"},
         { StmtType::EGetAppsInPkg, " SELECT app_name FROM app_pkg_view WHERE pkg_name = ?" },
-        { StmtType::EGetPrivilegeMappings, " SELECT DISTINCT privilege_mapping_name FROM privilege_mapping_view"
-                                           " WHERE version_from_name=? AND version_to_name=? AND (privilege_name=? OR privilege_name IS NULL)"},
-        { StmtType::EInsertPrivilegeToMap, " INSERT INTO privilege_to_map(privilege_name) VALUES (?);"},
-        { StmtType::EGetPrivilegesMappings, "SELECT DISTINCT privilege_mapping_name FROM privilege_mapping_view"
-                                            " WHERE version_from_name=? AND version_to_name=?"
-                                            " AND privilege_name IN (SELECT privilege_name FROM privilege_to_map)"},
-        { StmtType::EDeletePrivilegesToMap, "DELETE FROM privilege_to_map"},
         { StmtType::EGetGroups, "SELECT DISTINCT group_name FROM privilege_group_view" },
     };
 
@@ -299,44 +285,6 @@ public:
      */
     void GetAppIdsForPkgId (const std::string &pkgId,
         std::vector<std::string> &appIds);
-
-    /**
-     * Retrieve default mappings from one version to another
-     *
-     * @param version_from - version of privilege availability
-     * @param version_to - version of mappings availability
-     * @param[out] mappings - vector of privilege mappings
-     * @exception DB::SqlConnection::Exception::InternalError on internal error
-     */
-    void GetDefaultMapping(const std::string &version_from,
-                           const std::string &version_to,
-                           std::vector<std::string> &mappings);
-    /**
-     * Retrieve privilege mappings from one version to another
-     *
-     * @param version_from - version of privilege availability
-     * @param version_to - version of mappings availability
-     * @param privilege - name of privilege to be mapped
-     * @param[out] mappings - vector of privilege mappings
-     * @exception DB::SqlConnection::Exception::InternalError on internal error
-     */
-    void GetPrivilegeMappings(const std::string &version_from,
-                              const std::string &version_to,
-                              const std::string &privilege,
-                              std::vector<std::string> &mappings);
-    /**
-     * Retrieve mappings of privilege set from one version to another
-     *
-     * @param version_from - version of privilege availability
-     * @param version_to - version of mappings availability
-     * @param privileges - vector of names of privileges to be mapped
-     * @param[out] mappings - vector of privileges mappings
-     * @exception DB::SqlConnection::Exception::InternalError on internal error
-     */
-    void GetPrivilegesMappings(const std::string &version_from,
-                               const std::string &version_to,
-                               const std::vector<std::string> &privileges,
-                               std::vector<std::string> &mappings);
 
     /**
      * Retrieve list of resource groups
