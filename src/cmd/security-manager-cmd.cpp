@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2000 - 2014 Samsung Electronics Co., Ltd All Rights Reserved
+ *  Copyright (c) 2000 - 2016 Samsung Electronics Co., Ltd All Rights Reserved
  *
  *  Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -27,6 +27,7 @@
 #include <utility>
 #include <vector>
 #include <map>
+#include <string>
 
 #include <dpl/log/log.h>
 #include <dpl/singleton.h>
@@ -43,6 +44,7 @@ static std::map <std::string, enum app_install_path_type> app_install_path_type_
     {"rw", SECURITY_MANAGER_PATH_RW},
     {"ro", SECURITY_MANAGER_PATH_RO},
     {"public_ro", SECURITY_MANAGER_PATH_PUBLIC_RO},
+    {"trusted_rw", SECURITY_MANAGER_PATH_TRUSTED_RW},
 };
 
 static std::map <std::string, enum security_manager_user_type> user_type_map = {
@@ -82,13 +84,16 @@ static po::options_description getInstallOptions()
          ("path,p", po::value< std::vector<std::string> >()->multitoken(),
           "path for setting smack labels (may occur more than once).\n"
           "Format: --path <path> <path type>\n"
-          "  where <path type> is: \trw, ro, public_ro\n"
+          "  where <path type> is: \trw, ro, public_ro, trusted_rw\n"
+          "  ('trusted rw' requires author id)\n"
           "example:\n"
           "        \t--path=/home/user/app rw")
          ("privilege,s", po::value< std::vector<std::string> >(),
           "privilege for the application (may occur more than once)")
          ("uid,u", po::value<uid_t>()->required(),
           "user identifier number (required)")
+         ("author-id,c", po::value<std::string>(),
+          "unique author's identifier (required for trusted_rw paths)")
          ;
     return opts;
 }
@@ -230,6 +235,9 @@ static void parseInstallOptions(int argc, char *argv[],
     }
     if (vm.count("uid"))
         req.uid = vm["uid"].as<uid_t>();
+    if (vm.count("author-id")) {
+        req.authorId = vm["author-id"].as<std::string>();
+    }
 
 }
 
