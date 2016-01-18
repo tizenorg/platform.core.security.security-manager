@@ -27,6 +27,9 @@
 #include <utility>
 #include <vector>
 #include <map>
+#include <fstream>
+#include <iterator>
+#include <string>
 
 #include <dpl/log/log.h>
 #include <dpl/singleton.h>
@@ -43,6 +46,7 @@ static std::map <std::string, enum app_install_path_type> app_install_path_type_
     {"rw", SECURITY_MANAGER_PATH_RW},
     {"ro", SECURITY_MANAGER_PATH_RO},
     {"public_ro", SECURITY_MANAGER_PATH_PUBLIC_RO},
+    {"trusted_rw", SECURITY_MANAGER_PATH_TRUSTED_RW},
 };
 
 static std::map <std::string, enum security_manager_user_type> user_type_map = {
@@ -82,13 +86,16 @@ static po::options_description getInstallOptions()
          ("path,p", po::value< std::vector<std::string> >()->multitoken(),
           "path for setting smack labels (may occur more than once).\n"
           "Format: --path <path> <path type>\n"
-          "  where <path type> is: \trw, ro, public_ro\n"
+          "  where <path type> is: \trw, ro, public_ro, trusted_rw\n"
+          "  ('trusted rw' requires author id)\n"
           "example:\n"
           "        \t--path=/home/user/app rw")
          ("privilege,s", po::value< std::vector<std::string> >(),
           "privilege for the application (may occur more than once)")
          ("uid,u", po::value<uid_t>()->required(),
           "user identifier number (required)")
+         ("author-id,c", po::value<std::string>(),
+          "path to author's identifier file (required for trusted_rw paths)")
          ;
     return opts;
 }
@@ -230,6 +237,21 @@ static void parseInstallOptions(int argc, char *argv[],
     }
     if (vm.count("uid"))
         req.uid = vm["uid"].as<uid_t>();
+    if (vm.count("author-id")) {
+        std::string path = vm["author-id"].as<std::string>();
+        std::ifstream is(path, std::ifstream::binary);
+        if(!is.good()) {
+            po::error e("Opening author id file failed.");
+            throw e;
+        }
+        auto buffer = std::vector<char>(std::istreambuf_iterator<char>(is),
+                                        std::istreambuf_iterator<char>());
+        int ret = security_manager_app_inst_req_set_author_id(&req, buffer.data(), buffer.size());
+        if(ret != SECURITY_MANAGER_SUCCESS) {
+            po::error e("Setting author id failed with " + std::to_string(ret));
+            throw e;
+        }
+    }
 
 }
 
