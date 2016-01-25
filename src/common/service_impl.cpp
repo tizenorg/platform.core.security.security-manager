@@ -31,6 +31,7 @@
 
 #include <cstring>
 #include <algorithm>
+#include <utility>
 
 #include <dpl/log/log.h>
 #include <tzplatform_config.h>
@@ -857,72 +858,83 @@ int ServiceImpl::getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, con
         };
         LogDebug("Fetching policy for " << listOfUsers.size() << " users");
 
+        std::vector<std::pair<uid_t, std::string>> listOfUserApps;
         for (const uid_t &user : listOfUsers) {
             LogDebug("User: " << user);
-            std::string userStr = std::to_string(user);
-            std::vector<std::string> listOfApps;
 
             if (filter.appId.compare(SECURITY_MANAGER_ANY)) {
                 LogDebug("Limitting Cynara query to app: " << filter.appId);
-                listOfApps.push_back(filter.appId);
+                listOfUserApps.push_back(make_pair(uid, filter.appId));
             } else {
+                std::vector<std::string> listOfApps;
                 PrivilegeDb::getInstance().GetUserApps(user, listOfApps);
                 LogDebug("Found apps: " << listOfApps.size());
-            };
+                for (const auto &app : listOfApps)
+                    listOfUserApps.push_back(make_pair(uid, app));
+            }
+        }
 
-            for (const std::string &appId : listOfApps) {
-                LogDebug("App: " << appId);
-                std::string smackLabelForApp = SmackLabels::generateAppLabel(appId);
-                std::vector<std::string> listOfPrivileges;
+        // Append global applications
+        {
+            uid_t globalUid = getGlobalUserId();
+            std::vector<std::string> listOfApps;
+            PrivilegeDb::getInstance().GetUserApps(globalUid, listOfApps);
+            for (const auto &app : listOfApps)
+                listOfUserApps.push_back(std::make_pair(globalUid, app));
+        }
 
-                // FIXME: also fetch privileges of global applications
-                // FIXME: fetch privileges from cynara, drop PrivilegeDb::GetAppPrivileges
-                PrivilegeDb::getInstance().GetAppPrivileges(appId, user, listOfPrivileges);
+        for (const auto userAppPair : listOfUserApps) {
+            uid_t user = userAppPair.first;
+            const std::string &appId = userAppPair.second;
+            std::string smackLabelForApp = SmackLabels::generateAppLabel(appId);
+            std::vector<std::string> listOfPrivileges;
+            LogDebug("App: " << appId);
 
-                if (filter.privilege.compare(SECURITY_MANAGER_ANY)) {
-                    LogDebug("Limitting Cynara query to privilege: " << filter.privilege);
-                    // FIXME: this filtering should be already performed by method fetching the privileges
-                    if (std::find(listOfPrivileges.begin(), listOfPrivileges.end(),
-                        filter.privilege) == listOfPrivileges.end()) {
-                        LogDebug("Application " << appId <<
-                            " doesn't have the filteres privilege " << filter.privilege);
-                        continue;
-                    }
-                    listOfPrivileges.clear();
-                    listOfPrivileges.push_back(filter.privilege);
+            // FIXME: fetch privileges from cynara, drop PrivilegeDb::GetAppPrivileges
+            PrivilegeDb::getInstance().GetAppPrivileges(appId, user, listOfPrivileges);
+
+            if (filter.privilege.compare(SECURITY_MANAGER_ANY)) {
+                LogDebug("Limitting Cynara query to privilege: " << filter.privilege);
+                // FIXME: this filtering should be already performed by method fetching the privileges
+                if (std::find(listOfPrivileges.begin(), listOfPrivileges.end(),
+                    filter.privilege) == listOfPrivileges.end()) {
+                    LogDebug("Application " << appId <<
+                        " doesn't have the filteres privilege " << filter.privilege);
+                    continue;
                 }
+                listOfPrivileges.clear();
+                listOfPrivileges.push_back(filter.privilege);
+            }
 
-                LogDebug("Privileges matching filter - " << filter.privilege << ": " << listOfPrivileges.size());
+            LogDebug("Privileges matching filter - " << filter.privilege << ": " << listOfPrivileges.size());
 
-                for (const std::string &privilege : listOfPrivileges) {
-                    LogDebug("Privilege: " << privilege);
-                    policy_entry pe;
+            for (const std::string &privilege : listOfPrivileges) {
+                LogDebug("Privilege: " << privilege);
+                policy_entry pe;
 
-                    pe.appId = appId;
-                    pe.user = userStr;
-                    pe.privilege = privilege;
+                pe.appId = appId;
+                pe.user = uidStr;
+                pe.privilege = privilege;
 
-                    pe.currentLevel = CynaraAdmin::getInstance().convertToPolicyDescription(
-                        CynaraAdmin::getInstance().GetPrivilegeManagerCurrLevel(
-                            smackLabelForApp, userStr, privilege));
+                pe.currentLevel = CynaraAdmin::getInstance().convertToPolicyDescription(
+                    CynaraAdmin::getInstance().GetPrivilegeManagerCurrLevel(
+                        smackLabelForApp, uidStr, privilege));
 
-                    pe.maxLevel = CynaraAdmin::getInstance().convertToPolicyDescription(
-                        CynaraAdmin::getInstance().GetPrivilegeManagerMaxLevel(
-                            smackLabelForApp, userStr, privilege));
+                pe.maxLevel = CynaraAdmin::getInstance().convertToPolicyDescription(
+                    CynaraAdmin::getInstance().GetPrivilegeManagerMaxLevel(
+                        smackLabelForApp, uidStr, privilege));
 
-                    LogDebug(
-                        "[policy_entry] app: " << pe.appId
-                        << " user: " << pe.user
-                        << " privilege: " << pe.privilege
-                        << " current: " << pe.currentLevel
-                        << " max: " << pe.maxLevel
-                        );
+                LogDebug(
+                    "[policy_entry] app: " << pe.appId
+                    << " user: " << pe.user
+                    << " privilege: " << pe.privilege
+                    << " current: " << pe.currentLevel
+                    << " max: " << pe.maxLevel
+                    );
 
-                    policyEntries.push_back(pe);
-                };
-            };
-        };
-
+                policyEntries.push_back(pe);
+            }
+        }
     } catch (const CynaraException::Base &e) {
         LogError("Error while listing Cynara rules: " << e.DumpToString());
         return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
