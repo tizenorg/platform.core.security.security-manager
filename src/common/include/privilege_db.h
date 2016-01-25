@@ -95,7 +95,7 @@ private:
     const std::map<StmtType, const char * const > Queries = {
         { StmtType::EGetPkgPrivileges, "SELECT DISTINCT privilege_name FROM app_privilege_view WHERE pkg_name=? AND uid=? ORDER BY privilege_name"},
         { StmtType::EGetAppPrivileges, "SELECT DISTINCT privilege_name FROM app_privilege_view WHERE app_name=? AND uid=? ORDER BY privilege_name"},
-        { StmtType::EAddApplication, "INSERT INTO app_pkg_view (app_name, pkg_name, uid) VALUES (?, ?, ?)" },
+        { StmtType::EAddApplication, "INSERT INTO app_pkg_view (app_name, pkg_name, uid, author_name) VALUES (?, ?, ?, ?)" },
         { StmtType::ERemoveApplication, "DELETE FROM app_pkg_view WHERE app_name=? AND uid=?" },
         { StmtType::EAddAppPrivileges, "INSERT INTO app_privilege_view (app_name, uid, privilege_name) VALUES (?, ?, ?)" },
         { StmtType::ERemoveAppPrivileges, "DELETE FROM app_privilege_view WHERE app_name=? AND uid=?" },
@@ -232,10 +232,14 @@ public:
      * @param appId - application identifier
      * @param pkgId - package identifier
      * @param uid - user identifier for whom application is going to be installed
+     * @param author - author identifier
      * @exception DB::SqlConnection::Exception::InternalError on internal error
      */
-    void AddApplication(const std::string &appId, const std::string &pkgId,
-            uid_t uid);
+    void AddApplication(
+            const std::string &appId,
+            const std::string &pkgId,
+            uid_t uid,
+            const std::string &authorId);
 
     /**
      * Remove an application from the database
