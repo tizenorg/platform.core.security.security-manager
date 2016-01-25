@@ -1215,3 +1215,86 @@ int security_manager_identify_app_from_pid(pid_t pid, char **pkg_id, char **app_
         }, pkg_id, app_id);
     });
 }
+
+SECURITY_MANAGER_API
+int security_manager_private_sharing_req_new(private_sharing_req **pp_req)
+{
+    if (!pp_req)
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    try {
+        *pp_req = new private_sharing_req;
+    } catch (std::bad_alloc& ex) {
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+void security_manager_private_sharing_req_free(private_sharing_req *p_req)
+{
+    delete p_req;
+}
+
+SECURITY_MANAGER_API
+int security_manager_private_sharing_req_add_owner_appid(private_sharing_req *p_req,
+                                                         const char *app_id)
+{
+    if (!p_req)
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_req->ownerAppId = app_id;
+    return SECURITY_MANAGER_SUCCESS;
+
+}
+
+SECURITY_MANAGER_API
+int security_manager_private_sharing_req_add_target_appid(private_sharing_req *p_req,
+                                                          const char *app_id)
+{
+    if (!p_req)
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    p_req->targetAppId = app_id;
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_private_sharing_req_add_paths(private_sharing_req *p_req,
+                                                   const char **pp_paths,
+                                                   int path_count)
+{
+    if (!p_req)
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    for (int i = 0; i < path_count; i++) {
+        p_req->paths.push_back(pp_paths[i]);
+    }
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_private_sharing_apply(private_sharing_req *p_req)
+{
+    using namespace SecurityManager;
+    return try_catch([&] {
+            //checking parameters
+            if (!p_req)
+                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+            if (p_req->ownerAppId.empty() || p_req->targetAppId.empty() || p_req->paths.empty())
+                return SECURITY_MANAGER_ERROR_REQ_NOT_COMPLETE;
+            return SECURITY_MANAGER_SUCCESS;
+    });
+}
+
+int security_manager_private_sharing_drop(private_sharing_req *p_req)
+{
+    using namespace SecurityManager;
+    return try_catch([&] {
+            //checking parameters
+            if (!p_req)
+                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+            if (p_req->ownerAppId.empty() || p_req->targetAppId.empty() || p_req->paths.empty())
+                return SECURITY_MANAGER_ERROR_REQ_NOT_COMPLETE;
+            return SECURITY_MANAGER_SUCCESS;
+    });
+}
+
