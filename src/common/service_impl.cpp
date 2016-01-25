@@ -308,7 +308,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
             return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
         }
 
-        PrivilegeDb::getInstance().AddApplication(req.appId, req.pkgId, uid);
+        PrivilegeDb::getInstance().AddApplication(req.appId, req.pkgId, uid, req.authorId);
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appId, uid, req.privileges);
         /* Get all application ids in the package to generate rules withing the package */
         PrivilegeDb::getInstance().GetAppIdsForPkgId(req.pkgId, pkgContents);
