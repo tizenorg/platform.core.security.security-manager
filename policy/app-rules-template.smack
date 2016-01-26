@@ -16,4 +16,8 @@ User ~PKG~::SharedRO rwxat
 ~APP~ User::App::Shared rwxat
 ~APP~ ~PKG~ rwxat
 ~APP~ ~PKG~::RO rxl
+<<<<<<< HEAD
 ~APP~ ~PKG~::SharedRO rwxat
+~APP~ ~AUTHOR~ rwxat
+User ~AUTHOR~ rwxat
+System ~AUTHOR~ rwxat
