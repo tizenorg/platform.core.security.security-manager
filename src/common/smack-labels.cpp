@@ -126,8 +126,12 @@ static void labelDir(const std::string &path, const std::string &label,
         dirSetSmack(path, label, XATTR_NAME_SMACKEXEC, &labelExecs);
 }
 
-void setupPath(const std::string &pkgId, const std::string &path, app_install_path_type pathType,
-        const std::string &zoneId)
+void setupPath(
+        const std::string &pkgId,
+        const std::string &path,
+        app_install_path_type pathType,
+        const std::string &zoneId,
+        const std::string &authorId)
 {
     std::string label;
     bool label_executables, label_transmute;
@@ -149,8 +153,9 @@ void setupPath(const std::string &pkgId, const std::string &path, app_install_pa
         label_transmute = true;
         break;
     case SECURITY_MANAGER_PATH_TRUSTED_RW:
-        LogError("Trusted paths are not supported yet.");
-        Throw(SmackException::InvalidPathType);
+        label = generateAuthorLabel(authorId);
+        label_executables = false;
+        label_transmute = true;
         break;
     default:
         LogError("Path type not known.");
@@ -205,6 +210,14 @@ std::string generatePkgROLabel(const std::string &pkgId)
     return label;
 }
 
+std::string generateAuthorLabel(const std::string &authorId) {
+    if (authorId.empty()) {
+        LogError("Author was not set. It's not possible to generate label for unknown author.");
+        ThrowMsg(SmackException::InvalidLabel, "Could not generate valid label without authorId");
+    }
+
+    return "User::Author::" + authorId;
+}
 
 } // namespace SmackLabels
 } // namespace SecurityManager

@@ -314,17 +314,18 @@ void MasterService::processSmackInstallRules(MessageBuffer &buffer, MessageBuffe
                                              const std::string &zoneId)
 {
     int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
-    std::string appId, pkgId;
+    std::string appId, pkgId, authorId;
     std::vector<std::string> pkgContents;
 
     Deserialization::Deserialize(buffer, appId);
     Deserialization::Deserialize(buffer, pkgId);
+    Deserialization::Deserialize(buffer, authorId);
     Deserialization::Deserialize(buffer, pkgContents);
 
     try {
         LogDebug("Adding Smack rules for new appId: " << appId << " with pkgId: "
                 << pkgId << ". Applications in package: " << pkgContents.size());
-        SmackRules::installApplicationRules(appId, pkgId, pkgContents, zoneId);
+        SmackRules::installApplicationRules(appId, pkgId, authorId, pkgContents, zoneId);
 
         // FIXME implement zoneSmackLabelMap and check if works when Smack Namespaces are implemented
         std::string zoneAppLabel = SmackLabels::generateAppLabel(appId);

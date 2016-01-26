@@ -63,7 +63,8 @@ enum class StmtType {
     EInsertPrivilegeToMap,
     EGetPrivilegesMappings,
     EDeletePrivilegesToMap,
-    EGetGroups
+    EGetGroups,
+    EGetAuthorIdAppId
 };
 
 class PrivilegeDb {
@@ -115,6 +116,7 @@ private:
                                             " AND privilege_name IN (SELECT privilege_name FROM privilege_to_map)"},
         { StmtType::EDeletePrivilegesToMap, "DELETE FROM privilege_to_map"},
         { StmtType::EGetGroups, "SELECT DISTINCT group_name FROM privilege_group_view" },
+        { StmtType::EGetAuthorIdAppId, "SELECT author_id FROM app_pkg_view WHERE app_name = ?"},
     };
 
     /**
@@ -303,6 +305,15 @@ public:
      */
     void GetAppIdsForPkgId (const std::string &pkgId,
         std::vector<std::string> &appIds);
+
+    /* Retrive an id of an author from database
+     *
+     * @param appId - application id
+     * @param[out] authorId - integer connected with author name
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetAuthorIdForAppId(const std::string &appId,
+        std::string &authorId);
 
     /**
      * Retrieve default mappings from one version to another
