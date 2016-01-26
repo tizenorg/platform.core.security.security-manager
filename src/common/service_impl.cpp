@@ -130,6 +130,29 @@ static inline int validatePolicy(policy_entry &policyEntry, std::string uidStr, 
     LogDebug("Policy update request authenticated and validated successfully");
     return SECURITY_MANAGER_API_SUCCESS;
 }
+
+bool checkAPIVersion(const std::string &targetTizenVersion)
+{
+    if (targetTizenVersion.find('.') == std::string::npos) {
+        return false;
+    }
+    int major = 0, minor = 0;
+    sscanf(targetTizenVersion.c_str(), "%d.%d", &major, &minor);
+    if(major < 2) {
+        return false;
+    }
+    return true;
+}
+bool isTizen2XVersion(const std::string &version)
+{
+    int major = 0;
+    sscanf(version.c_str(), "%d.", &major);
+    if(major == 2) {
+        return true;
+    }
+    return false;
+}
+
 } // end of anonymous namespace
 
 ServiceImpl::ServiceImpl()
@@ -265,6 +288,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
     std::string appPath;
     std::string appLabel;
     std::string pkgLabel;
+    std::vector<std::string> allTizen2XApps, allTizen2XPackages;
 
     std::string zoneId;
     if (isSlave) {
@@ -297,7 +321,13 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         pkgLabel = zoneSmackLabelGenerate(SmackLabels::generatePkgLabel(req.pkgId), zoneId);
         LogDebug("Install parameters: appId: " << req.appId << ", pkgId: " << req.pkgId
                  << ", uidstr " << uidstr
-                 << ", app label: " << appLabel << ", pkg label: " << pkgLabel);
+                 << ", app label: " << appLabel << ", pkg label: " << pkgLabel
+                 << ", target Tizen API ver: " << req.targetTizenVersion);
+
+        if( !checkAPIVersion(req.targetTizenVersion)) {
+            LogError("Tizen API version improperly formed");
+            return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
+        }
 
         PrivilegeDb::getInstance().BeginTransaction();
         std::string pkg;
@@ -308,7 +338,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
             return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
         }
 
-        PrivilegeDb::getInstance().AddApplication(req.appId, req.pkgId, uid);
+        PrivilegeDb::getInstance().AddApplication(req.appId, req.pkgId, uid, req.targetTizenVersion);
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appId, uid, req.privileges);
         /* Get all application ids in the package to generate rules withing the package */
         PrivilegeDb::getInstance().GetAppIdsForPkgId(req.pkgId, pkgContents);
@@ -323,6 +353,10 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         } else {
             CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, uidstr, req.privileges);
         }
+
+        // if app is of 2.X API, allow other 2.X apps to access its' shared folders
+        if(isTizen2XVersion(req.targetTizenVersion))
+            PrivilegeDb::getInstance().GetTizen2XAppsAndPackages(req.appId, allTizen2XApps, allTizen2XPackages);
 
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application installation commited to database");
@@ -361,7 +395,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         if (isSlave) {
             LogDebug("Requesting master to add rules for new appId: " << req.appId << " with pkgId: "
                     << req.pkgId << ". Applications in package: " << pkgContents.size());
-            int ret = MasterReq::SmackInstallRules(req.appId, req.pkgId, pkgContents);
+            int ret = MasterReq::SmackInstallRules(req.appId, req.pkgId, pkgContents, allTizen2XApps, allTizen2XPackages);
             if (ret != SECURITY_MANAGER_API_SUCCESS) {
                 LogError("Master failed to apply package-specific smack rules: " << ret);
                 return ret;
@@ -369,7 +403,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         } else {
             LogDebug("Adding Smack rules for new appId: " << req.appId << " with pkgId: "
                     << req.pkgId << ". Applications in package: " << pkgContents.size());
-            SmackRules::installApplicationRules(req.appId, req.pkgId, pkgContents);
+            SmackRules::installApplicationRules(req.appId, req.pkgId, pkgContents, allTizen2XApps, allTizen2XPackages);
         }
     } catch (const SmackException::Base &e) {
         LogError("Error while applying Smack policy for application: " << e.DumpToString());
@@ -388,12 +422,14 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
 int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
 {
     std::string pkgId;
+    std::string tizenVersion;
     std::string smackLabel;
     std::vector<std::string> pkgContents;
     bool appExists = true;
     bool removeApp = false;
     bool removePkg = false;
     std::string uidstr;
+    std::vector<std::string> allTizen2XApps;
     checkGlobalUser(uid, uidstr);
 
     std::string zoneId;
@@ -406,7 +442,7 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
 
     try {
         PrivilegeDb::getInstance().BeginTransaction();
-        if (!PrivilegeDb::getInstance().GetAppPkgId(appId, pkgId)) {
+        if (!PrivilegeDb::getInstance().GetAppPkgIdAndVer(appId, pkgId, tizenVersion)) {
             LogWarning("Application " << appId <<
                 " not found in database while uninstalling");
             PrivilegeDb::getInstance().RollbackTransaction();
@@ -422,6 +458,9 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
             PrivilegeDb::getInstance().GetAppIdsForPkgId(pkgId, pkgContents);
             PrivilegeDb::getInstance().UpdateAppPrivileges(appId, uid, std::vector<std::string>());
             PrivilegeDb::getInstance().RemoveApplication(appId, uid, removeApp, removePkg);
+            // if app is of 2.X API, allow other 2.X apps to access its' shared folders
+            if(isTizen2XVersion(tizenVersion))
+                PrivilegeDb::getInstance().GetTizen2XApps(appId, allTizen2XApps);
 
             if (isSlave) {
                 int ret = MasterReq::CynaraPolicyUpdate(appId, uidstr, std::vector<std::string>());
@@ -463,19 +502,19 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
             if (isSlave) {
                 LogDebug("Delegating Smack rules removal for deleted pkgId " << pkgId <<
                          " to master");
-                int ret = MasterReq::SmackUninstallRules(appId, pkgId, pkgContents, removeApp, removePkg);
+                int ret = MasterReq::SmackUninstallRules(appId, pkgId, pkgContents, allTizen2XApps, removeApp, removePkg);
                 if (ret != SECURITY_MANAGER_API_SUCCESS) {
                     LogError("Error while processing uninstall request on master: " << ret);
                     return ret;
                 }
             } else {
+                if (removeApp) {
+                    LogDebug("Removing smack rules for deleted appId " << appId);
+                    SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents, allTizen2XApps, zoneId);
+                }
                 if (removePkg) {
                     LogDebug("Removing Smack rules for deleted pkgId " << pkgId);
                     SmackRules::uninstallPackageRules(pkgId);
-                }
-                if (removeApp) {
-                    LogDebug("Removing smack rules for deleted appId " << appId);
-                    SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents, zoneId);
                 }
             }
         } catch (const SmackException::Base &e) {

@@ -31,6 +31,7 @@
 #include <list>
 #include <string>
 #include <iostream>
+#include <utility>
 
 #include <dpl/log/log.h>
 #include "privilege_db.h"
@@ -163,14 +164,36 @@ bool PrivilegeDb::GetAppPkgId(const std::string &appId, std::string &pkgId)
     });
 }
 
+bool PrivilegeDb::GetAppPkgIdAndVer(const std::string &appId, std::string &pkgId, std::string &tizenVer)
+{
+    return try_catch<bool>([&] {
+        auto command = getStatement(StmtType::EGetPkgIdAndVer);
+        command->BindString(1, appId);
+
+        if (!command->Step()) {
+            // No application with such appId
+            return false;
+        }
+
+        // application package found in the database, get it
+        pkgId = command->GetColumnString(0);
+        tizenVer = command->GetColumnString(1);
+
+        return true;
+    });
+}
+
 void PrivilegeDb::AddApplication(const std::string &appId,
-        const std::string &pkgId, uid_t uid)
+                                 const std::string &pkgId,
+                                 uid_t uid,
+                                 const std::string &targetTizenVer)
 {
     try_catch<void>([&] {
         auto command = getStatement(StmtType::EAddApplication);
         command->BindString(1, appId);
         command->BindString(2, pkgId);
         command->BindInteger(3, static_cast<unsigned int>(uid));
+        command->BindString(4, targetTizenVer);
 
         if (command->Step()) {
             LogDebug("Unexpected SQLITE_ROW answer to query: " <<
@@ -302,6 +325,48 @@ void PrivilegeDb::GetUserApps(uid_t uid, std::vector<std::string> &apps)
             apps.push_back(app);
         };
     });
+}
+
+void PrivilegeDb::GetTizen2XApps(const std::string& origApp, std::vector<std::string> &apps)
+{
+    try_catch<void>([&] {
+        auto command = getStatement(StmtType::EGetAllTizen2XApps);
+        command->BindString(1, origApp);
+        apps.clear();
+        while (command->Step()) {
+            const std::string & Tizen2XApp = command->GetColumnString(0);
+            LogDebug("Found " << Tizen2XApp << " Tizen 2.X apps installed");
+            apps.push_back(Tizen2XApp);
+        };
+     });
+}
+
+void PrivilegeDb::GetTizen2XAppsAndPackages(const std::string& origApp,
+    std::vector<std::string> &apps, std::vector<std::string> &packages)
+{
+    try_catch<void>([&] {
+        {
+            auto command = getStatement(StmtType::EGetAllTizen2XApps);
+            command->BindString(1, origApp);
+            apps.clear();
+            while (command->Step()) {
+                const std::string & Tizen2XApp = command->GetColumnString(0);
+                LogDebug("Found " << Tizen2XApp << " Tizen 2.X apps installed");
+                apps.push_back(Tizen2XApp);
+            };
+        }
+        // grouping the packages below (can not use the statement above)
+        {
+            auto command = getStatement(StmtType::EGetAllTizen2XPackages);
+            command->BindString(1, origApp);
+            packages.clear();
+            while (command->Step()) {
+                const std::string & Tizen2XPkg = command->GetColumnString(0);
+                LogDebug("Found " << Tizen2XPkg << " Tizen 2.X packages installed");
+                packages.push_back(Tizen2XPkg);
+            };
+        }
+     });
 }
 
 void PrivilegeDb::GetAppIdsForPkgId(const std::string &pkgId,
