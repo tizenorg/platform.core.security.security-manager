@@ -82,13 +82,15 @@ int CynaraUserRemove(const uid_t uidDeleted)
 }
 
 int SmackInstallRules(const std::string &appId, const std::string &pkgId,
-                      const std::vector<std::string> &pkgContents)
+                      const std::vector<std::string> &pkgContents,
+                      const std::vector<std::string> &appsGranted,
+                      const std::vector<std::string> &accessPackages)
 {
     int ret;
     MessageBuffer sendBuf, retBuf;
     Serialization::Serialize(sendBuf,
         static_cast<int>(MasterSecurityModuleCall::SMACK_INSTALL_RULES),
-        appId, pkgId, pkgContents);
+        appId, pkgId, pkgContents, appsGranted, accessPackages);
 
     ret = sendToServer(MASTER_SERVICE_SOCKET, sendBuf.Pop(), retBuf);
     if (ret == SECURITY_MANAGER_API_SUCCESS)
