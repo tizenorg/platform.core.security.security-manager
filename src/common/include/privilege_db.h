@@ -55,6 +55,11 @@ enum class StmtType {
     EPkgIdExists,
     EAppIdExists,
     EGetPkgId,
+    EGetPathSharedCount,
+    EGetTargetPathSharedCount,
+    EGetOwnerTargetSharedCount,
+    EAddPrivatePathSharing,
+    ERemovePrivatePathSharing,
     EGetPrivilegeGroups,
     EGetUserApps,
     EGetAppsInPkg,
@@ -102,6 +107,11 @@ private:
         { StmtType::EPkgIdExists, "SELECT * FROM pkg WHERE name=?" },
         { StmtType::EAppIdExists, "SELECT * FROM app WHERE name=?" },
         { StmtType::EGetPkgId, " SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
+        { StmtType::EGetPathSharedCount, "SELECT COUNT(*) FROM app_private_sharing_view WHERE path = ?"},
+        { StmtType::EGetTargetPathSharedCount, "SELECT COUNT(*) FROM app_private_sharing_view WHERE target_app_name = ? AND path = ?"},
+        { StmtType::EGetOwnerTargetSharedCount, "SELECT COUNT(*) FROM app_private_sharing_view WHERE owner_app_name = ? AND target_app_name = ?"},
+        { StmtType::EAddPrivatePathSharing, "INSERT INTO app_private_sharing_view(owner_app_name, target_app_name, path, path_label) VALUES(?, ?, ?, ?)"},
+        { StmtType::ERemovePrivatePathSharing, "DELETE FROM app_private_sharing_view WHERE owner_app_name = ? AND target_app_name = ? AND path = ?"},
         { StmtType::EGetPrivilegeGroups, " SELECT group_name FROM privilege_group_view WHERE privilege_name = ?" },
         { StmtType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
         { StmtType::EGetDefaultMappings, "SELECT DISTINCT privilege_mapping_name FROM privilege_mapping_view"
@@ -150,16 +160,6 @@ private:
      */
     bool PkgIdExists(const std::string &pkgId);
 
-    /**
-     * Check if appId is registered in database
-     *
-     * @param appId - package identifier
-     * @exception DB::SqlConnection::Exception::InternalError on internal error
-     * @return true if appId exists in the database
-     *
-     */
-    bool AppIdExists(const std::string &appId);
-
 public:
     class Exception
     {
@@ -193,6 +193,16 @@ public:
      *
      */
     void RollbackTransaction(void);
+
+    /**
+     * Check if appId is registered in database
+     *
+     * @param appId - package identifier
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     * @return true if appId exists in the database
+     *
+     */
+    bool AppIdExists(const std::string &appId);
 
     /**
      * Return package id associated with a given application id
@@ -270,6 +280,60 @@ public:
     void UpdateAppPrivileges(const std::string &appId, uid_t uid,
             const std::vector<std::string> &privileges);
 
+    /**
+     * Get count of existing sharing of given path
+     *
+     * @param path - path name
+     * @param[out] count - count of sharing
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetPathSharingCount(const std::string &path, int &count);
+
+    /**
+     * Get count of existing sharing between given applications
+     *
+     * @param ownerAppId - application identifier
+     * @param targetAppId - application identifier
+     * @param[out] count - count of sharing
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetOwnerTargetSharingCount(const std::string &ownerAppId, const std::string &targetAppId,
+                                    int &count);
+
+    /**
+     * Get count of existing path sharing with target application
+     *
+     * @param targetAppId - application identifier
+     * @param path - user identifier for whom privileges will be updated
+     * @param[out] count - count of sharing
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetTargetPathSharingCount(const std::string &targetAppId,
+                                   const std::string &path,
+                                   int &count);
+
+    /**
+     * Add information about path sharing between owner application and target application
+     *
+     * @param ownerAppId - application identifier
+     * @param targetAppId - application identifier
+     * @param path - path name
+     * @param pathLabel - label of path
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void ApplyPrivateSharing(const std::string &ownerAppId, const std::string &targetAppId,
+                             const std::string &path, const std::string &pathLabel);
+
+    /**
+     * Remove information about path sharing between owner application and target application
+     *
+     * @param ownerAppId - application identifier
+     * @param targetAppId - application identifier
+     * @param path - path name
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void DropPrivateSharing(const std::string &ownerAppId, const std::string &targetAppId,
+                            const std::string &path);
     /**
      * Retrieve list of group ids assigned to a privilege
      *
