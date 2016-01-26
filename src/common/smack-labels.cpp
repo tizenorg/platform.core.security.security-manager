@@ -150,6 +150,11 @@ void setupPath(const std::string &pkgId, const std::string &path, app_install_pa
         label_executables = false;
         label_transmute = true;
         break;
+    case SECURITY_MANAGER_PATH_OWNER_RW_OTHER_RO:
+        label = zoneSmackLabelGenerate(generatePkgLabel(pkgId), zoneId);
+        label_executables = false;
+        label_transmute = true;
+        break;
     default:
         LogError("Path type not known.");
         Throw(SmackException::InvalidPathType);
