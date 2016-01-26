@@ -192,6 +192,16 @@ void SmackRules::addFromTemplate(const std::vector<std::string> &templateRules,
     }
 }
 
+void SmackRules::addAccessToTrustedDir(
+    const std::string &appId,
+    const std::string &authorId,
+    const std::string &zoneId)
+{
+    add(zoneSmackLabelGenerate(SmackLabels::generateAppLabel(appId), zoneId),
+        zoneSmackLabelGenerate(SmackLabels::generateAuthorLabel(authorId), zoneId),
+        "rw");
+}
+
 void SmackRules::generatePackageCrossDeps(const std::vector<std::string> &pkgContents,
         const std::string &zoneId)
 {
@@ -225,19 +235,29 @@ std::string SmackRules::getApplicationRulesFilePath(const std::string &appId)
     return path;
 }
 
-void SmackRules::installApplicationRules(const std::string &appId, const std::string &pkgId,
+void SmackRules::installApplicationRules(
+        const std::string &appId,
+        const std::string &pkgId,
+        const std::string &authorId,
         const std::vector<std::string> &pkgContents)
 {
-    installApplicationRules(appId, pkgId, pkgContents, std::string());
+    installApplicationRules(appId, pkgId, authorId, pkgContents, std::string());
 }
 
-void SmackRules::installApplicationRules(const std::string &appId, const std::string &pkgId,
-        const std::vector<std::string> &pkgContents, const std::string &zoneId)
+void SmackRules::installApplicationRules(
+        const std::string &appId,
+        const std::string &pkgId,
+        const std::string &authorId,
+        const std::vector<std::string> &pkgContents,
+        const std::string &zoneId)
 {
     SmackRules smackRules;
     std::string appPath = getApplicationRulesFilePath(appId);
 
     smackRules.addFromTemplateFile(appId, pkgId, zoneId);
+
+    if (!authorId.empty())
+        smackRules.addAccessToTrustedDir(appId, authorId, zoneId);
 
     if (smack_smackfs_path() != NULL)
         smackRules.apply();
