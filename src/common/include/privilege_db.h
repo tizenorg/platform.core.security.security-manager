@@ -55,6 +55,11 @@ enum class StmtType {
     EPkgIdExists,
     EAppIdExists,
     EGetPkgId,
+    EGetPathSharedCount,
+    EGetTargetPathSharedCount,
+    EGetOwnerTargetSharedCount,
+    EAddPrivatePathSharing,
+    ERemovePrivatePathSharing,
     EGetPrivilegeGroups,
     EGetUserApps,
     EGetAppsInPkg,
@@ -102,6 +107,11 @@ private:
         { StmtType::EPkgIdExists, "SELECT * FROM pkg WHERE name=?" },
         { StmtType::EAppIdExists, "SELECT * FROM app WHERE name=?" },
         { StmtType::EGetPkgId, " SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
+        { StmtType::EGetPathSharedCount, "SELECT COUNT(*) FROM app_private_sharing_view WHERE path = ?"},
+        { StmtType::EGetTargetPathSharedCount, "SELECT COUNT(*) FROM app_private_sharing_view WHERE target_app_name = ? AND path = ?"},
+        { StmtType::EGetOwnerTargetSharedCount, "SELECT COUNT(*) FROM app_private_sharing_view WHERE owner_app_name = ? AND target_app_name = ?"},
+        { StmtType::EAddPrivatePathSharing, "INSERT INTO app_private_sharing_view(owner_app_name, target_app_name, path, path_label) VALUES(?, ?, ?, ?)"},
+        { StmtType::ERemovePrivatePathSharing, "DELETE FROM app_private_sharing_view WHERE owner_app_name = ? AND target_app_name = ? AND path = ?"},
         { StmtType::EGetPrivilegeGroups, " SELECT group_name FROM privilege_group_view WHERE privilege_name = ?" },
         { StmtType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
         { StmtType::EGetDefaultMappings, "SELECT DISTINCT privilege_mapping_name FROM privilege_mapping_view"
@@ -270,6 +280,17 @@ public:
     void UpdateAppPrivileges(const std::string &appId, uid_t uid,
             const std::vector<std::string> &privileges);
 
+    void GetPathSharingCount(const std::string &path, int &count);
+    void GetOwnerTargetSharingCount(const std::string &ownerAppId, const std::string &targetAppId,
+                                    int &count);
+    void GetTargetPathSharingCount(const std::string &targetAppId,
+                                   const std::string &path,
+                                   int &count);
+    void ApplyPrivateSharing(const std::string &ownerAppId, const std::string &targetAppId,
+                             const std::string &path, const std::string &pathLabel);
+
+    void DropPrivateSharing(const std::string &ownerAppId, const std::string &targetAppId,
+                            const std::string &path, const std::string &pathLabel);
     /**
      * Retrieve list of group ids assigned to a privilege
      *
