@@ -44,9 +44,18 @@ public:
     void addModify(const std::string &subject, const std::string &object,
             const std::string &allowPermissions, const std::string &denyPermissions);
     void loadFromFile(const std::string &path);
-    void addFromTemplate(const std::vector<std::string> &templateRules,
-        const std::string &appId, const std::string &pkgId, const std::string &zoneId);
-    void addFromTemplateFile(const std::string &appId, const std::string &pkgId,
+
+    void addFromTemplate(
+            const std::vector<std::string> &templateRules,
+            const std::string &appId,
+            const std::string &pkgId,
+            const std::string &authorId,
+            const std::string &zoneId);
+
+    void addFromTemplateFile(
+            const std::string &appId,
+            const std::string &pkgId,
+            const std::string &authorId,
             const std::string &zoneId);
 
     void apply() const;
@@ -73,10 +82,14 @@ public:
      *
      * @param[in] appId - application id that is beeing installed
      * @param[in] pkgId - package id that the application is in
+     * @param[in] authorId - author id of application
      * @param[in] pkgContents - a list of all applications in the package
      */
-    static void installApplicationRules(const std::string &appId, const std::string &pkgId,
-        const std::vector<std::string> &pkgContents);
+    static void installApplicationRules(
+            const std::string &appId,
+            const std::string &pkgId,
+            const std::string &authorId,
+            const std::vector<std::string> &pkgContents);
 
     /**
      * Install package-specific smack rules.
@@ -89,8 +102,12 @@ public:
      * @param[in] pkgContents - a list of all applications in the package
      * @param[in] zoneId - ID of zone which requested application install
      */
-    static void installApplicationRules(const std::string &appId, const std::string &pkgId,
-        const std::vector<std::string> &pkgContents, const std::string &zoneId);
+    static void installApplicationRules(
+            const std::string &appId,
+            const std::string &pkgId,
+            const std::string &authorId,
+            const std::vector<std::string> &pkgContents,
+            const std::string &zoneId);
     /**
      * Uninstall package-specific smack rules.
      *
