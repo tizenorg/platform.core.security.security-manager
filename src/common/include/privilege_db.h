@@ -57,6 +57,8 @@ enum class StmtType {
     EGetPkgId,
     EGetPrivilegeGroups,
     EGetUserApps,
+    EGetAllTizen2XApps,
+    EGetAllTizen2XPackages,
     EGetAppsInPkg,
     EGetDefaultMappings,
     EGetPrivilegeMappings,
@@ -95,15 +97,17 @@ private:
     const std::map<StmtType, const char * const > Queries = {
         { StmtType::EGetPkgPrivileges, "SELECT DISTINCT privilege_name FROM app_privilege_view WHERE pkg_name=? AND uid=? ORDER BY privilege_name"},
         { StmtType::EGetAppPrivileges, "SELECT DISTINCT privilege_name FROM app_privilege_view WHERE app_name=? AND uid=? ORDER BY privilege_name"},
-        { StmtType::EAddApplication, "INSERT INTO app_pkg_view (app_name, pkg_name, uid) VALUES (?, ?, ?)" },
+        { StmtType::EAddApplication, "INSERT INTO app_pkg_view (app_name, pkg_name, uid, API_ver) VALUES (?, ?, ?, ?)" },
         { StmtType::ERemoveApplication, "DELETE FROM app_pkg_view WHERE app_name=? AND uid=?" },
         { StmtType::EAddAppPrivileges, "INSERT INTO app_privilege_view (app_name, uid, privilege_name) VALUES (?, ?, ?)" },
         { StmtType::ERemoveAppPrivileges, "DELETE FROM app_privilege_view WHERE app_name=? AND uid=?" },
         { StmtType::EPkgIdExists, "SELECT * FROM pkg WHERE name=?" },
         { StmtType::EAppIdExists, "SELECT * FROM app WHERE name=?" },
-        { StmtType::EGetPkgId, " SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
+        { StmtType::EGetPkgId, "SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
         { StmtType::EGetPrivilegeGroups, " SELECT group_name FROM privilege_group_view WHERE privilege_name = ?" },
         { StmtType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
+        { StmtType::EGetAllTizen2XApps,  "SELECT name FROM app WHERE API_ver LIKE '2.%%' AND name <> ?" },
+        { StmtType::EGetAllTizen2XPackages,  "SELECT pkg_name FROM app_pkg_view WHERE API_ver LIKE '2.%%' AND app_name <> ? GROUP BY pkg_name" },
         { StmtType::EGetDefaultMappings, "SELECT DISTINCT privilege_mapping_name FROM privilege_mapping_view"
                                          " WHERE version_from_name=? AND version_to_name=? AND privilege_name IS NULL"},
         { StmtType::EGetAppsInPkg, " SELECT app_name FROM app_pkg_view WHERE pkg_name = ?" },
@@ -232,10 +236,11 @@ public:
      * @param appId - application identifier
      * @param pkgId - package identifier
      * @param uid - user identifier for whom application is going to be installed
+     * @param uid - target tizen API version for application
      * @exception DB::SqlConnection::Exception::InternalError on internal error
      */
     void AddApplication(const std::string &appId, const std::string &pkgId,
-            uid_t uid);
+            uid_t uid, const std::string &targetAPIVer);
 
     /**
      * Remove an application from the database
@@ -299,6 +304,20 @@ public:
      */
     void GetAppIdsForPkgId (const std::string &pkgId,
         std::vector<std::string> &appIds);
+    /**
+     * Retrieve list of all apps excluding one specified (typically action originator)
+     *
+     * @param origApp - do not include specific application name in the list
+     * @param[out] apps - vector of appId describing installed 2.x apps,
+     *                    this parameter do not need to be empty, but
+     *                    it is being overwritten during function call.
+     * @param[out] packages - vector of pkgId describing installed 2.x packages,
+     *                    this parameter do not need to be empty, but
+     *                    it is being overwritten during function call.
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetTizen2XAppsAndPackages(const std::string& origApp,
+         std::vector<std::string> &apps, std::vector<std::string> &packages);
 
     /**
      * Retrieve default mappings from one version to another

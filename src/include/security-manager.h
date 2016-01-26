@@ -53,8 +53,20 @@ enum app_install_path_type {
     SECURITY_MANAGER_PATH_RW,
     //! RO access for given application package
     SECURITY_MANAGER_PATH_RO,
+    //! RW access for owner, RO for other applications
+    SECURITY_MANAGER_PATH_OWNER_RW_OTHER_RO,
     //! this is only for range limit
     SECURITY_MANAGER_ENUM_END
+};
+
+/*! \brief accesses types for application installation paths*/
+enum app_tizen_api_version {
+    //! current API version of the platform
+    SECURITY_MANAGER_TIZEN_API_CURRENT,
+    //! Tizen 2.4
+    SECURITY_MANAGER_TIZEN_API_2_4,
+    //! Tizen 3.0
+    SECURITY_MANAGER_TIZEN_API_3_0
 };
 
 /**
@@ -127,6 +139,16 @@ int security_manager_app_inst_req_new(app_inst_req **pp_req);
  *  \param[in] Pointer handling allocated app_inst_req structure
  */
 void security_manager_app_inst_req_free(app_inst_req *p_req);
+
+/*
+ * This function is used to set up target Tizen API version for app in app_inst_req structure
+ *
+ * \param[in] Pointer handling app_inst_req structure
+ * \param[in] Target Tizen API version
+ * \return API return code or error code
+ */
+int security_manager_app_inst_req_set_API_ver(app_inst_req *p_req,
+                                              app_tizen_api_version API_ver = SECURITY_MANAGER_TIZEN_API_CURRENT);
 
 /*
  * This function is used to set up application identifier in app_inst_req structure
