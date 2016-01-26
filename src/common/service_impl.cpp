@@ -130,6 +130,18 @@ static inline int validatePolicy(policy_entry &policyEntry, std::string uidStr, 
     LogDebug("Policy update request authenticated and validated successfully");
     return SECURITY_MANAGER_API_SUCCESS;
 }
+
+bool checkAPIVersion(const std::string &targetAPIVersion)
+{
+    if (targetAPIVersion.find('.') == std::string::npos)
+        return false;
+    int major = 0, minor = 0;
+    sscanf(targetAPIVersion.c_str(), "%d.%d", &major, &minor);
+    if(major < 2)
+        return false;
+    return true;
+}
+
 } // end of anonymous namespace
 
 ServiceImpl::ServiceImpl()
@@ -297,7 +309,13 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         pkgLabel = zoneSmackLabelGenerate(SmackLabels::generatePkgLabel(req.pkgId), zoneId);
         LogDebug("Install parameters: appId: " << req.appId << ", pkgId: " << req.pkgId
                  << ", uidstr " << uidstr
-                 << ", app label: " << appLabel << ", pkg label: " << pkgLabel);
+                 << ", app label: " << appLabel << ", pkg label: " << pkgLabel
+                 << ", target Tizen API ver: " << req.targetAPIVersion);
+
+        if( !checkAPIVersion(req.targetAPIVersion)) {
+            LogError("Tizen API version improperly formed");
+            return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
+        }
 
         PrivilegeDb::getInstance().BeginTransaction();
         std::string pkg;
@@ -308,7 +326,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
             return SECURITY_MANAGER_API_ERROR_INPUT_PARAM;
         }
 
-        PrivilegeDb::getInstance().AddApplication(req.appId, req.pkgId, uid);
+        PrivilegeDb::getInstance().AddApplication(req.appId, req.pkgId, uid, req.targetAPIVersion);
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appId, uid, req.privileges);
         /* Get all application ids in the package to generate rules withing the package */
         PrivilegeDb::getInstance().GetAppIdsForPkgId(req.pkgId, pkgContents);

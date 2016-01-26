@@ -90,6 +90,7 @@ int security_manager_app_inst_req_new(app_inst_req **pp_req)
         return SECURITY_MANAGER_ERROR_MEMORY;
     }
     (*pp_req)->uid = geteuid();
+    (*pp_req)->targetAPIVersion = "3.0"; // TODO tzplatform-config
 
     return SECURITY_MANAGER_SUCCESS;
 }
@@ -108,6 +109,28 @@ int security_manager_app_inst_req_set_uid(app_inst_req *p_req,
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
 
     p_req->uid = uid;
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+SECURITY_MANAGER_API
+int security_manager_app_inst_req_set_API_ver(app_inst_req *p_req, app_tizen_api_version API_ver)
+{
+    if (!p_req)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    switch(API_ver)
+    {
+        case SECURITY_MANAGER_TIZEN_API_2_4:
+            p_req->targetAPIVersion = "2.4";
+            break;
+        case SECURITY_MANAGER_TIZEN_API_3_0:
+            p_req->targetAPIVersion = "3.0";
+            break;
+        default:
+            p_req->targetAPIVersion = "3.0"; // TODO tzplatform-config
+            break;
+    }
 
     return SECURITY_MANAGER_SUCCESS;
 }
@@ -177,7 +200,7 @@ int security_manager_app_install(const app_inst_req *p_req)
 
             //put data into buffer
             Serialization::Serialize(send, (int)SecurityModuleCall::APP_INSTALL,
-                p_req->appId, p_req->pkgId, p_req->privileges, p_req->appPaths, p_req->uid);
+                p_req->appId, p_req->pkgId, p_req->privileges, p_req->appPaths, p_req->uid, p_req->targetAPIVersion);
 
             //send buffer to server
             retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
