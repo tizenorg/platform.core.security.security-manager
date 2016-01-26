@@ -265,6 +265,9 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
     std::string appPath;
     std::string appLabel;
     std::string pkgLabel;
+    std::string authorId;
+    // authorId contains id from database. It's not equal to value in request.
+    // IMHO the id in request should be called authorName not authorId...
 
     std::string zoneId;
     if (isSlave) {
@@ -312,6 +315,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appId, uid, req.privileges);
         /* Get all application ids in the package to generate rules withing the package */
         PrivilegeDb::getInstance().GetAppIdsForPkgId(req.pkgId, pkgContents);
+        PrivilegeDb::getInstance().GetAuthorIdForAppId(req.appId, authorId);
 
         if (isSlave) {
             int ret = MasterReq::CynaraPolicyUpdate(req.appId, uidstr, req.privileges);
@@ -355,13 +359,13 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         for (const auto &appPath : req.appPaths) {
             const std::string &path = appPath.first;
             app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
-            SmackLabels::setupPath(req.pkgId, path, pathType, zoneId);
+            SmackLabels::setupPath(req.pkgId, path, pathType, zoneId, authorId);
         }
 
         if (isSlave) {
             LogDebug("Requesting master to add rules for new appId: " << req.appId << " with pkgId: "
                     << req.pkgId << ". Applications in package: " << pkgContents.size());
-            int ret = MasterReq::SmackInstallRules(req.appId, req.pkgId, pkgContents);
+            int ret = MasterReq::SmackInstallRules(req.appId, req.pkgId, authorId, pkgContents);
             if (ret != SECURITY_MANAGER_API_SUCCESS) {
                 LogError("Master failed to apply package-specific smack rules: " << ret);
                 return ret;
@@ -369,7 +373,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         } else {
             LogDebug("Adding Smack rules for new appId: " << req.appId << " with pkgId: "
                     << req.pkgId << ". Applications in package: " << pkgContents.size());
-            SmackRules::installApplicationRules(req.appId, req.pkgId, pkgContents);
+            SmackRules::installApplicationRules(req.appId, req.pkgId, authorId, pkgContents);
         }
     } catch (const SmackException::Base &e) {
         LogError("Error while applying Smack policy for application: " << e.DumpToString());
