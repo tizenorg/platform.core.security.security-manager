@@ -43,8 +43,8 @@ namespace SmackLabels {
  *         app_install_path_type in security-manager.h for details
  * @param zoneId[in] ID of zone for which label should be set
  */
-void setupPath(const std::string &pkgId, const std::string &path,
-    app_install_path_type pathType, const std::string &zoneId);
+void setupPath(const std::string &pkgId,
+    const std::string &path, app_install_path_type pathType, const std::string &zoneId);
 
 /**
  * Sets Smack labels on a <ROOT_APP>/<pkg_id> non-recursively
@@ -69,6 +69,15 @@ std::string generateAppNameFromLabel(const std::string &label);
  * @return resulting Smack label
 */
 std::string generateAppLabel(const std::string &appId);
+
+/**
+ * Generates label for an application with an pkgId, specific
+ * for folders that can be modified by owner and other apps can only read it.
+ *
+ * @param[in] pkgId application's package identifier
+ * @return resulting Smack label
+*/
+std::string generatePkgLabelOwnerRWothersRO(const std::string &pkgId);
 
 /**
  * Generates label for an application with a package ID read from @ref pkgId.
