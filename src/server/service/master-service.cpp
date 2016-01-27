@@ -316,15 +316,19 @@ void MasterService::processSmackInstallRules(MessageBuffer &buffer, MessageBuffe
     int ret = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
     std::string appId, pkgId;
     std::vector<std::string> pkgContents;
+    std::vector<std::string> appsGranted;
 
     Deserialization::Deserialize(buffer, appId);
     Deserialization::Deserialize(buffer, pkgId);
     Deserialization::Deserialize(buffer, pkgContents);
+    Deserialization::Deserialize(buffer, appsGranted);
 
     try {
         LogDebug("Adding Smack rules for new appId: " << appId << " with pkgId: "
-                << pkgId << ". Applications in package: " << pkgContents.size());
-        SmackRules::installApplicationRules(appId, pkgId, pkgContents, zoneId);
+                << pkgId << ". Applications in package: " << pkgContents.size()
+                << ". Other Tizen 2.X applications: " << appsGranted.size());
+
+        SmackRules::installApplicationRules(appId, pkgId, pkgContents, appsGranted, zoneId);
 
         // FIXME implement zoneSmackLabelMap and check if works when Smack Namespaces are implemented
         std::string zoneAppLabel = SmackLabels::generateAppLabel(appId);

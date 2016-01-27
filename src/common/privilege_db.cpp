@@ -31,6 +31,7 @@
 #include <list>
 #include <string>
 #include <iostream>
+#include <utility>
 
 #include <dpl/log/log.h>
 #include "privilege_db.h"
@@ -303,6 +304,20 @@ void PrivilegeDb::GetUserApps(uid_t uid, std::vector<std::string> &apps)
             std::string app = command->GetColumnString(0);
             LogDebug("User " << uid << " has app " << app << " installed");
             apps.push_back(app);
+        };
+    });
+}
+
+void PrivilegeDb::GetTizen2XApps(const std::string& origApp, std::vector<std::string> &apps)
+{
+   try_catch<void>([&] {
+        auto command = getStatement(StmtType::EGetAllTizen2XApps);
+        command->BindString(1, origApp);
+        apps.clear();
+        while (command->Step()) {
+            const std::string & Tizen2XApp = command->GetColumnString(0);
+            LogDebug("Found app " << Tizen2XApp << " installed");
+            apps.push_back(Tizen2XApp);
         };
     });
 }

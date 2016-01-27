@@ -277,6 +277,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
     std::string appPath;
     std::string appLabel;
     std::string pkgLabel;
+    std::vector<std::string> allTizen2XApps;
 
     std::string zoneId;
     if (isSlave) {
@@ -342,6 +343,12 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
             CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, uidstr, req.privileges);
         }
 
+        // if app is of 2.X API, allow other 2.X apps to access its' shared folders
+        int major = 0;
+        sscanf(req.targetAPIVersion.c_str(), "%d.", &major);
+        if(major == 2)
+            PrivilegeDb::getInstance().GetTizen2XApps(req.appId, allTizen2XApps);
+
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application installation commited to database");
     } catch (const PrivilegeDb::Exception::IOError &e) {
@@ -373,13 +380,13 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         for (const auto &appPath : req.appPaths) {
             const std::string &path = appPath.first;
             app_install_path_type pathType = static_cast<app_install_path_type>(appPath.second);
-            SmackLabels::setupPath(req.pkgId, path, pathType, zoneId);
+            SmackLabels::setupPath(req.appId, req.pkgId, path, pathType, zoneId);
         }
 
         if (isSlave) {
             LogDebug("Requesting master to add rules for new appId: " << req.appId << " with pkgId: "
                     << req.pkgId << ". Applications in package: " << pkgContents.size());
-            int ret = MasterReq::SmackInstallRules(req.appId, req.pkgId, pkgContents);
+            int ret = MasterReq::SmackInstallRules(req.appId, req.pkgId, pkgContents, allTizen2XApps);
             if (ret != SECURITY_MANAGER_API_SUCCESS) {
                 LogError("Master failed to apply package-specific smack rules: " << ret);
                 return ret;
@@ -387,7 +394,7 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid, bool isSlave)
         } else {
             LogDebug("Adding Smack rules for new appId: " << req.appId << " with pkgId: "
                     << req.pkgId << ". Applications in package: " << pkgContents.size());
-            SmackRules::installApplicationRules(req.appId, req.pkgId, pkgContents);
+            SmackRules::installApplicationRules(req.appId, req.pkgId, pkgContents, allTizen2XApps);
         }
     } catch (const SmackException::Base &e) {
         LogError("Error while applying Smack policy for application: " << e.DumpToString());

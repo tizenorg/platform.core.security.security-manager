@@ -213,6 +213,38 @@ void SmackRules::generatePackageCrossDeps(const std::vector<std::string> &pkgCon
     }
 }
 
+/**
+ * this below works in N^2 and should be replaced by an alternative mechanism
+ */
+void SmackRules::generateCross2XApplicationDeps(const std::vector<std::string> &pkgContents,
+        const std::vector<std::string> &appsGranted, const std::string &zoneId)
+{
+    LogDebug("Generating cross-package rules");
+
+    std::string subjectLabel, objectLabel;
+    std::string appsInPackagePerms = SMACK_APP_IN_PACKAGE_PERMS;
+
+    for (const auto &subject : appsGranted) {
+        SmackRules grantedAppRules;
+        std::string grantedAppPath = getApplicationRulesFilePath(subject);
+        grantedAppRules.loadFromFile(grantedAppPath);
+        subjectLabel = zoneSmackLabelGenerate(SmackLabels::generateAppLabel(subject), zoneId);
+        std::string reverseObjectLabel = zoneSmackLabelGenerate(SmackLabels::generateAppLabelOwnerRWothersRO(subject), zoneId);
+
+        for (const auto &object : pkgContents) {
+            // allow other app to access installed app contents
+            objectLabel = zoneSmackLabelGenerate(SmackLabels::generateAppLabelOwnerRWothersRO(object), zoneId);
+            LogDebug("Trying to add cross 2.x app rule subject: " << subjectLabel << " object: " << objectLabel << " perms: " << "rx");
+            add(subjectLabel, objectLabel, "rx");
+
+            // reverse: allow installed app to access others' contents
+            std::string reverseSubjectLabel = zoneSmackLabelGenerate(SmackLabels::generateAppLabel(object), zoneId);
+            grantedAppRules.add(reverseSubjectLabel, reverseObjectLabel, "rx");
+        }
+        grantedAppRules.saveToFile(grantedAppPath);
+    }
+}
+
 std::string SmackRules::getPackageRulesFilePath(const std::string &pkgId)
 {
     std::string path(tzplatform_mkpath3(TZ_SYS_SMACK, "accesses.d", ("pkg_" + pkgId).c_str()));
@@ -226,28 +258,32 @@ std::string SmackRules::getApplicationRulesFilePath(const std::string &appId)
 }
 
 void SmackRules::installApplicationRules(const std::string &appId, const std::string &pkgId,
-        const std::vector<std::string> &pkgContents)
+        const std::vector<std::string> &pkgContents, const std::vector<std::string> &appsGranted)
 {
-    installApplicationRules(appId, pkgId, pkgContents, std::string());
+    installApplicationRules(appId, pkgId, pkgContents, appsGranted, std::string());
 }
 
 void SmackRules::installApplicationRules(const std::string &appId, const std::string &pkgId,
-        const std::vector<std::string> &pkgContents, const std::string &zoneId)
+        const std::vector<std::string> &pkgContents, const std::vector<std::string> &appsGranted,
+        const std::string &zoneId)
 {
     SmackRules smackRules;
     std::string appPath = getApplicationRulesFilePath(appId);
 
     smackRules.addFromTemplateFile(appId, pkgId, zoneId);
-
     if (smack_smackfs_path() != NULL)
         smackRules.apply();
-
     smackRules.saveToFile(appPath);
+
+    smackRules.generateCross2XApplicationDeps(pkgContents, appsGranted, zoneId);
+    smackRules.saveToFile(appPath);
+
     updatePackageRules(pkgId, pkgContents, zoneId);
 }
 
 void SmackRules::updatePackageRules(const std::string &pkgId,
-        const std::vector<std::string> &pkgContents, const std::string &zoneId)
+        const std::vector<std::string> &pkgContents,
+        const std::string &zoneId)
 {
     SmackRules smackRules;
     std::string pkgPath = getPackageRulesFilePath(pkgId);

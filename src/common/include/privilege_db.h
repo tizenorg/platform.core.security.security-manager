@@ -57,6 +57,7 @@ enum class StmtType {
     EGetPkgId,
     EGetPrivilegeGroups,
     EGetUserApps,
+    EGetAllTizen2XApps,
     EGetAppsInPkg,
     EGetDefaultMappings,
     EGetPrivilegeMappings,
@@ -101,9 +102,10 @@ private:
         { StmtType::ERemoveAppPrivileges, "DELETE FROM app_privilege_view WHERE app_name=? AND uid=?" },
         { StmtType::EPkgIdExists, "SELECT * FROM pkg WHERE name=?" },
         { StmtType::EAppIdExists, "SELECT * FROM app WHERE name=?" },
-        { StmtType::EGetPkgId, " SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
+        { StmtType::EGetPkgId, "SELECT pkg_name FROM app_pkg_view WHERE app_name = ?" },
         { StmtType::EGetPrivilegeGroups, " SELECT group_name FROM privilege_group_view WHERE privilege_name = ?" },
         { StmtType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
+        { StmtType::EGetAllTizen2XApps,  "SELECT name FROM app WHERE API_ver LIKE '2.%%' AND name <> ?" },
         { StmtType::EGetDefaultMappings, "SELECT DISTINCT privilege_mapping_name FROM privilege_mapping_view"
                                          " WHERE version_from_name=? AND version_to_name=? AND privilege_name IS NULL"},
         { StmtType::EGetAppsInPkg, " SELECT app_name FROM app_pkg_view WHERE pkg_name = ?" },
@@ -300,6 +302,16 @@ public:
      */
     void GetAppIdsForPkgId (const std::string &pkgId,
         std::vector<std::string> &appIds);
+    /**
+     * Retrieve list of all apps excluding one specified (typically action originator)
+     *
+     * @param origApp - do not include specific application name in the list
+     * @param[out] apps - vector of appId describing installed 2.x apps,
+     *                    this parameter do not need to be empty, but
+     *                    it is being overwritten during function call.
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetTizen2XApps(const std::string &origApp, std::vector<std::string> &apps);
 
     /**
      * Retrieve default mappings from one version to another

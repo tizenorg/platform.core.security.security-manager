@@ -128,8 +128,8 @@ static void labelDir(const std::string &path, const std::string &label,
         dirSetSmack(path, label, XATTR_NAME_SMACKEXEC, &labelExecs);
 }
 
-void setupPath(const std::string &pkgId, const std::string &path, app_install_path_type pathType,
-        const std::string &zoneId)
+void setupPath(const std::string &appId, const std::string &pkgId, const std::string &path,
+        app_install_path_type pathType, const std::string &zoneId)
 {
     std::string label;
     bool label_executables, label_transmute;
@@ -151,7 +151,7 @@ void setupPath(const std::string &pkgId, const std::string &path, app_install_pa
         label_transmute = true;
         break;
     case SECURITY_MANAGER_PATH_OWNER_RW_OTHER_RO:
-        label = zoneSmackLabelGenerate(generatePkgLabel(pkgId), zoneId);
+        label = zoneSmackLabelGenerate(generateAppLabelOwnerRWothersRO(appId), zoneId);
         label_executables = false;
         label_transmute = true;
         break;
@@ -187,6 +187,16 @@ std::string generateAppNameFromLabel(const std::string &label)
 std::string generateAppLabel(const std::string &appId)
 {
     std::string label = "User::App::" + appId;
+
+    if (smack_label_length(label.c_str()) <= 0)
+        ThrowMsg(SmackException::InvalidLabel, "Invalid Smack label generated from appId " << appId);
+
+    return label;
+}
+
+std::string generateAppLabelOwnerRWothersRO(const std::string &appId)
+{
+    std::string label = "User::App::" + appId + "::OwnerRW::OthersRO";
 
     if (smack_label_length(label.c_str()) <= 0)
         ThrowMsg(SmackException::InvalidLabel, "Invalid Smack label generated from appId " << appId);
