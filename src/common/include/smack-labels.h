@@ -55,6 +55,14 @@ void setupPath(const std::string &pkgId, const std::string &path,
 void setupAppBasePath(const std::string &pkgId, const std::string &basePath);
 
 /**
+ * Changes Smack label on path to enable private sharing
+ *
+ * @param pkgId[in] package identifier
+ * @param path[in] path
+ */
+void setupSharedPrivatePath(const std::string &pkgId, const std::string &path);
+
+/**
  * Generates application name for a label fetched from Cynara
  *
  * @param[in] label string to fetch application name for
@@ -87,6 +95,14 @@ std::string generatePkgLabel(const std::string &pkgId);
 std::string generatePkgROLabel(const std::string &pkgId);
 
 /**
+ * Generates unique label per path for private path sharing.
+ *
+ * @param[in] pkgId
+ * @param[in] path
+ * @return resulting Smack label
+ */
+std::string generateSharedPrivateLabel(const std::string &pkgId, const std::string &path);
+/**
  * Returns smack label for given socket
  *
  * @param[in] socket descriptor
@@ -101,6 +117,14 @@ std::string getSmackLabelFromSocket(int socketFd);
  * @return resulting Smack label
  */
 std::string getSmackLabelFromPid(pid_t pid);
+
+/**
+ * Returns smack label for given path
+ *
+ * @param[in] process identifier
+ * @return resulting Smack label
+ */
+std::string getSmackLabelFromPath(const std::string &path);
 
 } // namespace SmackLabels
 } // namespace SecurityManager
