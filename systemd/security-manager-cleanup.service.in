@@ -1,0 +1,10 @@
+[Unit]
+Description=Cleanup private sharing
+After=local-fs.target systemd-sysusers.service
+Before=sysinit.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart = @BIN_INSTALL_DIR@/security-manager-cleanup
+
