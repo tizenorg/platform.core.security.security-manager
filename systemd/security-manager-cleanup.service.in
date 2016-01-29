@@ -1,0 +1,10 @@
+[Unit]
+Description=Cleanup private sharing
+After=local-fs.target systemd-sysusers.service
+Before=systemd-tmpfiles-setup.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart = @BIN_INSTALL_DIR@/security-manager-cleanup
+
