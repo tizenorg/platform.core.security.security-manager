@@ -151,6 +151,16 @@ private:
     StatementWrapper getStatement(StmtType queryType);
 
     /**
+     * Check if appId is registered in database
+     *
+     * @param appId - package identifier
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     * @return true if appId exists in the database
+     *
+     */
+    bool AppIdExists(const std::string &appId);
+
+    /**
      * Check if pkgId is already registered in database
      *
      * @param pkgId - package identifier
@@ -193,16 +203,6 @@ public:
      *
      */
     void RollbackTransaction(void);
-
-    /**
-     * Check if appId is registered in database
-     *
-     * @param appId - package identifier
-     * @exception DB::SqlConnection::Exception::InternalError on internal error
-     * @return true if appId exists in the database
-     *
-     */
-    bool AppIdExists(const std::string &appId);
 
     /**
      * Return package id associated with a given application id
