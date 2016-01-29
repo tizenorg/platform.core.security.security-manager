@@ -60,6 +60,8 @@ enum class StmtType {
     EGetOwnerTargetSharedCount,
     EAddPrivatePathSharing,
     ERemovePrivatePathSharing,
+    EGetAllSharedPaths,
+    EClearSharing,
     EGetPrivilegeGroups,
     EGetUserApps,
     EGetAppsInPkg,
@@ -112,6 +114,8 @@ private:
         { StmtType::EGetOwnerTargetSharedCount, "SELECT COUNT(*) FROM app_private_sharing_view WHERE owner_app_name = ? AND target_app_name = ?"},
         { StmtType::EAddPrivatePathSharing, "INSERT INTO app_private_sharing_view(owner_app_name, target_app_name, path, path_label) VALUES(?, ?, ?, ?)"},
         { StmtType::ERemovePrivatePathSharing, "DELETE FROM app_private_sharing_view WHERE owner_app_name = ? AND target_app_name = ? AND path = ?"},
+        { StmtType::EGetAllSharedPaths, "SELECT owner_app_name, path FROM app_private_sharing_view ORDER BY owner_app_name"},
+        { StmtType::EClearSharing, "DELETE FROM app_private_sharing_view;"},
         { StmtType::EGetPrivilegeGroups, " SELECT group_name FROM privilege_group_view WHERE privilege_name = ?" },
         { StmtType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
         { StmtType::EGetDefaultMappings, "SELECT DISTINCT privilege_mapping_name FROM privilege_mapping_view"
@@ -334,6 +338,22 @@ public:
      */
     void DropPrivateSharing(const std::string &ownerAppId, const std::string &targetAppId,
                             const std::string &path);
+
+    /**
+     * Get all shared paths mapped to application names
+     *
+     * @param appPathMap - map containing vectors of paths shared by applications mapped by name
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetAllPrivateSharing(std::map<std::string, std::vector<std::string>> &appPathMap);
+
+    /**
+     * Clear information about private sharing.
+     *
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void ClearPrivateSharing();
+
     /**
      * Retrieve list of group ids assigned to a privilege
      *
