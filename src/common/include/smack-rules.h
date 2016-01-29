@@ -150,6 +150,9 @@ public:
     static void updatePackageRules(const std::string &pkgId,
             const std::vector<std::string> &pkgContents, const std::string &zoneId);
 
+    /* Temporary fix for authors rules */
+    static void fixAuthorRules(const std::string &authorId);
+
 private:
     /**
      * Create a path for package rules

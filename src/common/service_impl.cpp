@@ -403,6 +403,8 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
     bool removePkg = false;
     std::string uidstr;
     checkGlobalUser(uid, uidstr);
+    std::string authorId;
+    int restoreAuthor = 0;
 
     std::string zoneId;
     if (isSlave) {
@@ -427,9 +429,12 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
             /* Before we remove the app from the database, let's fetch all apps in the package
                 that this app belongs to, this will allow us to remove all rules withing the
                 package that the app appears in */
+            PrivilegeDb::getInstance().GetAuthorIdForAppId(appId, authorId);
             PrivilegeDb::getInstance().GetAppIdsForPkgId(pkgId, pkgContents);
             PrivilegeDb::getInstance().UpdateAppPrivileges(appId, uid, std::vector<std::string>());
             PrivilegeDb::getInstance().RemoveApplication(appId, uid, removeApp, removePkg);
+            PrivilegeDb::getInstance().RemoveAuthor();
+            PrivilegeDb::getInstance().AuthorIdExists(authorId, restoreAuthor);
 
             if (isSlave) {
                 int ret = MasterReq::CynaraPolicyUpdate(appId, uidstr, std::vector<std::string>());
@@ -485,6 +490,8 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
                     LogDebug("Removing smack rules for deleted appId " << appId);
                     SmackRules::uninstallApplicationRules(appId, pkgId, pkgContents, zoneId);
                 }
+                if (restoreAuthor)
+                    SmackRules::fixAuthorRules(authorId);
             }
         } catch (const SmackException::Base &e) {
             LogError("Error while removing Smack rules for application: " << e.DumpToString());

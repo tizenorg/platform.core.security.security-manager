@@ -331,4 +331,11 @@ void SmackRules::strReplace(std::string &haystack, const std::string &needle,
         haystack.replace(pos, needle.size(), replace);
 }
 
+void SmackRules::fixAuthorRules(const std::string &authorId) {
+    SmackRules rules;
+    rules.add("User", "User::Author::" + authorId, "rwxat");
+    rules.add("System", "User::Author::" + authorId, "rwxat");
+    rules.apply();
+}
+
 } // namespace SecurityManager
