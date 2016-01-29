@@ -1,0 +1,8 @@
+[Unit]
+Description=Cleanup private sharing
+Before=starter.service
+
+[Service]
+Type=oneshot
+ExecStart = @BIN_INSTALL_DIR@/security-manager-cleanup
+
