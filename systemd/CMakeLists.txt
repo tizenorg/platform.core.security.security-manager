@@ -9,6 +9,7 @@ INSTALL(FILES
     security-manager-master.socket
     security-manager-slave.service
     security-manager-slave.socket
+    security-manager-cleanup.service
     DESTINATION
     ${SYSTEMD_INSTALL_DIR}
 )
