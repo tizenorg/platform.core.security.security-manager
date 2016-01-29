@@ -1098,12 +1098,117 @@ int ServiceImpl::applyPrivatePathSharing(const std::string &ownerAppId,
                             const std::vector<std::string> &paths,
                             bool isSlave)
 {
-    (void)ownerAppId;
-    (void)targetAppId;
-    (void)paths;
-    (void)isSlave;
+    int errorRet;
+    try {
+        std::string zoneId;
+        if (isSlave) {
+            if (!getZoneId(zoneId)) {
+                LogError("Failed to get Zone ID.");
+                return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+            }
+        }
+        std::string ownerPkgId, targetPkgId;
+        if (!PrivilegeDb::getInstance().GetAppPkgId(ownerAppId, ownerPkgId)) {
+            LogError(ownerAppId << " is not an installed application");
+            return SECURITY_MANAGER_API_ERROR_APP_UNKNOWN;
+        }
+        if (!PrivilegeDb::getInstance().GetAppPkgId(targetAppId, targetPkgId)) {
+            LogError(targetAppId << " is not an installed application");
+            return SECURITY_MANAGER_API_ERROR_APP_UNKNOWN;
+        }
 
-    return SECURITY_MANAGER_API_SUCCESS;
+        for(const auto &path : paths) {
+            std::string pathLabel = SmackLabels::getSmackLabelFromPath(path);
+            if (pathLabel != zoneSmackLabelGenerate(SmackLabels::generatePkgLabel(ownerPkgId), zoneId)) {
+                std::string generatedPathLabel = zoneSmackLabelGenerate(SmackLabels::generateSharedPrivateLabel(ownerPkgId, path), zoneId);
+                if (generatedPathLabel != pathLabel) {
+                    LogError("Path " << path << " has label " << pathLabel << " and dosen't belong"
+                             " to application " << ownerAppId);
+                    return SECURITY_MANAGER_API_ERROR_APP_NOT_PATH_OWNER;
+                }
+            }
+        }
+        if (ownerAppId == targetAppId) {
+            LogDebug("Owner application is the same as target application");
+            return SECURITY_MANAGER_API_SUCCESS;
+        }
+
+        if (ownerPkgId == targetPkgId) {
+            LogDebug("Owner and target belong to the same package");
+            return SECURITY_MANAGER_API_SUCCESS;
+        }
+
+        std::vector<std::string> pkgContents;
+        PrivilegeDb::getInstance().GetAppIdsForPkgId(ownerPkgId, pkgContents);
+
+        int sharingAdded = 0;
+        PrivilegeDb::getInstance().BeginTransaction();
+        try {
+            for (const auto &path : paths) {
+                int targetPathCount, pathCount, ownerTargetCount;
+                PrivilegeDb::getInstance().GetTargetPathSharingCount(targetAppId, path, targetPathCount);
+                PrivilegeDb::getInstance().GetPathSharingCount(path, pathCount);
+                PrivilegeDb::getInstance().GetOwnerTargetSharingCount(ownerAppId, targetAppId, ownerTargetCount);
+                std::string pathLabel = zoneSmackLabelGenerate(SmackLabels::generateSharedPrivateLabel(ownerPkgId, path), zoneId);
+                PrivilegeDb::getInstance().ApplyPrivateSharing(ownerAppId, targetAppId, path, pathLabel);
+                sharingAdded++;
+                if (targetPathCount > 0) {
+                    //Nothing to do, only counter needed incrementing
+                    continue;
+                }
+                if (pathCount <= 0) {
+                    SmackLabels::setupSharedPrivatePath(ownerPkgId, path);
+                }
+                if (isSlave) {
+                    MasterReq::SmackApplyPrivateSharingRules(ownerPkgId,
+                            pkgContents, targetAppId, path, ownerTargetCount, pathCount);
+                } else {
+                    SmackRules::applyPrivateSharingRules(ownerPkgId, pkgContents, targetAppId,
+                            pathLabel, (pathCount > 0), (ownerTargetCount > 0), zoneId);
+                }
+            }
+        } catch (...) {
+            for (int i = 0; i < sharingAdded; i++) {
+                const std::string &path = paths[i];
+                int targetPathCount, pathCount, ownerTargetCount;
+                PrivilegeDb::getInstance().DropPrivateSharing(ownerAppId, targetAppId, path);
+                PrivilegeDb::getInstance().GetTargetPathSharingCount(targetAppId, path, targetPathCount);
+                PrivilegeDb::getInstance().GetPathSharingCount(path, pathCount);
+                PrivilegeDb::getInstance().GetOwnerTargetSharingCount(ownerAppId, targetAppId, ownerTargetCount);
+                if (targetPathCount > 0) {
+                    continue;
+                }
+                if (pathCount <= 0) {
+                    SmackLabels::setupPath(ownerPkgId, path, SECURITY_MANAGER_PATH_RW, zoneId);
+                }
+                std::string pathLabel = zoneSmackLabelGenerate(SmackLabels::generateSharedPrivateLabel(ownerPkgId, path), zoneId);
+                if (isSlave) {
+                    MasterReq::SmackDropPrivateSharingRules(ownerPkgId, pkgContents, targetAppId, path, ownerTargetCount, pathCount);
+                } else {
+                    SmackRules::dropPrivateSharingRules(ownerPkgId, pkgContents, targetAppId, pathLabel,
+                            pathCount <=1, ownerTargetCount <=1, zoneId);
+                }
+            }
+            throw;
+
+        }
+        PrivilegeDb::getInstance().CommitTransaction();
+        return SECURITY_MANAGER_API_SUCCESS;
+    } catch (const SmackException::Base &e) {
+        LogError("Error performing smack operation: " << e.GetMessage());
+        errorRet = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation failed: " << e.what());
+        errorRet = SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+    } catch (const std::exception &e) {
+        LogError("Some exception thrown : " << e.what());
+        errorRet = SECURITY_MANAGER_API_ERROR_UNKNOWN;
+    } catch (...) {
+        LogError("Unknown exception thrown");
+        errorRet = SECURITY_MANAGER_API_ERROR_UNKNOWN;
+    }
+    PrivilegeDb::getInstance().RollbackTransaction();
+    return errorRet;
 }
 
 int ServiceImpl::dropPrivatePathSharing(const std::string &ownerAppId,
@@ -1111,12 +1216,90 @@ int ServiceImpl::dropPrivatePathSharing(const std::string &ownerAppId,
                            const std::vector<std::string> &paths,
                            bool isSlave)
 {
-    (void)ownerAppId;
-    (void)targetAppId;
-    (void)paths;
-    (void)isSlave;
+    int errorRet;
+    try {
+        std::string zoneId;
+        if (isSlave) {
+            if (!getZoneId(zoneId)) {
+                LogError("Failed to get Zone ID.");
+                return SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+            }
+        }
+        std::string ownerPkgId, targetPkgId;
+        if (!PrivilegeDb::getInstance().GetAppPkgId(ownerAppId, ownerPkgId)) {
+            LogError(ownerAppId << " is not an installed application");
+            return SECURITY_MANAGER_API_ERROR_APP_UNKNOWN;
+        }
+        if (!PrivilegeDb::getInstance().GetAppPkgId(targetAppId, targetPkgId)) {
+            LogError(targetAppId << " is not an installed application");
+            return SECURITY_MANAGER_API_ERROR_APP_UNKNOWN;
+        }
 
-    return SECURITY_MANAGER_API_SUCCESS;
+        for(const auto &path : paths) {
+            std::string pathLabel = SmackLabels::getSmackLabelFromPath(path);
+            if (pathLabel != zoneSmackLabelGenerate(SmackLabels::generatePkgLabel(ownerPkgId), zoneId)) {
+                std::string generatedPathLabel = zoneSmackLabelGenerate(SmackLabels::generateSharedPrivateLabel(ownerPkgId, path), zoneId);
+                if (generatedPathLabel != pathLabel) {
+                    LogError("Path " << path << " has label " << pathLabel << " and dosen't belong"
+                             " to application " << ownerAppId);
+                    return SECURITY_MANAGER_API_ERROR_APP_NOT_PATH_OWNER;
+                }
+            }
+        }
+        if (ownerAppId == targetAppId) {
+            LogDebug("Owner application is the same as target application");
+            return SECURITY_MANAGER_API_SUCCESS;
+        }
+
+        if (ownerPkgId == targetPkgId) {
+            LogDebug("Owner and target belong to the same package");
+            return SECURITY_MANAGER_API_SUCCESS;
+        }
+
+        std::vector<std::string> pkgContents;
+        PrivilegeDb::getInstance().GetAppIdsForPkgId(ownerPkgId, pkgContents);
+
+        PrivilegeDb::getInstance().BeginTransaction();
+        for (const auto &path : paths) {
+            int targetPathCount, pathCount, ownerTargetCount;
+            PrivilegeDb::getInstance().DropPrivateSharing(ownerAppId, targetAppId, path);
+            PrivilegeDb::getInstance().GetTargetPathSharingCount(targetAppId, path, targetPathCount);
+            PrivilegeDb::getInstance().GetPathSharingCount(path, pathCount);
+            PrivilegeDb::getInstance().GetOwnerTargetSharingCount(ownerAppId, targetAppId, ownerTargetCount);
+            if (targetPathCount > 0) {
+                //Nothing to do, only counter needed decrementing
+                continue;
+            }
+            if (pathCount <= 1) {
+                SmackLabels::setupPath(ownerPkgId, path, SECURITY_MANAGER_PATH_RW, zoneId);
+            }
+            std::string pathLabel = zoneSmackLabelGenerate(SmackLabels::generateSharedPrivateLabel(ownerPkgId, path), zoneId);
+            if (isSlave) {
+                MasterReq::SmackDropPrivateSharingRules(ownerPkgId, pkgContents, targetAppId, path, ownerTargetCount, pathCount);
+            } else {
+                SmackRules::dropPrivateSharingRules(ownerPkgId, pkgContents, targetAppId, pathLabel,
+                        pathCount <=1, ownerTargetCount <=1, zoneId);
+            }
+        }
+
+        PrivilegeDb::getInstance().CommitTransaction();
+        return SECURITY_MANAGER_API_SUCCESS;
+    } catch (const SmackException::Base &e) {
+        LogError("Error performing smack operation: " << e.GetMessage());
+        errorRet = SECURITY_MANAGER_API_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation failed: " << e.what());
+        errorRet = SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY;
+    } catch (const std::exception &e) {
+        LogError("Some exception thrown : " << e.what());
+        errorRet = SECURITY_MANAGER_API_ERROR_UNKNOWN;
+    } catch (...) {
+        LogError("Unknown exception thrown");
+        errorRet = SECURITY_MANAGER_API_ERROR_UNKNOWN;
+    }
+    PrivilegeDb::getInstance().RollbackTransaction();
+    return errorRet;
 }
+
 
 } /* namespace SecurityManager */
