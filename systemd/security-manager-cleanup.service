@@ -1,0 +1,11 @@
+[Unit]
+Description=SMACK rules loading
+ConditionSecurity=smack
+Before=starter.service
+
+[Service]
+Type=oneshot
+ExecStart = /usr/bin/security-manager-cleanup
+
+[Install]
+WantedBy=multi-user.target
