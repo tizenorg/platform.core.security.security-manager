@@ -8,7 +8,6 @@ SmackLabelIPOut=@
 Service=security-manager.service
 
 [Unit]
-ConditionVirtualization=!lxc
 ConditionPathExists=!/usr/share/.zones/enabled
 
 [Install]
