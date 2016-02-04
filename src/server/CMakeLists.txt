@@ -29,7 +29,7 @@ SET(SERVER_SOURCES
     ${SERVER_PATH}/main/server-main.cpp
     ${SERVER_PATH}/service/base-service.cpp
     ${SERVER_PATH}/service/service.cpp
-    ${SERVER_PATH}/service/master-service.cpp
+#    ${SERVER_PATH}/service/master-service.cpp
     )
 
 ADD_EXECUTABLE(${TARGET_SERVER} ${SERVER_SOURCES})
