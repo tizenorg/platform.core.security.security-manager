@@ -28,11 +28,7 @@
 #include <dpl/serialization.h>
 
 #include "protocols.h"
-#include "zone-utils.h"
-#include "cynara.h"
 #include "master-service.h"
-#include "smack-rules.h"
-#include "smack-labels.h"
 #include "service_impl.h"
 
 namespace SecurityManager {
@@ -73,28 +69,12 @@ bool MasterService::processOne(const ConnectionID &conn, MessageBuffer &buffer,
         return false;
     }
 
-    // FIXME this part needs to be updated when Vasum is added to OBS. See zone-utils.h
-    std::string vsmZoneId;
-    if (!getZoneIdFromPid(pid, vsmZoneId)) {
-        LogError("Failed to extract Zone ID! Closing socket.");
-        m_serviceManager->Close(conn);
-        return false;
-    }
-
-    if (vsmZoneId == ZONE_HOST) {
-        LogError("Connection came from host - in master mode this should not happen! Closing.");
-        m_serviceManager->Close(conn);
-        return false;
-    }
-
-    LogInfo("Connection came from Zone " << vsmZoneId);
-
     if (IFACE == interfaceID) {
         Try {
             // deserialize API call type
             int call_type_int;
             Deserialization::Deserialize(buffer, call_type_int);
-            MasterSecurityModuleCall call_type = static_cast<MasterSecurityModuleCall>(call_type_int);
+            SecurityModuleCall call_type = static_cast<SecurityModuleCall>(call_type_int);
 
             switch (call_type) {
                 case MasterSecurityModuleCall::CYNARA_UPDATE_POLICY:

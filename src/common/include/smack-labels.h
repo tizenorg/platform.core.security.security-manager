@@ -41,17 +41,16 @@ namespace SmackLabels {
  * @param path[in] path to a file or directory to setup
  * @param pathType[in] type of path to setup. See description of
  *         app_install_path_type in security-manager.h for details
- * @param zoneId[in] ID of zone for which label should be set
  */
 void setupPath(
         const std::string &pkgId,
         const std::string &path,
         app_install_path_type pathType,
-        const std::string &zoneId,
         const std::string &authorId = std::string());
 
 /**
  * Sets Smack labels on a <ROOT_APP>/<pkg_id> non-recursively
+ * non-recursively
  *
  * @param pkgId[in] package identifier
  * @param basePath[in] <ROOT_APP> path

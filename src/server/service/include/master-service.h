@@ -62,10 +62,8 @@ private:
      *
      * @param  buffer Raw received data buffer
      * @param  send   Raw data buffer to be sent
-     * @param  zoneId ID of zone which requested the call
      */
-    void processCynaraUpdatePolicy(MessageBuffer &buffer, MessageBuffer &send,
-                                   const std::string &zoneId);
+    void processCynaraUpdatePolicy(MessageBuffer &buffer, MessageBuffer &send);
 
     /**
      * Process Cynara user initialization
@@ -120,39 +118,31 @@ private:
      *
      * @param  buffer Raw received data buffer
      * @param  send   Raw data buffer to be sent
-     * @param  zoneId ID of zone which requested the call
      */
-    void processSmackInstallRules(MessageBuffer &buffer, MessageBuffer &send,
-                                  const std::string &zoneId);
+    void processSmackInstallRules(MessageBuffer &buffer, MessageBuffer &send);
 
     /**
      * Process SMACK rules uninstallation
      *
      * @param  buffer Raw received data buffer
      * @param  send   Raw data buffer to be sent
-     * @param  zoneId ID of zone which requested the call
      */
-    void processSmackUninstallRules(MessageBuffer &buffer, MessageBuffer &send,
-                                    const std::string &zoneId);
+    void processSmackUninstallRules(MessageBuffer &buffer, MessageBuffer &send);
 
     /**
      * Process SMACK rules apply private path sharing
      *
      * @param  buffer Raw received data buffer
      * @param  send   Raw data buffer to be sent
-     * @param  zoneId ID of zone which requested the call
      */
-    void processSmackApplySharingRules(MessageBuffer &buffer, MessageBuffer &send,
-                                    const std::string &zoneId);
+    void processSmackApplySharingRules(MessageBuffer &buffer, MessageBuffer &send);
     /**
      * Process SMACK rules drop private path sharing
      *
      * @param  buffer Raw received data buffer
      * @param  send   Raw data buffer to be sent
-     * @param  zoneId ID of zone which requested the call
      */
-    void processSmackDropSharingRules(MessageBuffer &buffer, MessageBuffer &send,
-                                    const std::string &zoneId);
+    void processSmackDropSharingRules(MessageBuffer &buffer, MessageBuffer &send);
 };
 
 } // namespace SecurityManager

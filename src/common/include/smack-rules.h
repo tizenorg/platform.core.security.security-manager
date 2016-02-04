@@ -49,14 +49,12 @@ public:
             const std::vector<std::string> &templateRules,
             const std::string &appId,
             const std::string &pkgId,
-            const std::string &authorId,
-            const std::string &zoneId);
+            const std::string &authorId);
 
     void addFromTemplateFile(
             const std::string &appId,
             const std::string &pkgId,
-            const std::string &authorId,
-            const std::string &zoneId);
+            const std::string &authorId);
 
     void apply() const;
     void clear() const;
@@ -69,10 +67,8 @@ public:
      * correct permissions to shared data.
      *
      * @param[in] pkgContents - a list of all applications inside this package
-     * @param[in] zoneId - ID of zone which requested application install
      */
-    void generatePackageCrossDeps(const std::vector<std::string> &pkgContents,
-            const std::string &zoneId);
+    void generatePackageCrossDeps(const std::vector<std::string> &pkgContents);
 
     /**
      * Create cross dependencies for all other 2.X applications
@@ -125,8 +121,7 @@ public:
             const std::string &authorId,
             const std::vector<std::string> &pkgContents,
             const std::vector<std::string> &appsGranted,
-            const std::vector<std::string> &accessPackages,
-            const std::string &zoneId);
+            const std::vector<std::string> &accessPackages);
 
     /**
      * Uninstall package-specific smack rules.
@@ -152,12 +147,12 @@ public:
     * @param[in] pkgId - package id that the application belongs to
     * @param[in] appsInPkg - a list of other applications in the same package id that the application belongs to
     * @param[in] appsGranted - list of 2.x apps granted access
-    * @param[in] zoneId - ID of zone which requested application uninstall
     */
-    static void uninstallApplicationRules(const std::string &appId, const std::string &pkgId,
+    static void uninstallApplicationRules(
+            const std::string &appId,
+            const std::string &pkgId,
             std::vector<std::string> appsInPkg,
-            const std::vector<std::string> &appsGranted,
-            const std::string &zoneId);
+            const std::vector<std::string> &appsGranted);
 
     /**
      * Update package specific rules
@@ -169,12 +164,11 @@ public:
      * @param[in] pkgId - id of the package to update
      * @param[in] pkgContents - list of all applications in the package
      * @param[in] appsGranted - list of 2.x apps granted access
-     * @param[in] zoneId - ID of zone which requested application uninstall
      */
-    static void updatePackageRules(const std::string &pkgId,
+    static void updatePackageRules(
+            const std::string &pkgId,
             const std::vector<std::string> &pkgContents,
-            const std::vector<std::string> &appsGranted,
-            const std::string &zoneId);
+            const std::vector<std::string> &appsGranted);
 
     /* Temporary fix for authors rules */
     static void fixAuthorRules(const std::string &authorId);
@@ -194,15 +188,13 @@ public:
      * @param[in] isPathSharedAlready - flag indicated, if path has been shared before
      * @param[in] isTargetSharingAlready - flag indicated, if target is already sharing anything
      *                                     with owner
-     * @param[in] zoneId - ID of zone which requested applying sharing
      */
     static void applyPrivateSharingRules(const std::string &ownerPkgId,
                                          const std::vector<std::string> &ownerPkgContents,
                                          const std::string &targetAppId,
                                          const std::string &pathLabel,
                                          bool isPathSharedAlready,
-                                         bool isTargetSharingAlready,
-                                         const std::string &zoneId);
+                                         bool isTargetSharingAlready);
     /**
      * Remove rules related to private path sharing rules
      *
@@ -219,15 +211,15 @@ public:
      * @param[in] isPathSharedNoMore - flag indicated, if path is not shared anymore
      * @param[in] isTargetSharingNoMore - flag indicated, if target is not sharing anything
      *                                    with owner
-     * @param[in] zoneId - ID of zone which requested droping sharing
      */
     static void dropPrivateSharingRules(const std::string &ownerPkgId,
                                         const std::vector<std::string> &ownerPkgContents,
                                         const std::string &targetAppId,
                                         const std::string &pathLabel,
                                         bool isPathSharedNoMore,
-                                        bool isTargetSharingNoMore,
-                                        const std::string &zoneId);
+                                        bool isTargetSharingNoMore);
+
+    static void updatePackageRules(const std::string &pkgId, const std::vector<std::string> &pkgContents);
 
 private:
     /**
