@@ -208,7 +208,7 @@ int security_manager_app_install(const app_inst_req *p_req)
 
             //send buffer to server
             retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-            if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            if (retval != SECURITY_MANAGER_SUCCESS) {
                 LogError("Error in sendToServer. Error code: " << retval);
                 return SECURITY_MANAGER_ERROR_UNKNOWN;
             }
@@ -217,13 +217,13 @@ int security_manager_app_install(const app_inst_req *p_req)
             Deserialization::Deserialize(recv, retval);
         }
         switch(retval) {
-            case SECURITY_MANAGER_API_SUCCESS:
+            case SECURITY_MANAGER_SUCCESS:
                 return SECURITY_MANAGER_SUCCESS;
-            case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            case SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED:
                 return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
-            case SECURITY_MANAGER_API_ERROR_ACCESS_DENIED:
+            case SECURITY_MANAGER_ERROR_ACCESS_DENIED:
                 return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
-            case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+            case SECURITY_MANAGER_ERROR_INPUT_PARAM:
                 return SECURITY_MANAGER_ERROR_INPUT_PARAM;
             default:
                 return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -251,14 +251,14 @@ int security_manager_app_uninstall(const app_inst_req *p_req)
 
         //send buffer to server
         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogError("Error in sendToServer. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
 
         //receive response from server
         Deserialization::Deserialize(recv, retval);
-        if (retval != SECURITY_MANAGER_API_SUCCESS)
+        if (retval != SECURITY_MANAGER_SUCCESS)
             return SECURITY_MANAGER_ERROR_UNKNOWN;
 
         return SECURITY_MANAGER_SUCCESS;;
@@ -292,14 +292,14 @@ int security_manager_get_app_pkgid(char **pkg_id, const char *app_id)
 
         //send buffer to server
         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogDebug("Error in sendToServer. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
 
         //receive response from server
         Deserialization::Deserialize(recv, retval);
-        if (retval != SECURITY_MANAGER_API_SUCCESS)
+        if (retval != SECURITY_MANAGER_SUCCESS)
             return SECURITY_MANAGER_ERROR_UNKNOWN;
 
         std::string pkgIdString;
@@ -395,7 +395,7 @@ int security_manager_set_process_label_from_appid(const char *app_id)
         appLabel = SecurityManager::SmackLabels::generateAppLabel(app_id);
     } catch (...) {
         LogError("Failed to generate smack label for appId: " << app_id);
-        return SECURITY_MANAGER_API_ERROR_NO_SUCH_OBJECT;
+        return SECURITY_MANAGER_ERROR_NO_SUCH_OBJECT;
     }
 
     if ((ret = setup_smack(appLabel.c_str())) != SECURITY_MANAGER_SUCCESS) {
@@ -429,14 +429,14 @@ int security_manager_set_process_groups_from_appid(const char *app_id)
 
         //send buffer to server
         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogDebug("Error in sendToServer. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
 
         //receive response from server
         Deserialization::Deserialize(recv, retval);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogError("Failed to get list of groups from security-manager service. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
@@ -603,7 +603,7 @@ int security_manager_user_add(const user_req *p_req)
 
             //send buffer to server
             retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-            if (retval != SECURITY_MANAGER_API_SUCCESS) {
+            if (retval != SECURITY_MANAGER_SUCCESS) {
                 LogError("Error in sendToServer. Error code: " << retval);
                 return SECURITY_MANAGER_ERROR_UNKNOWN;
             }
@@ -612,9 +612,9 @@ int security_manager_user_add(const user_req *p_req)
             Deserialization::Deserialize(recv, retval);
         }
         switch(retval) {
-        case SECURITY_MANAGER_API_SUCCESS:
+        case SECURITY_MANAGER_SUCCESS:
             return SECURITY_MANAGER_SUCCESS;
-        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+        case SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED:
             return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
         default:
             return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -637,7 +637,7 @@ int security_manager_user_delete(const user_req *p_req)
 
         //send buffer to server
         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogError("Error in sendToServer. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
@@ -645,9 +645,9 @@ int security_manager_user_delete(const user_req *p_req)
         //receive response from server
         Deserialization::Deserialize(recv, retval);
         switch(retval) {
-        case SECURITY_MANAGER_API_SUCCESS:
+        case SECURITY_MANAGER_SUCCESS:
             return SECURITY_MANAGER_SUCCESS;
-        case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+        case SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED:
             return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
         default:
             return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -696,7 +696,7 @@ int security_manager_policy_update_send(policy_update_req *p_req)
 
         //send it to server
         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogError("Error in sendToServer. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
@@ -704,11 +704,11 @@ int security_manager_policy_update_send(policy_update_req *p_req)
         //receive response from server
         Deserialization::Deserialize(recv, retval);
         switch(retval) {
-            case SECURITY_MANAGER_API_SUCCESS:
+            case SECURITY_MANAGER_SUCCESS:
                 return SECURITY_MANAGER_SUCCESS;
-            case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            case SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED:
                 return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
-            case SECURITY_MANAGER_API_ERROR_ACCESS_DENIED:
+            case SECURITY_MANAGER_ERROR_ACCESS_DENIED:
                 return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
             default:
                 return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -737,14 +737,14 @@ static inline int security_manager_get_policy_internal(
 
         //send it to server
         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogError("Error in sendToServer. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
         //receive response from server
         Deserialization::Deserialize(recv, retval);
         switch (retval) {
-            case SECURITY_MANAGER_API_SUCCESS: {
+            case SECURITY_MANAGER_SUCCESS: {
                 //extract and allocate buffers for privs policy entries
                 int entriesCnt = 0;
                 policy_entry **entries = nullptr;
@@ -766,10 +766,10 @@ static inline int security_manager_get_policy_internal(
                 *ppp_privs_policy = entries;
                 return SECURITY_MANAGER_SUCCESS;
             }
-            case SECURITY_MANAGER_API_ERROR_AUTHENTICATION_FAILED:
+            case SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED:
                 return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
 
-            case SECURITY_MANAGER_API_ERROR_ACCESS_DENIED:
+            case SECURITY_MANAGER_ERROR_ACCESS_DENIED:
                 return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
 
             default:
@@ -934,7 +934,7 @@ int security_manager_policy_levels_get(char ***levels, size_t *levels_count)
 
         //send buffer to server
         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogError("Error in sendToServer. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
@@ -943,12 +943,12 @@ int security_manager_policy_levels_get(char ***levels, size_t *levels_count)
         Deserialization::Deserialize(recv, retval);
 
         switch(retval) {
-            case SECURITY_MANAGER_API_SUCCESS:
+            case SECURITY_MANAGER_SUCCESS:
                 // success - continue
                 break;
-            case SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY:
+            case SECURITY_MANAGER_ERROR_MEMORY:
                 return SECURITY_MANAGER_ERROR_MEMORY;
-            case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+            case SECURITY_MANAGER_ERROR_INPUT_PARAM:
                 return SECURITY_MANAGER_ERROR_INPUT_PARAM;
             default:
                 return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -1005,7 +1005,7 @@ lib_retcode get_privileges_mapping(const std::string &from_version,
 
     //send buffer to server
     int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-    if (retval != SECURITY_MANAGER_API_SUCCESS) {
+    if (retval != SECURITY_MANAGER_SUCCESS) {
         LogError("Error in sendToServer. Error code: " << retval);
         return SECURITY_MANAGER_ERROR_UNKNOWN;
     }
@@ -1014,12 +1014,12 @@ lib_retcode get_privileges_mapping(const std::string &from_version,
     Deserialization::Deserialize(recv, retval);
 
     switch(retval) {
-        case SECURITY_MANAGER_API_SUCCESS:
+        case SECURITY_MANAGER_SUCCESS:
             // success - continue
             break;
-        case SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY:
+        case SECURITY_MANAGER_ERROR_MEMORY:
             return SECURITY_MANAGER_ERROR_MEMORY;
-        case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+        case SECURITY_MANAGER_ERROR_INPUT_PARAM:
             return SECURITY_MANAGER_ERROR_INPUT_PARAM;
         default:
             return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -1102,7 +1102,7 @@ int security_manager_groups_get(char ***groups, size_t *groups_count)
 
         //send buffer to server
         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogError("Error in sendToServer. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
@@ -1111,12 +1111,12 @@ int security_manager_groups_get(char ***groups, size_t *groups_count)
         Deserialization::Deserialize(recv, retval);
 
         switch(retval) {
-            case SECURITY_MANAGER_API_SUCCESS:
+            case SECURITY_MANAGER_SUCCESS:
                 // success - continue
                 break;
-            case SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY:
+            case SECURITY_MANAGER_ERROR_MEMORY:
                 return SECURITY_MANAGER_ERROR_MEMORY;
-            case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+            case SECURITY_MANAGER_ERROR_INPUT_PARAM:
                 return SECURITY_MANAGER_ERROR_INPUT_PARAM;
             default:
                 return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -1243,7 +1243,7 @@ int security_manager_app_has_privilege(const char *app_id, const char *privilege
             std::string(app_id), std::string(privilege), uid);
 
         int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_API_SUCCESS) {
+        if (retval != SECURITY_MANAGER_SUCCESS) {
             LogError("Error in sendToServer. Error code: " << retval);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
@@ -1251,12 +1251,12 @@ int security_manager_app_has_privilege(const char *app_id, const char *privilege
         Deserialization::Deserialize(recv, retval);
 
         switch(retval) {
-            case SECURITY_MANAGER_API_SUCCESS:
+            case SECURITY_MANAGER_SUCCESS:
                 // success - continue
                 break;
-            case SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY:
+            case SECURITY_MANAGER_ERROR_MEMORY:
                 return SECURITY_MANAGER_ERROR_MEMORY;
-            case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+            case SECURITY_MANAGER_ERROR_INPUT_PARAM:
                 return SECURITY_MANAGER_ERROR_INPUT_PARAM;
             default:
                 return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -1347,7 +1347,7 @@ int security_manager_private_sharing_apply(const private_sharing_req *p_req)
 
         //send buffer to server
        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-       if (retval != SECURITY_MANAGER_API_SUCCESS) {
+       if (retval != SECURITY_MANAGER_SUCCESS) {
            LogError("Error in sendToServer. Error code: " << retval);
            return SECURITY_MANAGER_ERROR_UNKNOWN;
        }
@@ -1355,15 +1355,15 @@ int security_manager_private_sharing_apply(const private_sharing_req *p_req)
        //receive response from server
        Deserialization::Deserialize(recv, retval);
        switch(retval) {
-           case SECURITY_MANAGER_API_SUCCESS:
+           case SECURITY_MANAGER_SUCCESS:
                return SECURITY_MANAGER_SUCCESS;
-           case SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY:
+           case SECURITY_MANAGER_ERROR_MEMORY:
                return SECURITY_MANAGER_ERROR_MEMORY;
-           case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+           case SECURITY_MANAGER_ERROR_INPUT_PARAM:
                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
-           case SECURITY_MANAGER_API_ERROR_APP_UNKNOWN:
+           case SECURITY_MANAGER_ERROR_APP_UNKNOWN:
                return SECURITY_MANAGER_ERROR_APP_UNKNOWN;
-           case SECURITY_MANAGER_API_ERROR_APP_NOT_PATH_OWNER:
+           case SECURITY_MANAGER_ERROR_APP_NOT_PATH_OWNER:
                return SECURITY_MANAGER_ERROR_APP_NOT_PATH_OWNER;
            default:
                return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -1389,7 +1389,7 @@ int security_manager_private_sharing_drop(const private_sharing_req *p_req)
 
         //send buffer to server
        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-       if (retval != SECURITY_MANAGER_API_SUCCESS) {
+       if (retval != SECURITY_MANAGER_SUCCESS) {
            LogError("Error in sendToServer. Error code: " << retval);
            return SECURITY_MANAGER_ERROR_UNKNOWN;
        }
@@ -1397,15 +1397,15 @@ int security_manager_private_sharing_drop(const private_sharing_req *p_req)
        //receive response from server
        Deserialization::Deserialize(recv, retval);
        switch(retval) {
-           case SECURITY_MANAGER_API_SUCCESS:
+           case SECURITY_MANAGER_SUCCESS:
                return SECURITY_MANAGER_SUCCESS;
-           case SECURITY_MANAGER_API_ERROR_OUT_OF_MEMORY:
+           case SECURITY_MANAGER_ERROR_MEMORY:
                return SECURITY_MANAGER_ERROR_MEMORY;
-           case SECURITY_MANAGER_API_ERROR_INPUT_PARAM:
+           case SECURITY_MANAGER_ERROR_INPUT_PARAM:
                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
-           case SECURITY_MANAGER_API_ERROR_APP_UNKNOWN:
+           case SECURITY_MANAGER_ERROR_APP_UNKNOWN:
                return SECURITY_MANAGER_ERROR_APP_UNKNOWN;
-           case SECURITY_MANAGER_API_ERROR_APP_NOT_PATH_OWNER:
+           case SECURITY_MANAGER_ERROR_APP_NOT_PATH_OWNER:
                return SECURITY_MANAGER_ERROR_APP_NOT_PATH_OWNER;
            default:
                return SECURITY_MANAGER_ERROR_UNKNOWN;
