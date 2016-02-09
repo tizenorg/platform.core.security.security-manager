@@ -409,7 +409,7 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid)
     std::vector<std::string> allTizen2XApps;
     checkGlobalUser(uid, uidstr);
     std::string authorId;
-    int restoreAuthor = 0;
+    int authorExists = 0;
 
     try {
         PrivilegeDb::getInstance().BeginTransaction();
@@ -431,7 +431,7 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid)
             PrivilegeDb::getInstance().UpdateAppPrivileges(appId, uid, std::vector<std::string>());
             PrivilegeDb::getInstance().RemoveApplication(appId, uid, removeApp, removePkg);
             PrivilegeDb::getInstance().RemoveAuthor();
-            PrivilegeDb::getInstance().AuthorIdExists(authorId, restoreAuthor);
+            PrivilegeDb::getInstance().AuthorIdExists(authorId, authorExists);
 
             // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
             if(isTizen2XVersion(tizenVersion))
@@ -475,9 +475,9 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid)
                 SmackRules::uninstallPackageRules(pkgId);
             }
 
-            if (restoreAuthor) {
+            if (!authorExists) {
                 LogDebug("Removing Smack rules for authorId " << authorId);
-                SmackRules::fixAuthorRules(authorId);
+                SmackRules::uninstallAuthorRules(authorId);
             }
 
         } catch (const SmackException::Base &e) {
