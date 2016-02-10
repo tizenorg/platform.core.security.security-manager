@@ -491,17 +491,6 @@ void PrivilegeDb::GetAuthorIdForAppId(const std::string &appId,
     });
 }
 
-void PrivilegeDb::RemoveAuthor() {
-    try_catch<void>([&] {
-        auto command = getStatement(StmtType::ERemoveAuthors);
-        if (command->Step()) {
-            LogDebug("Unconnected authors have been removed");
-        } else {
-            LogError("Error during authors removing");
-        }
-    });
-}
-
 void PrivilegeDb::AuthorIdExists(const std::string &authorId, int &result) {
     try_catch<void>([&] {
         auto command = getStatement(StmtType::EAuthorIdExists);

@@ -71,7 +71,6 @@ enum class StmtType {
     EGetAppsInPkg,
     EGetGroups,
     EGetAuthorIdAppId,
-    ERemoveAuthors,
     EAuthorIdExists,
 };
 
@@ -127,7 +126,6 @@ private:
         { StmtType::EGetAppsInPkg, " SELECT app_name FROM app_pkg_view WHERE pkg_name = ?" },
         { StmtType::EGetGroups, "SELECT DISTINCT group_name FROM privilege_group_view" },
         { StmtType::EGetAuthorIdAppId, "SELECT author_id FROM app_pkg_view WHERE app_name = ?"},
-        { StmtType::ERemoveAuthors, "DELETE FROM author where author_id IN (SELECT author_id from author LEFT JOIN APP USING(author_id) where app_id is NULL)"},
         { StmtType::EAuthorIdExists, "SELECT count(*) FROM author where author_id=?"},
     };
 
@@ -435,7 +433,6 @@ public:
     void GetAuthorIdForAppId(const std::string &appId,
         std::string &authorId);
 
-    void RemoveAuthor();
     void AuthorIdExists(const std::string &authorId, int &result);
 
     /**

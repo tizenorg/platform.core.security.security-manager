@@ -479,7 +479,6 @@ int ServiceImpl::appUninstall(const std::string &appId, uid_t uid, bool isSlave)
             PrivilegeDb::getInstance().GetAppIdsForPkgId(pkgId, pkgContents);
             PrivilegeDb::getInstance().UpdateAppPrivileges(appId, uid, std::vector<std::string>());
             PrivilegeDb::getInstance().RemoveApplication(appId, uid, removeApp, removePkg);
-            PrivilegeDb::getInstance().RemoveAuthor();
             PrivilegeDb::getInstance().AuthorIdExists(authorId, restoreAuthor);
 
             // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
