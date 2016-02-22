@@ -292,6 +292,9 @@ std::string generateAuthorLabel(const std::string &authorId) {
         LogError("Author was not set. It's not possible to generate label for unknown author.");
         ThrowMsg(SmackException::InvalidLabel, "Could not generate valid label without authorId");
     }
+    // authordId(private key) may contain slash character
+    // which is not legal in Smack labels
+    std::replace(authorId.begin(), authorId.end(), '/', '%');
 
     return "User::Author::" + authorId;
 }
