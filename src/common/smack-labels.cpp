@@ -302,7 +302,7 @@ std::string getSmackLabelFromPath(const std::string &path) {
     if ((realLen = lgetxattr(path.c_str(), XATTR_NAME_SMACK, label, SMACK_LABEL_LEN)) < 0) {
         ThrowMsg(SmackException::FileError, "lgetxattr failed");
     }
-    return std::string(label, label+realLen);
+    return std::string(label, label+realLen-1);
 }
 
 } // namespace SmackLabels
