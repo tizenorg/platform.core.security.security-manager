@@ -62,6 +62,8 @@ enum class StmtType {
     EAddPrivatePathSharing,
     ERemovePrivatePathSharing,
     EGetAllSharedPaths,
+    EGetSharingForOwner,
+    EGetSharingForTarget,
     EClearSharing,
     EClearPrivatePaths,
     EGetPrivilegeGroups,
@@ -117,6 +119,8 @@ private:
         { StmtType::EAddPrivatePathSharing, "INSERT INTO app_private_sharing_view(owner_app_name, target_app_name, path, path_label) VALUES(?, ?, ?, ?)"},
         { StmtType::ERemovePrivatePathSharing, "DELETE FROM app_private_sharing_view WHERE owner_app_name = ? AND target_app_name = ? AND path = ?"},
         { StmtType::EGetAllSharedPaths, "SELECT owner_app_name, path FROM app_private_sharing_view ORDER BY owner_app_name"},
+        { StmtType::EGetSharingForOwner, "SELECT target_app_name, path FROM app_private_sharing_view WHERE owner_app_name = ?"},
+        { StmtType::EGetSharingForTarget, "SELECT owner_app_name, path FROM app_private_sharing_view WHERE target_app_name = ?"},
         { StmtType::EClearSharing, "DELETE FROM app_private_sharing;"},
         { StmtType::EClearPrivatePaths, "DELETE FROM shared_path;"},
         { StmtType::EGetPrivilegeGroups, " SELECT group_name FROM privilege_group_view WHERE privilege_name = ?" },
@@ -373,6 +377,26 @@ public:
      */
     void GetAllPrivateSharing(std::map<std::string, std::vector<std::string>> &appPathMap);
 
+    /**
+     * Get all owner path labels shared with target application names
+     *
+     * @param appName - owner of queried sharings
+     * @param appPathMap - map containing vectors of paths labels shared by specified application
+     *                     mapped by target application names
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetPrivateSharingForOwner(const std::string &appName,
+                                   std::map<std::string, std::vector<std::string>> &ownerSharing);
+    /**
+     * Get all paths shared with owner application names
+     *
+     * @param appName - target of queried sharings
+     * @param appPathMap - map containing vectors of paths labels shared with specified application
+     *                     mapped by owner application names
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void GetPrivateSharingForTarget(const std::string &appName,
+                                    std::map<std::string, std::vector<std::string>> &ownerSharing);
     /**
      * Clear information about private sharing.
      *
