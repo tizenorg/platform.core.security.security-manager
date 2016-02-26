@@ -320,6 +320,21 @@ void PrivilegeDb::GetAllPrivateSharing(std::map<std::string, std::vector<std::st
     });
 }
 
+void PrivilegeDb::GetPrivateSharingForOwner(const std::string &appName,
+                                            std::map<std::string, std::vector<std::string>> &ownerSharing)
+{
+    try_catch<void>([&] {
+        auto command = getStatement(StmtType::EGetSharingForOwner);
+        command->BindString(1, appName);
+        while (command->Step()) {
+            std::string targetAppName = command->GetColumnString(0);
+            std::string path = command->GetColumnString(1);
+            LogDebug("Got appName : " << targetAppName << " and path label : " << path);
+            ownerSharing[targetAppName].push_back(path);
+        }
+    });
+}
+
 void PrivilegeDb::ClearPrivateSharing() {
     try_catch<void>([&] {
         {
