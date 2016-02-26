@@ -27,6 +27,7 @@
 
 #include <vector>
 #include <string>
+#include <map>
 #include <smack-exceptions.h>
 
 struct smack_accesses;
@@ -125,6 +126,23 @@ public:
     */
     static void uninstallApplicationRules(const std::string &appName);
 
+    /**
+     * Uninstall application-specific smack rules connected to private sharing.
+     *
+     * Function removes private sharing application specific rules from the kernel.
+     *
+     * @param[in] appName - application id
+     * @param[in] pkgName - package identifier that the application is in
+     * @param[in] pkgContents - contents of package application belongs to
+     * @param[in] ownerSharing - labels of paths owned by specified application ordered by target
+     *                           applications, which share these path
+     * @param[in] targetSharing - labels of paths which specified application is sharing, ordered by owner
+     *                            applications
+    */
+    static void uninstallSharingRules(const std::string &appName,
+                                      const std::string &pkgName,
+                                      const std::vector<std::string> &pkgContents,
+                                      const std::map<std::string, std::vector<std::string>> ownerSharing);
     /**
      * Update package specific rules
      *
