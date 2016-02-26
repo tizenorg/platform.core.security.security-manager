@@ -372,6 +372,31 @@ void SmackRules::uninstallApplicationRules(const std::string &appName)
     revokeAppSubject(appName);
 }
 
+void SmackRules::uninstallSharingRules(const std::string &appName,
+                                       const std::string &pkgName,
+                                       const std::vector<std::string> &pkgContents,
+                                       const std::map<std::string, std::vector<std::string>> ownerSharing)
+{
+    SmackRules rules;
+    const std::string uninstalledAppLabel = SmackLabels::generateAppLabel(appName);
+    const std::string pkgLabel = SmackLabels::generatePkgLabel(pkgName);
+    for (auto &sharedTargetPaths : ownerSharing) {
+        const std::string &targetLabel = SmackLabels::generateAppLabel(sharedTargetPaths.first);
+        const std::vector<std::string> sharedLabels = sharedTargetPaths.second;
+        rules.addModify(targetLabel, pkgLabel, "", SMACK_APP_DIR_TARGET_PERMS);
+        for (auto &pathLabel : sharedLabels) {
+            rules.add(targetLabel, pathLabel, "-");
+            rules.add(uninstalledAppLabel, pathLabel, "-");
+            rules.add(SMACK_SYSTEM, pathLabel, "-");
+            rules.add(SMACK_USER, pathLabel, "-");
+            for (auto &contentAppId : pkgContents) {
+                rules.add(SmackLabels::generateAppLabel(contentAppId), pathLabel, "-");
+            }
+        }
+    }
+    rules.apply();
+}
+
 void SmackRules::uninstallRules(const std::string &path)
 {
     if (access(path.c_str(), F_OK) == -1) {
