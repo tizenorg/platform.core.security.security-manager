@@ -28,6 +28,7 @@
 #include <limits.h>
 #include <pwd.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 
 #include <cstring>
 #include <algorithm>
@@ -966,6 +967,11 @@ int ServiceImpl::appHasPrivilege(
     return SECURITY_MANAGER_SUCCESS;
 }
 
+static bool fileExists(const std::string &path)
+{
+    struct stat buffer;
+    return stat(path.c_str(), &buffer) == 0 && S_ISREG(buffer.st_mode);
+}
 
 int ServiceImpl::dropOnePrivateSharing(
         const std::string &ownerAppName,
@@ -985,7 +991,8 @@ int ServiceImpl::dropOnePrivateSharing(
             return SECURITY_MANAGER_SUCCESS;
         }
         if (pathCount < 1) {
-            SmackLabels::setupPath(ownerPkgName, path, SECURITY_MANAGER_PATH_RW);
+            if (fileExists(path))
+                SmackLabels::setupPath(ownerPkgName, path, SECURITY_MANAGER_PATH_RW);
         }
         std::string pathLabel = SmackLabels::generateSharedPrivateLabel(ownerPkgName, path);
         SmackRules::dropPrivateSharingRules(ownerPkgName, ownerPkgContents, targetAppName, pathLabel,
@@ -1021,13 +1028,13 @@ int ServiceImpl::applyPrivatePathSharing(
     try {
         PrivilegeDb::getInstance().GetAppPkgName(ownerAppName, ownerPkgName);
         if (ownerPkgName.empty()) {
-            LogError(ownerAppName << " is not an installed application");
+            LogWarning(ownerAppName << " is not an installed application");
             return SECURITY_MANAGER_ERROR_APP_UNKNOWN;
         }
 
         PrivilegeDb::getInstance().GetAppPkgName(targetAppName, targetPkgName);
         if (targetPkgName.empty()) {
-            LogError(targetAppName << " is not an installed application");
+            LogWarning(targetAppName << " is not an installed application");
             return SECURITY_MANAGER_ERROR_APP_UNKNOWN;
         }
 
@@ -1096,6 +1103,20 @@ int ServiceImpl::applyPrivatePathSharing(
     return errorRet;
 }
 
+static bool isPathShared(const std::string &targetAppName, const std::string &path)
+{
+    int targetPathCount;
+    PrivilegeDb::getInstance().GetTargetPathSharingCount(targetAppName, path, targetPathCount);
+    return targetPathCount != 0;
+}
+
+static bool sharingExists(const std::string &ownerAppName, const std::string &targetAppName)
+{
+    int ownerTargetCount;
+    PrivilegeDb::getInstance().GetOwnerTargetSharingCount(ownerAppName, targetAppName, ownerTargetCount);
+    return ownerTargetCount != 0;
+}
+
 int ServiceImpl::dropPrivatePathSharing(
         const std::string &ownerAppName,
         const std::string &targetAppName,
@@ -1103,38 +1124,56 @@ int ServiceImpl::dropPrivatePathSharing(
 {
     int errorRet;
     try {
-        std::string ownerPkgName;
-        PrivilegeDb::getInstance().GetAppPkgName(ownerAppName, ownerPkgName);
-        if (ownerPkgName.empty()) {
-            LogError(ownerAppName << " is not an installed application");
-            return SECURITY_MANAGER_ERROR_APP_UNKNOWN;
-        }
+        bool isTargetOwnerSame = (ownerAppName == targetAppName);
 
-        std::string targetPkgName;
-        PrivilegeDb::getInstance().GetAppPkgName(targetAppName, targetPkgName);
-        if (targetPkgName.empty()) {
-            LogError(targetAppName << " is not an installed application");
-            return SECURITY_MANAGER_ERROR_APP_UNKNOWN;
-        }
-
-        for(const auto &path : paths) {
-            std::string pathLabel = SmackLabels::getSmackLabelFromPath(path);
-            if (pathLabel != SmackLabels::generatePkgLabel(ownerPkgName)) {
-                std::string generatedPathLabel = SmackLabels::generateSharedPrivateLabel(ownerPkgName, path);
-                if (generatedPathLabel != pathLabel) {
-                    LogError("Path " << path << " has label " << pathLabel << " and dosen't belong"
-                             " to application " << ownerAppName);
-                    return SECURITY_MANAGER_ERROR_APP_NOT_PATH_OWNER;
+        // Check sharing existence - sharing between same app is not stored in db
+        if (!isTargetOwnerSame) {
+            if (!sharingExists(ownerAppName, targetAppName)) {
+                LogError("No sharing exists between owner: " << ownerAppName << " and target: "
+                         << "targetAppName");
+                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+            }
+            for (const auto &path : paths) {
+                if (!isPathShared(targetAppName, path)) {
+                    LogError("No sharing for given path: " << path);
+                    return SECURITY_MANAGER_ERROR_INPUT_PARAM;
                 }
             }
         }
 
-        if (ownerAppName == targetAppName) {
+        std::string ownerPkgName;
+        PrivilegeDb::getInstance().GetAppPkgName(ownerAppName, ownerPkgName);
+        if (ownerPkgName.empty()) {
+            LogWarning(ownerAppName << " is not an installed application");
+            /*
+             * All rules were deleted during application uninstallation and files are probably
+             * already removed from filesystem, so only thing to do here is removing records
+             * from db.
+            */
+            ScopedTransaction trans;
+            for (const auto &path : paths) {
+                PrivilegeDb::getInstance().DropPrivateSharing(ownerAppName, targetAppName, path);
+            }
+            trans.commit();
+            return SECURITY_MANAGER_SUCCESS;
+        }
+
+        // All params are correct, we can return success when target is owner
+        if (isTargetOwnerSame) {
             LogDebug("Owner application is the same as target application");
             return SECURITY_MANAGER_SUCCESS;
         }
 
-        if (ownerPkgName == targetPkgName) {
+        bool isTargetInstalled = true;
+        std::string targetPkgName;
+        PrivilegeDb::getInstance().GetAppPkgName(targetAppName, targetPkgName);
+        if (targetPkgName.empty()) {
+            LogWarning(targetAppName << " is not an installed application");
+            isTargetInstalled = false;
+        }
+
+        // Unable to specify package when target application has been already uninstalled.
+        if (isTargetInstalled && ownerPkgName == targetPkgName) {
             LogDebug("Owner and target belong to the same package");
             return SECURITY_MANAGER_SUCCESS;
         }
