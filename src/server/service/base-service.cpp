@@ -39,26 +39,6 @@ BaseService::BaseService()
 {
 }
 
-bool BaseService::getPeerID(int sock, uid_t &uid, pid_t &pid, std::string &smackLabel)
-{
-    struct ucred cr;
-    socklen_t len = sizeof(cr);
-
-    if (!getsockopt(sock, SOL_SOCKET, SO_PEERCRED, &cr, &len)) {
-        char *smk;
-        ssize_t ret = smack_new_label_from_socket(sock, &smk);
-        if (ret < 0)
-            return false;
-        smackLabel = smk;
-        uid = cr.uid;
-        pid = cr.pid;
-        free(smk);
-        return true;
-    }
-
-    return false;
-}
-
 void BaseService::accept(const AcceptEvent &event)
 {
     LogDebug("Accept event. ConnectionID.sock: " << event.connectionID.sock <<

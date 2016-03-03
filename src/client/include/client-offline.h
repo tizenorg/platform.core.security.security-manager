@@ -25,6 +25,7 @@
 #ifndef _SECURITY_MANAGER_OFFLINE_
 #define _SECURITY_MANAGER_OFFLINE_
 
+#include <credentials.h>
 #include <file-lock.h>
 
 namespace SecurityManager {

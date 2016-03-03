@@ -92,3 +92,6 @@
 *	http://tizen.org/privilege/internal/buxton/readonly
 *	http://tizen.org/privilege/internal/buxton/telephony
 *	http://tizen.org/privilege/internal/dbus
+*	http://tizen.org/privilege/internal/appmanagement
+*	http://tizen.org/privilege/internal/privacymanagement
+*	http://tizen.org/privilege/internal/appsharing
