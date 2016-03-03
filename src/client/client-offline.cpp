@@ -30,6 +30,9 @@
 #include <dpl/serialization.h>
 #include <dpl/log/log.h>
 
+#include <sys/smack.h>
+#include <unistd.h>
+
 namespace SecurityManager {
 
 ClientOffline::ClientOffline()

@@ -304,6 +304,17 @@ std::string getSmackLabelFromPid(pid_t pid)
     return result;
 }
 
+std::string getSmackLabelFromSelf(void)
+{
+    char *label = nullptr;
+    ssize_t labelSize = smack_new_label_from_self(&label);
+    if (labelSize <= 0)
+        ThrowMsg(SmackException::InvalidLabel, "Invalid Smack label for current process");
+
+    std::unique_ptr<char, decltype(free)*> labelPtr(label, free);
+    return std::string(labelPtr.get(), labelSize);
+}
+
 std::string generateAuthorLabel(const int authorId)
 {
     if (authorId < 0) {
