@@ -39,24 +39,29 @@ BaseService::BaseService()
 {
 }
 
-bool BaseService::getPeerID(int sock, uid_t &uid, pid_t &pid, std::string &smackLabel)
+bool BaseService::getPeerCreds(int sock, credentials &creds)
 {
     struct ucred cr;
     socklen_t len = sizeof(cr);
 
-    if (!getsockopt(sock, SOL_SOCKET, SO_PEERCRED, &cr, &len)) {
-        char *smk;
-        ssize_t ret = smack_new_label_from_socket(sock, &smk);
-        if (ret < 0)
-            return false;
-        smackLabel = smk;
-        uid = cr.uid;
-        pid = cr.pid;
-        free(smk);
-        return true;
+    if (getsockopt(sock, SOL_SOCKET, SO_PEERCRED, &cr, &len) == -1) {
+        LogError("Failed to read peer credentials for sockfd " << sock);
+        return false;
     }
+    creds.uid = cr.uid;
+    creds.gid = cr.gid;
+    creds.pid = cr.pid;
 
-    return false;
+    char *str;
+    ssize_t strLen = smack_new_label_from_socket(sock, &str);
+    if (strLen < 0) {
+        LogError("Failed to read peer security label for sockfd " << sock);
+        return false;
+    }
+    std::unique_ptr<char, decltype(free)*> strPtr(str, free);
+    creds.label = std::string(strPtr.get(), strLen);
+
+    return true;
 }
 
 void BaseService::accept(const AcceptEvent &event)

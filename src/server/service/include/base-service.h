@@ -64,16 +64,15 @@ protected:
     ConnectionInfoMap m_connectionInfoMap;
 
     /**
-     * Retrieves ID (UID and PID) of peer connected to socket
+     * Retrieves credentials of peer connected to socket
      *
      * @param[in]  sock Socket file descriptor
-     * @param[out] uid PID of connected peer.
-     * @param[out] pid PID of connected peer.
-     * @param[out] smackLabel Smack label of connected peer.
+     * @param[out] creds credentials of the connected peer
      *
-     * @return True if peer ID was successfully retrieved, false otherwise.
+     * @return True if credentials were successfully retrieved, false otherwise
      */
-    bool getPeerID(int sock, uid_t &uid, pid_t &pid, std::string &smackLabel);
+    // FIXME: This should be moved to lower levels of the service code (socket-manager?)
+    bool getPeerCreds(int sock, credentials &creds);
 
     /**
      * Handle request from a client

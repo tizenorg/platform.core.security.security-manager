@@ -30,6 +30,9 @@
 #include <dpl/serialization.h>
 #include <dpl/log/log.h>
 
+#include <sys/smack.h>
+#include <unistd.h>
+
 namespace SecurityManager {
 
 ClientOffline::ClientOffline()
@@ -79,6 +82,23 @@ ClientOffline::~ClientOffline()
 bool ClientOffline::isOffline(void)
 {
     return offlineMode;
+}
+
+credentials ClientOffline::getCredentials(void)
+{
+    credentials creds;
+    creds.pid = getpid();
+    creds.uid = geteuid();
+    creds.gid = getegid();
+
+    char *str;
+    ssize_t strLen = smack_new_label_from_self(&str);
+    if (strLen > 0) {
+        std::unique_ptr<char, decltype(free)*> strPtr(str, free);
+        creds.label = std::string(strPtr.get(), strLen);
+    }
+
+    return creds;
 }
 
 } // namespace SecurityManager
