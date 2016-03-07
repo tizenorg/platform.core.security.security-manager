@@ -400,6 +400,7 @@ int ServiceImpl::appUninstall(const std::string &appName, uid_t uid)
     bool removeAuthor = false;
     std::string uidstr;
     std::vector<std::string> allTizen2XApps;
+    std::map<std::string, std::vector<std::string>> ownerSharing;
     int authorId;
 
     checkGlobalUser(uid, uidstr);
@@ -425,6 +426,7 @@ int ServiceImpl::appUninstall(const std::string &appName, uid_t uid)
         PrivilegeDb::getInstance().GetPkgApps(pkgName, pkgContents);
         PrivilegeDb::getInstance().UpdateAppPrivileges(appName, uid, std::vector<std::string>());
         PrivilegeDb::getInstance().RemoveApplication(appName, uid, removeApp, removePkg, removeAuthor);
+        PrivilegeDb::getInstance().GetPrivateSharingForOwner(appName, ownerSharing);
 
         // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
         PrivilegeDb::getInstance().GetAppVersion(appName, tizenVersion);
@@ -459,6 +461,9 @@ int ServiceImpl::appUninstall(const std::string &appName, uid_t uid)
     try {
         if (removeApp) {
             LogDebug("Removing smack rules for deleted appName " << appName);
+            if (!ownerSharing.empty()) {
+                SmackRules::uninstallSharingRules(appName, pkgName, pkgContents, ownerSharing);
+            }
             SmackRules::uninstallApplicationRules(appName);
             LogDebug("Pkg rules are deprecated. We must uninstall them. pkgName " << pkgName);
             SmackRules::uninstallPackageRules(pkgName);
