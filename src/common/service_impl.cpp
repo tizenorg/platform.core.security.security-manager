@@ -407,6 +407,8 @@ int ServiceImpl::appUninstall(const std::string &appName, uid_t uid)
     bool removeAuthor = false;
     std::string uidstr;
     std::vector<std::string> allTizen2XApps;
+    std::map<std::string, std::vector<std::string>> asOwnerSharing;
+    std::map<std::string, std::vector<std::string>> asTargetSharing;
     int authorId;
 
     checkGlobalUser(uid, uidstr);
@@ -431,13 +433,47 @@ int ServiceImpl::appUninstall(const std::string &appName, uid_t uid)
         PrivilegeDb::getInstance().GetAppAuthorId(appName, authorId);
         PrivilegeDb::getInstance().GetPkgApps(pkgName, pkgContents);
         PrivilegeDb::getInstance().UpdateAppPrivileges(appName, uid, std::vector<std::string>());
-        PrivilegeDb::getInstance().RemoveApplication(appName, uid, removeApp, removePkg, removeAuthor);
+        PrivilegeDb::getInstance().GetPrivateSharingForOwner(appName, asOwnerSharing);
+        PrivilegeDb::getInstance().GetPrivateSharingForTarget(appName, asTargetSharing);
 
         // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
         PrivilegeDb::getInstance().GetAppVersion(appName, tizenVersion);
         if (isTizen2XVersion(tizenVersion))
             PrivilegeDb::getInstance().GetTizen2XApps(appName, allTizen2XApps);
 
+        for (const auto &targetPathsInfo : asOwnerSharing) {
+            const auto &targetAppName = targetPathsInfo.first;
+            const auto &paths = targetPathsInfo.second;
+            // Squash sharing - change counter to 1, so dropPrivatePathSharing will completely clean it
+            for (const auto &path : paths) {
+                PrivilegeDb::getInstance().SquashSharing(targetAppName, path);
+                int ret = dropOnePrivateSharing(appName, pkgName, pkgContents, targetAppName, path);
+                if (ret != SECURITY_MANAGER_SUCCESS) {
+                    //Ignore error, we want to drop as much as we can
+                    LogError("Couldn't drop sharing between " << appName << " and " << targetAppName);
+                }
+            }
+        }
+
+        for (const auto &ownerPathsInfo : asTargetSharing) {
+            const auto &ownerAppName = ownerPathsInfo.first;
+            const auto &paths = ownerPathsInfo.second;
+            // Squash sharing - change counter to 1, so dropPrivatePathSharing will completely clean it
+            std::string ownerPkgName;
+            std::vector<std::string> ownerPkgContents;
+            PrivilegeDb::getInstance().GetAppPkgName(ownerAppName, ownerPkgName);
+            PrivilegeDb::getInstance().GetPkgApps(ownerPkgName, ownerPkgContents);
+            for (const auto &path : paths) {
+                PrivilegeDb::getInstance().SquashSharing(appName, path);
+                    int ret = dropOnePrivateSharing(ownerAppName, ownerPkgName, ownerPkgContents, appName, path);
+                    if (ret != SECURITY_MANAGER_SUCCESS) {
+                        //Ignore error, we want to drop as much as we can
+                        LogError("Couldn't drop sharing between " << appName << " and " << ownerAppName);
+                    }
+                }
+        }
+
+        PrivilegeDb::getInstance().RemoveApplication(appName, uid, removeApp, removePkg, removeAuthor);
         CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, uidstr, std::vector<std::string>());
 
         PrivilegeDb::getInstance().CommitTransaction();
