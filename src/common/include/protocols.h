@@ -40,6 +40,7 @@ struct app_inst_req {
     uid_t uid;
     std::string tizenVersion;
     std::string authorName;
+    app_install_type installationType;
 };
 
 struct user_req {
