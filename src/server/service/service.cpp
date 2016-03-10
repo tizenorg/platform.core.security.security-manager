@@ -167,6 +167,7 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
 void Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_t uid)
 {
     app_inst_req req;
+    int app_inst_type = static_cast<int>(req.installationType);
 
     Deserialization::Deserialize(buffer, req.appName);
     Deserialization::Deserialize(buffer, req.pkgName);
@@ -175,6 +176,7 @@ void Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     Deserialization::Deserialize(buffer, req.uid);
     Deserialization::Deserialize(buffer, req.tizenVersion);
     Deserialization::Deserialize(buffer, req.authorName);
+    Deserialization::Deserialize(buffer, app_inst_type);
     Serialization::Serialize(send, serviceImpl.appInstall(req, uid));
 }
 
