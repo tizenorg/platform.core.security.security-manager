@@ -241,7 +241,8 @@ bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, st
     std::string userAppDir;
     std::stringstream correctPath;
 
-    if (uid != getGlobalUserId())
+    if (static_cast<app_install_type>(req.installationType) != app_install_type::SM_APP_INSTALL_GLOBAL ||
+            static_cast<app_install_type>(req.installationType) != app_install_type::SM_APP_INSTALL_PRELOADED)
         LogDebug("Installation type: single user");
     else
         LogDebug("Installation type: global installation");
