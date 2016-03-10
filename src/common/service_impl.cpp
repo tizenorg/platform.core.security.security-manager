@@ -241,10 +241,12 @@ bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, st
     std::string userAppDir;
     std::stringstream correctPath;
 
-    if (uid != getGlobalUserId())
-        LogDebug("Installation type: single user");
+    if (static_cast<app_install_type>(req.installationType) == app_install_type::SM_APP_INSTALL_LOCAL)
+        LogDebug("Installation type: local");
+    else if (static_cast<app_install_type>(req.installationType) == app_install_type::SM_APP_INSTALL_GLOBAL)
+        LogDebug("Installation type: global");
     else
-        LogDebug("Installation type: global installation");
+        LogDebug("Installation type: preloaded");
 
     if (!getUserAppDir(uid, userAppDir)) {
         LogError("Failed getting app dir for user uid: " << uid);
