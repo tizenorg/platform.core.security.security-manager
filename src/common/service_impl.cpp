@@ -235,7 +235,8 @@ bool ServiceImpl::installRequestAuthCheck(const credentials &creds, const app_in
         finalUid = req.uid;
     }
 
-    if (finalUid == globalUid) {
+    if (static_cast<app_install_type>(req.installationType) == app_install_type::SM_APP_INSTALL_GLOBAL ||
+            static_cast<app_install_type>(req.installationType) == app_install_type::SM_APP_INSTALL_PRELOADED) {
         LogDebug("Installation type: global installation");
 
         if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_APPINST_ADMIN,
