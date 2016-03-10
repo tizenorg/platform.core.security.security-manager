@@ -34,6 +34,7 @@
 #include <memory>
 
 #include <dpl/log/log.h>
+#include <dpl/errno_string.h>
 #include <tzplatform_config.h>
 
 #include "smack-labels.h"
@@ -117,7 +118,7 @@ void SmackRules::loadFromFile(const std::string &path)
 
     if (close(fd) == -1) {
         // don't change the return code, the descriptor should be closed despite the error.
-        LogWarning("Error while closing the file: " << path << ", error: " << strerror(errno));
+        LogWarning("Error while closing the file: " << path << ", error: " << GetErrnoString(errno));
     }
 }
 
@@ -146,7 +147,7 @@ void SmackRules::saveToFile(const std::string &path, bool truncFile) const
         } else {
             // non critical error
             // don't change the return code, the descriptor should be closed despite the error.
-            LogWarning("Error while closing the file: " << path << ", error: " << strerror(errno));
+            LogWarning("Error while closing the file: " << path << ", error: " << GetErrnoString(errno));
         }
     }
 }

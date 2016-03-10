@@ -41,6 +41,7 @@
 
 #include <dpl/log/log.h>
 #include <dpl/exception.h>
+#include <dpl/errno_string.h>
 #include <smack-labels.h>
 #include <message-buffer.h>
 #include <client-common.h>
@@ -314,7 +315,7 @@ static bool setup_smack(const char *label)
         opendir("/proc/self/fd"), closedir);
     if (!dir.get()) {
         LogError("Unable to read list of open file descriptors: " <<
-            strerror(errno));
+            GetErrnoString(errno));
         return SECURITY_MANAGER_ERROR_UNKNOWN;
     }
 
@@ -467,7 +468,7 @@ int security_manager_set_process_groups_from_appid(const char *app_name)
         ret = setgroups(oldGroupsCnt + newGroupsCnt, groups.get());
         if (ret == -1) {
             LogError("Unable to get list of current supplementary groups: " <<
-                strerror(errno));
+                GetErrnoString(errno));
             return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
 
