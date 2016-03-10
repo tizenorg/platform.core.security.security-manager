@@ -112,6 +112,17 @@ int security_manager_app_inst_req_set_uid(app_inst_req *p_req,
 int security_manager_app_inst_req_set_author_id(app_inst_req *p_req, const char *author_id);
 
 /*
+ * This function is used to set up installation type (global, local, preloaded).
+ * By default type of installation is set to local
+ *
+ * \param[in] Pointer handling app_inst_req structure
+ * \param[in] Installation type
+ * \return API return code or error code
+ *
+ */
+int security_manager_app_inst_req_set_install_type(app_inst_req *p_req, const enum app_install_type &type);
+
+/*
  * This function is used to install application based on
  * using filled up app_inst_req data structure
  *
