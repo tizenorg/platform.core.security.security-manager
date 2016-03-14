@@ -242,6 +242,7 @@ bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, st
     std::string userHome;
     std::string userAppDir;
     std::stringstream correctPath;
+    std::stringstream correctPathWithPrefix;
 
     if (uid != getGlobalUserId())
         LogDebug("Installation type: single user");
@@ -255,7 +256,8 @@ bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, st
 
     appPath = userAppDir;
     correctPath.clear();
-    correctPath << "/opt" + userAppDir << "/" << req.pkgName;
+    correctPath << userAppDir << "/" << req.pkgName;
+    correctPathWithPrefix << "/opt" + userAppDir << "/" << req.pkgName;
     LogDebug("correctPath: " << correctPath.str());
 
     for (const auto &path : req.appPaths) {
@@ -268,7 +270,7 @@ bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, st
         }
         LogDebug("Requested path is '" << path.first.c_str()
                 << "'. User's APPS_DIR is '" << userAppDir << "'");
-        if (!isSubDir(correctPath.str().c_str(), real_path.get())) {
+        if (!isSubDir(correctPath.str().c_str(), real_path.get()) && !isSubDir(correctPathWithPrefix.str().c_str(), real_path.get())) {
             LogWarning("Installation is outside correct path: " << correctPath.str() << "," << real_path.get());
             return false;
         }
