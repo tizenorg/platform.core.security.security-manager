@@ -9,3 +9,5 @@ http://tizen.org/privilege/recorder priv_recorder
 http://tizen.org/privilege/mediastorage priv_mediastorage
 http://tizen.org/privilege/externalstorage priv_externalstorage
 http://tizen.org/privilege/message.read priv_message_read
+http://tizen.org/privilege/location priv_location
+http://tizen.org/privilege/location.enable priv_location_enable
