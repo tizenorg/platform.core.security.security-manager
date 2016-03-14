@@ -255,7 +255,7 @@ bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, st
 
     appPath = userAppDir;
     correctPath.clear();
-    correctPath << userAppDir << "/" << req.pkgName;
+    correctPath << "/opt" + userAppDir << "/" << req.pkgName;
     LogDebug("correctPath: " << correctPath.str());
 
     for (const auto &path : req.appPaths) {
