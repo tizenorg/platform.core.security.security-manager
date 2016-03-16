@@ -1,7 +1,7 @@
 Name:       security-manager
 Summary:    Security manager and utilities
 Version:    1.1.2
-Release:    4
+Release:    5
 Group:      Security/Service
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
@@ -77,7 +77,9 @@ export LDFLAGS+="-Wl,--rpath=%{_libdir}"
         -DDB_INSTALL_DIR=%{TZ_SYS_DB} \
         -DSYSTEMD_INSTALL_DIR=%{_unitdir} \
         -DCMAKE_BUILD_TYPE=%{?build_type:%build_type}%{!?build_type:RELEASE} \
-        -DCMAKE_VERBOSE_MAKEFILE=ON
+        -DCMAKE_VERBOSE_MAKEFILE=ON \
+        -DDATA_INSTALL_DIR=%{_datadir} \
+        -DTZ_SYS_ETC=%{TZ_SYS_ETC}
 make %{?jobs:-j%jobs}
 
 %install
@@ -106,6 +108,7 @@ fi
 if [ $1 = 2 ]; then
     # update
     systemctl restart security-manager.service
+    %{_datadir}/security-manager/db/update.sh
 fi
 chsmack -a System %{TZ_SYS_DB}/.security-manager.db
 chsmack -a System %{TZ_SYS_DB}/.security-manager.db-journal
@@ -147,6 +150,10 @@ fi
 %config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db
 %config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db-journal
 %{_datadir}/license/%{name}
+
+%{_datadir}/security-manager/db
+%attr(755,root,root) %{_datadir}/security-manager/db/update.sh
+%attr(755,root,root) %{TZ_SYS_ETC}/opt/upgrade/240.security-manager.db-update.sh
 
 %files -n libsecurity-manager-client
 %manifest libsecurity-manager-client.manifest
