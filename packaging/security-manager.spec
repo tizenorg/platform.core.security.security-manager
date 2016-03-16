@@ -146,6 +146,8 @@ fi
 %attr(-,root,root) %{_unitdir}/sysinit.target.wants/security-manager-cleanup.*
 %config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db
 %config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db-journal
+# TODO install updater scripts!
+%{TZ_SYS_ETC}/opt/upgrade/240.security-manager.db-update.sh
 %{_datadir}/license/%{name}
 
 %files -n libsecurity-manager-client
