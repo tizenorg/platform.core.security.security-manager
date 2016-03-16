@@ -9,6 +9,7 @@ Source1:    security-manager.manifest
 Source3:    libsecurity-manager-client.manifest
 Requires: security-manager-policy
 Requires: nether
+Requires(post): sqlite3
 Requires(post): smack
 BuildRequires: cmake
 BuildRequires: zip
@@ -101,14 +102,14 @@ systemctl daemon-reload
 if [ $1 = 1 ]; then
     # installation
     systemctl start security-manager.service
+    %{_datadir}/security-manager/db/update.sh
 fi
 
 if [ $1 = 2 ]; then
     # update
     systemctl restart security-manager.service
+    %{_datadir}/security-manager/db/update.sh
 fi
-chsmack -a System %{TZ_SYS_DB}/.security-manager.db
-chsmack -a System %{TZ_SYS_DB}/.security-manager.db-journal
 
 %preun
 if [ $1 = 0 ]; then
@@ -121,6 +122,8 @@ fi
 if [ $1 = 0 ]; then
     # unistall
     systemctl daemon-reload
+    rm -f %{TZ_SYS_DB}/.security-manager.db
+    rm -f %{TZ_SYS_DB}/.security-manager.db-journal
 fi
 
 %post -n libsecurity-manager-client -p /sbin/ldconfig
@@ -144,9 +147,11 @@ fi
 %attr(-,root,root) %{_unitdir}/security-manager-cleanup.*
 %attr(-,root,root) %{_unitdir}/sockets.target.wants/security-manager.*
 %attr(-,root,root) %{_unitdir}/sysinit.target.wants/security-manager-cleanup.*
-%config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db
-%config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db-journal
 %{_datadir}/license/%{name}
+
+%{_datadir}/security-manager/db
+%attr(755,root,root) %{_datadir}/%{name}/db/update.sh
+%attr(755,root,root) %{_sysconfdir}/opt/upgrade/240.security-manager.db-update.sh
 
 %files -n libsecurity-manager-client
 %manifest libsecurity-manager-client.manifest
