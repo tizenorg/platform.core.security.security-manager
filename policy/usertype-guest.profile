@@ -96,3 +96,5 @@
 *	http://tizen.org/privilege/internal/buxton/telephony
 *	http://tizen.org/privilege/internal/dbus
 *	http://tizen.org/privilege/internal/inputdevice.block
+*	http://tizen.org/privilege/internal/privacymanagement
+*	http://tizen.org/privilege/internal/appsharing

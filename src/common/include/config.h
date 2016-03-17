@@ -33,6 +33,14 @@ namespace Config {
 
 extern const std::string PRIVILEGE_VERSION;
 
+/* Privileges required from users of our API */
+extern const std::string PRIVILEGE_APPINST_USER;
+extern const std::string PRIVILEGE_APPINST_ADMIN;
+extern const std::string PRIVILEGE_USER_ADMIN;
+extern const std::string PRIVILEGE_POLICY_USER;
+extern const std::string PRIVILEGE_POLICY_ADMIN;
+extern const std::string PRIVILEGE_APPSHARING_ADMIN;
+
 };
 
 } /* namespace SecurityManager */

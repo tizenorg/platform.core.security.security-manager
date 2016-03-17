@@ -48,9 +48,6 @@
 
 namespace SecurityManager {
 
-static const std::string ADMIN_PRIVILEGE = "http://tizen.org/privilege/systemsettings.admin";
-static const std::string SELF_PRIVILEGE = "http://tizen.org/privilege/systemsettings";
-
 namespace {
 
 static inline int validatePolicy(policy_entry &policyEntry, std::string uidStr, bool &forAdmin, CynaraAdminPolicy &cyap)
@@ -183,22 +180,6 @@ uid_t ServiceImpl::getGlobalUserId(void)
     return globaluid;
 }
 
-/**
- * Unifies user data of apps installed for all users
- * @param  uid            peer's uid - may be changed during process
- * @param  cynaraUserStr  string to which cynara user parameter will be put
- */
-void ServiceImpl::checkGlobalUser(uid_t &uid, std::string &cynaraUserStr)
-{
-    static uid_t globaluid = getGlobalUserId();
-    if (uid == 0 || uid == globaluid) {
-        uid = globaluid;
-        cynaraUserStr = CYNARA_ADMIN_WILDCARD;
-    } else {
-        cynaraUserStr = std::to_string(static_cast<unsigned int>(uid));
-    }
-}
-
 bool ServiceImpl::isSubDir(const char *parent, const char *subdir)
 {
     while (*parent && *subdir)
@@ -243,28 +224,39 @@ bool ServiceImpl::getUserAppDir(const uid_t &uid, const app_install_type &instal
     return true;
 }
 
-bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, std::string &appPath)
+bool ServiceImpl::installRequestAuthCheck(const Credentials &creds, const app_inst_req &req,
+    std::string &appPath)
 {
-    std::string userHome;
-    std::string userAppDir;
-    std::stringstream correctPath;
+    static const std::map<app_install_type, const char*> installTypeName = {
+        {SM_APP_INSTALL_LOCAL, "local"},
+        {SM_APP_INSTALL_GLOBAL, "global"},
+        {SM_APP_INSTALL_PRELOADED, "preloaded"}};
 
-    if (static_cast<app_install_type>(req.installationType) == SM_APP_INSTALL_LOCAL)
-        LogDebug("Installation type: local");
-    else if (static_cast<app_install_type>(req.installationType) == SM_APP_INSTALL_GLOBAL)
-        LogDebug("Installation type: global");
-    else
-        LogDebug("Installation type: preloaded");
+    auto installType = static_cast<app_install_type>(req.installationType);
+    LogDebug("Installation type: " << installTypeName.at(installType));
 
-    if (!getUserAppDir(uid, static_cast<app_install_type>(req.installationType), userAppDir)) {
-        LogError("Failed getting app dir for user uid: " << uid);
+    if (installType == SM_APP_INSTALL_LOCAL) {
+        if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_APPINST_ADMIN,
+            std::to_string(creds.uid), std::to_string(creds.pid))) {
+            LogError("Caller is not permitted to install applications globally");
+            return false;
+        }
+    } else {
+        if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_APPINST_USER,
+            std::to_string(creds.uid), std::to_string(creds.pid))) {
+            LogError("Caller is not permitted to install applications");
+            return false;
+        }
+    }
+
+    if (!getUserAppDir(req.uid, installType, appPath)) {
+        LogError("Failed getting app dir for user uid: " << req.uid);
         return false;
     }
 
-    appPath = userAppDir;
-    correctPath.clear();
-    correctPath << userAppDir << "/" << req.pkgName;
-    LogDebug("correctPath: " << correctPath.str());
+    std::string correctPath{appPath};
+    correctPath.append("/").append(req.pkgName);
+    LogDebug("correctPath: " << correctPath);
 
     for (const auto &path : req.appPaths) {
         std::unique_ptr<char, std::function<void(void*)>> real_path(
@@ -275,41 +267,37 @@ bool ServiceImpl::installRequestAuthCheck(const app_inst_req &req, uid_t uid, st
             return false;
         }
         LogDebug("Requested path is '" << path.first.c_str()
-                << "'. User's APPS_DIR is '" << userAppDir << "'");
-        if (!isSubDir(correctPath.str().c_str(), real_path.get())) {
-            LogWarning("Installation is outside correct path: " << correctPath.str() << "," << real_path.get());
+                << "'. User's APPS_DIR is '" << appPath << "'");
+        if (!isSubDir(correctPath.c_str(), real_path.get())) {
+            LogWarning("Installation is outside correct path: " << correctPath << "," << real_path.get());
             return false;
         }
     }
     return true;
 }
 
-int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid)
+int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &req)
 {
     std::vector<std::string> addedPermissions;
     std::vector<std::string> removedPermissions;
     std::vector<std::string> pkgContents;
-    std::string uidstr;
+    std::string cynaraUserStr;
     std::string appPath;
     std::string appLabel;
     std::string pkgLabel;
     std::vector<std::string> allTizen2XApps, allTizen2XPackages;
     int authorId;
 
-    if (uid) {
-        if (uid != req.uid) {
-            LogError("User " << uid <<
-                     " is denied to install application for user " << req.uid);
-            return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
-        }
-    } else {
-        if (req.uid)
-            uid = req.uid;
-    }
-    checkGlobalUser(uid, uidstr);
+    if (req.uid == 0)
+        req.uid = getGlobalUserId();
 
-    if (!installRequestAuthCheck(req, uid, appPath)) {
-        LogError("Request from uid " << uid << " for app installation denied");
+    if (req.installationType == SM_APP_INSTALL_LOCAL)
+        cynaraUserStr = std::to_string(static_cast<unsigned int>(req.uid));
+    else
+        cynaraUserStr = CYNARA_ADMIN_WILDCARD;
+
+    if (!installRequestAuthCheck(creds, req, appPath)) {
+        LogError("Request from uid " << creds.uid << " for app installation denied");
         return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
     }
 
@@ -319,9 +307,9 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid)
         /* NOTE: we don't use pkgLabel here, but generate it for pkgName validation */
         pkgLabel = SmackLabels::generatePkgLabel(req.pkgName);
         LogDebug("Install parameters: appName: " << req.appName << ", pkgName: " << req.pkgName
-                 << ", uidstr " << uidstr
+                 << ", uid " << req.uid
                  << ", app label: " << appLabel << ", pkg label: " << pkgLabel
-                 << ", target Tizen API ver: " << (req.tizenVersion.empty()?"unknown":req.tizenVersion));
+                 << ", target Tizen API ver: " << (req.tizenVersion.empty() ? "unknown" : req.tizenVersion));
 
         PrivilegeDb::getInstance().BeginTransaction();
         std::string pkg;
@@ -332,12 +320,12 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid)
             return SECURITY_MANAGER_ERROR_INPUT_PARAM;
         }
 
-        PrivilegeDb::getInstance().AddApplication(req.appName, req.pkgName, uid, req.tizenVersion, req.authorName);
-        PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, uid, req.privileges);
+        PrivilegeDb::getInstance().AddApplication(req.appName, req.pkgName, req.uid, req.tizenVersion, req.authorName);
+        PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, req.uid, req.privileges);
         /* Get all application ids in the package to generate rules withing the package */
         PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
         PrivilegeDb::getInstance().GetAppAuthorId(req.appName, authorId);
-        CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, uidstr, req.privileges);
+        CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, cynaraUserStr, req.privileges);
 
         // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
         if(isTizen2XVersion(req.tizenVersion))
@@ -398,49 +386,64 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid)
     return SECURITY_MANAGER_SUCCESS;
 }
 
-int ServiceImpl::appUninstall(const std::string &appName, uid_t uid)
+int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &req, bool authorized)
 {
-    std::string pkgName;
     std::string tizenVersion;
     std::string smackLabel;
     std::vector<std::string> pkgContents;
     bool removeApp = false;
     bool removePkg = false;
     bool removeAuthor = false;
-    std::string uidstr;
+    std::string appPath;
+    std::string cynaraUserStr;
     std::vector<std::string> allTizen2XApps;
     int authorId;
 
-    checkGlobalUser(uid, uidstr);
+    if (req.uid == 0)
+        req.uid = getGlobalUserId();
+
+    if (!authorized) {
+        if (req.installationType == SM_APP_INSTALL_LOCAL)
+            cynaraUserStr = std::to_string(static_cast<unsigned int>(req.uid));
+        else
+            cynaraUserStr = CYNARA_ADMIN_WILDCARD;
+    }
+
+    if (!installRequestAuthCheck(creds, req, appPath)) {
+        LogError("Request from uid " << creds.uid << " for app uninstallation denied");
+        return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+    }
 
     try {
         PrivilegeDb::getInstance().BeginTransaction();
-        PrivilegeDb::getInstance().GetAppPkgName(appName, pkgName);
-        if (pkgName.empty()) {
-            LogWarning("Application " << appName <<
+        if (req.pkgName.empty())
+            PrivilegeDb::getInstance().GetAppPkgName(req.appName, req.pkgName);
+
+        if (req.pkgName.empty()) {
+            LogWarning("Application " << req.appName <<
                 " not found in database while uninstalling");
             PrivilegeDb::getInstance().RollbackTransaction();
             return SECURITY_MANAGER_SUCCESS;
         }
 
-        smackLabel = SmackLabels::generateAppLabel(appName);
-        LogDebug("Uninstall parameters: appName: " << appName << ", pkgName: " << pkgName
-                 << ", uidstr " << uidstr << ", generated smack label: " << smackLabel);
+        smackLabel = SmackLabels::generateAppLabel(req.appName);
+        LogDebug("Uninstall parameters: appName: " << req.appName << ", pkgName: " << req.pkgName
+                 << ", uid " << req.uid << ", generated smack label: " << smackLabel);
 
         /* Before we remove the app from the database, let's fetch all apps in the package
             that this app belongs to, this will allow us to remove all rules withing the
             package that the app appears in */
-        PrivilegeDb::getInstance().GetAppAuthorId(appName, authorId);
-        PrivilegeDb::getInstance().GetPkgApps(pkgName, pkgContents);
-        PrivilegeDb::getInstance().UpdateAppPrivileges(appName, uid, std::vector<std::string>());
-        PrivilegeDb::getInstance().RemoveApplication(appName, uid, removeApp, removePkg, removeAuthor);
+        PrivilegeDb::getInstance().GetAppAuthorId(req.appName, authorId);
+        PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
+        PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, req.uid, std::vector<std::string>());
+        PrivilegeDb::getInstance().RemoveApplication(req.appName, req.uid, removeApp, removePkg, removeAuthor);
 
         // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
-        PrivilegeDb::getInstance().GetAppVersion(appName, tizenVersion);
+        PrivilegeDb::getInstance().GetAppVersion(req.appName, tizenVersion);
         if (isTizen2XVersion(tizenVersion))
-            PrivilegeDb::getInstance().GetTizen2XApps(appName, allTizen2XApps);
+            PrivilegeDb::getInstance().GetTizen2XApps(req.appName, allTizen2XApps);
 
-        CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, uidstr, std::vector<std::string>());
+        CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, cynaraUserStr, std::vector<std::string>());
 
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application uninstallation commited to database");
@@ -467,13 +470,13 @@ int ServiceImpl::appUninstall(const std::string &appName, uid_t uid)
 
     try {
         if (removeApp) {
-            LogDebug("Removing smack rules for deleted appName " << appName);
-            SmackRules::uninstallApplicationRules(appName);
-            LogDebug("Pkg rules are deprecated. We must uninstall them. pkgName " << pkgName);
-            SmackRules::uninstallPackageRules(pkgName);
+            LogDebug("Removing Smack rules for appName " << req.appName);
+            SmackRules::uninstallApplicationRules(req.appName);
+            LogDebug("Removing Smack rules for pkgName " << req.pkgName);
+            SmackRules::uninstallPackageRules(req.pkgName);
             if (!removePkg) {
-                LogDebug("Creating new rules for pkgName " << pkgName);
-                SmackRules::updatePackageRules(pkgName, pkgContents, allTizen2XApps);
+                LogDebug("Recreating Smack rules for pkgName " << req.pkgName);
+                SmackRules::updatePackageRules(req.pkgName, pkgContents, allTizen2XApps);
             }
         }
 
@@ -512,17 +515,14 @@ int ServiceImpl::getPkgName(const std::string &appName, std::string &pkgName)
     return SECURITY_MANAGER_SUCCESS;
 }
 
-int ServiceImpl::getAppGroups(
-        const std::string &appName,
-        uid_t uid,
-        pid_t pid,
-        std::unordered_set<gid_t> &gids)
+int ServiceImpl::getAppGroups(const Credentials &creds, const std::string &appName,
+    std::unordered_set<gid_t> &gids)
 {
     try {
         std::string pkgName;
         std::string smackLabel;
-        std::string uidStr = std::to_string(uid);
-        std::string pidStr = std::to_string(pid);
+        std::string uidStr = std::to_string(creds.uid);
+        std::string pidStr = std::to_string(creds.pid);
 
         LogDebug("appName: " << appName);
 
@@ -537,7 +537,7 @@ int ServiceImpl::getAppGroups(
         LogDebug("smack label: " << smackLabel);
 
         std::vector<std::string> privileges;
-        PrivilegeDb::getInstance().GetPkgPrivileges(pkgName, uid, privileges);
+        PrivilegeDb::getInstance().GetPkgPrivileges(pkgName, creds.uid, privileges);
         /*there is also a need of checking, if privilege is granted to all users*/
         size_t tmp = privileges.size();
         PrivilegeDb::getInstance().GetPkgPrivileges(pkgName, getGlobalUserId(), privileges);
@@ -583,10 +583,14 @@ int ServiceImpl::getAppGroups(
     return SECURITY_MANAGER_SUCCESS;
 }
 
-int ServiceImpl::userAdd(uid_t uidAdded, int userType, uid_t uid)
+int ServiceImpl::userAdd(const Credentials &creds, uid_t uidAdded, int userType)
 {
-    if (uid != 0)
+    if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_USER_ADMIN,
+        std::to_string(creds.uid), std::to_string(creds.pid))) {
+
+        LogError("Caller is not permitted to manage users");
         return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+    }
 
     try {
         CynaraAdmin::getInstance().UserInit(uidAdded, static_cast<security_manager_user_type>(userType));
@@ -596,11 +600,16 @@ int ServiceImpl::userAdd(uid_t uidAdded, int userType, uid_t uid)
     return SECURITY_MANAGER_SUCCESS;
 }
 
-int ServiceImpl::userDelete(uid_t uidDeleted, uid_t uid)
+int ServiceImpl::userDelete(const Credentials &creds, uid_t uidDeleted)
 {
     int ret = SECURITY_MANAGER_SUCCESS;
-    if (uid != 0)
+
+    if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_USER_ADMIN,
+        std::to_string(creds.uid), std::to_string(creds.pid))) {
+
+        LogError("Caller is not permitted to manage users");
         return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+    }
 
     /*Uninstall all user apps*/
     std::vector<std::string> userApps;
@@ -611,8 +620,11 @@ int ServiceImpl::userDelete(uid_t uidDeleted, uid_t uid)
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
     }
 
-    for (auto &app: userApps) {
-        if (appUninstall(app, uidDeleted) != SECURITY_MANAGER_SUCCESS) {
+    for (const auto &app : userApps) {
+        app_inst_req req;
+        req.uid = uidDeleted;
+        req.appName = app;
+        if (appUninstall(creds, req, true) != SECURITY_MANAGER_SUCCESS) {
         /*if uninstallation of this app fails, just go on trying to uninstall another ones.
         we do not have anything special to do about that matter - user will be deleted anyway.*/
             ret = SECURITY_MANAGER_ERROR_SERVER_ERROR;
@@ -624,7 +636,7 @@ int ServiceImpl::userDelete(uid_t uidDeleted, uid_t uid)
     return ret;
 }
 
-int ServiceImpl::policyUpdate(const std::vector<policy_entry> &policyEntries, uid_t uid, pid_t pid, const std::string &smackLabel)
+int ServiceImpl::policyUpdate(const Credentials &creds, const std::vector<policy_entry> &policyEntries)
 {
     enum {
         NOT_CHECKED,
@@ -633,15 +645,15 @@ int ServiceImpl::policyUpdate(const std::vector<policy_entry> &policyEntries, ui
     }  isAdmin = NOT_CHECKED;
 
     try {
-        std::string uidStr = std::to_string(uid);
-        std::string pidStr = std::to_string(pid);
+        std::string uidStr = std::to_string(creds.uid);
+        std::string pidStr = std::to_string(creds.pid);
 
         if (policyEntries.size() == 0) {
             LogError("Validation failed: policy update request is empty");
             return SECURITY_MANAGER_ERROR_BAD_REQUEST;
         };
 
-        if (!Cynara::getInstance().check(smackLabel, SELF_PRIVILEGE, uidStr, pidStr)) {
+        if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_POLICY_USER, uidStr, pidStr)) {
             LogError("Not enough permission to call: " << __FUNCTION__);
             return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
         };
@@ -654,7 +666,10 @@ int ServiceImpl::policyUpdate(const std::vector<policy_entry> &policyEntries, ui
             int ret = validatePolicy(entry, uidStr, forAdmin, cyap);
 
             if (forAdmin && (isAdmin == NOT_CHECKED)) {
-                isAdmin = Cynara::getInstance().check(smackLabel, ADMIN_PRIVILEGE, uidStr, pidStr)?IS_ADMIN:IS_NOT_ADMIN;
+                if (Cynara::getInstance().check(creds.label, Config::PRIVILEGE_POLICY_ADMIN, uidStr, pidStr))
+                    isAdmin = IS_ADMIN;
+                else
+                    isAdmin = IS_NOT_ADMIN;
             };
 
             if (ret == SECURITY_MANAGER_SUCCESS) {
@@ -684,14 +699,14 @@ int ServiceImpl::policyUpdate(const std::vector<policy_entry> &policyEntries, ui
     return SECURITY_MANAGER_SUCCESS;
 }
 
-int ServiceImpl::getConfiguredPolicy(bool forAdmin, const policy_entry &filter, uid_t uid, pid_t pid,
-    const std::string &smackLabel, std::vector<policy_entry> &policyEntries)
+int ServiceImpl::getConfiguredPolicy(const Credentials &creds, bool forAdmin,
+    const policy_entry &filter, std::vector<policy_entry> &policyEntries)
 {
     try {
-        std::string uidStr = std::to_string(uid);
-        std::string pidStr = std::to_string(pid);
+        std::string uidStr = std::to_string(creds.uid);
+        std::string pidStr = std::to_string(creds.pid);
 
-        if (!Cynara::getInstance().check(smackLabel, SELF_PRIVILEGE, uidStr, pidStr)) {
+        if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_POLICY_USER, uidStr, pidStr)) {
             LogError("Not enough permission to call: " << __FUNCTION__);
             return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
         };
@@ -713,7 +728,7 @@ int ServiceImpl::getConfiguredPolicy(bool forAdmin, const policy_entry &filter, 
         LogDebug("App: " << filter.appName << ", Label: " << appLabel);
 
         if (forAdmin) {
-            if (!Cynara::getInstance().check(smackLabel, ADMIN_PRIVILEGE, uidStr, pidStr)) {
+            if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_POLICY_ADMIN, uidStr, pidStr)) {
                 LogError("Not enough privilege to access admin enforced policies: " << __FUNCTION__);
                 return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
                 };
@@ -729,7 +744,7 @@ int ServiceImpl::getConfiguredPolicy(bool forAdmin, const policy_entry &filter, 
             LogDebug("ADMIN - number of policies matched: " << listOfPolicies.size());
         } else {
             if (uidStr.compare(user)) {
-                if (!Cynara::getInstance().check(smackLabel, ADMIN_PRIVILEGE, uidStr, pidStr)) {
+                if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_POLICY_ADMIN, uidStr, pidStr)) {
                     LogWarning("Not enough privilege to access other user's personal policies. Limiting query to personal privileges.");
                     user = uidStr;
                 };
@@ -794,13 +809,14 @@ int ServiceImpl::getConfiguredPolicy(bool forAdmin, const policy_entry &filter, 
     return SECURITY_MANAGER_SUCCESS;
 }
 
-int ServiceImpl::getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, const std::string &smackLabel, std::vector<policy_entry> &policyEntries)
+int ServiceImpl::getPolicy(const Credentials &creds, const policy_entry &filter,
+    std::vector<policy_entry> &policyEntries)
 {
     try {
-        std::string uidStr = std::to_string(uid);
-        std::string pidStr = std::to_string(pid);
+        std::string uidStr = std::to_string(creds.uid);
+        std::string pidStr = std::to_string(creds.pid);
 
-        if (!Cynara::getInstance().check(smackLabel, SELF_PRIVILEGE, uidStr, pidStr)) {
+        if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_POLICY_USER, uidStr, pidStr)) {
             LogWarning("Not enough permission to call: " << __FUNCTION__);
             return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
         };
@@ -814,7 +830,7 @@ int ServiceImpl::getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, con
 
         std::vector<uid_t> listOfUsers;
 
-        if (Cynara::getInstance().check(smackLabel, ADMIN_PRIVILEGE, uidStr, pidStr)) {
+        if (Cynara::getInstance().check(creds.label, Config::PRIVILEGE_POLICY_ADMIN, uidStr, pidStr)) {
             LogDebug("User is privileged");
             if (filter.user.compare(SECURITY_MANAGER_ANY)) {
                 LogDebug("Limitting Cynara query to user: " << filter.user);
@@ -826,9 +842,9 @@ int ServiceImpl::getPolicy(const policy_entry &filter, uid_t uid, pid_t pid, con
             } else
                 CynaraAdmin::getInstance().ListUsers(listOfUsers);
         } else {
-            LogWarning("Not enough privilege to fetch user policy for all users by user: " << uid);
-            LogDebug("Fetching personal policy for user: " << uid);
-            listOfUsers.push_back(uid);
+            LogWarning("Not enough privilege to fetch user policy for all users by user: " << creds.uid);
+            LogDebug("Fetching personal policy for user: " << creds.uid);
+            listOfUsers.push_back(creds.uid);
         };
         LogDebug("Fetching policy for " << listOfUsers.size() << " users");
 
@@ -1018,6 +1034,7 @@ int ServiceImpl::dropOnePrivateSharing(
 }
 
 int ServiceImpl::applyPrivatePathSharing(
+        const Credentials &creds,
         const std::string &ownerAppName,
         const std::string &targetAppName,
         const std::vector<std::string> &paths)
@@ -1029,6 +1046,12 @@ int ServiceImpl::applyPrivatePathSharing(
     std::vector<std::string> pkgContents;
 
     try {
+        if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_APPSHARING_ADMIN,
+            std::to_string(creds.uid), std::to_string(creds.pid))) {
+            LogError("Caller is not permitted to manage file sharing");
+            return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
+        }
+
         PrivilegeDb::getInstance().GetAppPkgName(ownerAppName, ownerPkgName);
         if (ownerPkgName.empty()) {
             LogError(ownerAppName << " is not an installed application");
@@ -1107,12 +1130,19 @@ int ServiceImpl::applyPrivatePathSharing(
 }
 
 int ServiceImpl::dropPrivatePathSharing(
+        const Credentials &creds,
         const std::string &ownerAppName,
         const std::string &targetAppName,
         const std::vector<std::string> &paths)
 {
     int errorRet;
     try {
+        if (!Cynara::getInstance().check(creds.label, Config::PRIVILEGE_APPSHARING_ADMIN,
+            std::to_string(creds.uid), std::to_string(creds.pid))) {
+            LogError("Caller is not permitted to manage file sharing");
+            return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
+        }
+
         std::string ownerPkgName;
         PrivilegeDb::getInstance().GetAppPkgName(ownerAppName, ownerPkgName);
         if (ownerPkgName.empty()) {
@@ -1178,4 +1208,3 @@ int ServiceImpl::dropPrivatePathSharing(
 }
 
 } /* namespace SecurityManager */
-
