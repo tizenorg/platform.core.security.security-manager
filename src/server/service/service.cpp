@@ -28,6 +28,7 @@
 #include <dpl/log/log.h>
 #include <dpl/serialization.h>
 #include <sys/smack.h>
+#include <tzplatform_config.h>
 
 #include "connection.h"
 #include "protocols.h"
@@ -176,6 +177,15 @@ void Service::processAppInstall(MessageBuffer &buffer, MessageBuffer &send, uid_
     Deserialization::Deserialize(buffer, req.tizenVersion);
     Deserialization::Deserialize(buffer, req.authorName);
     Deserialization::Deserialize(buffer, req.installationType);
+
+    if (req.installationType == SM_APP_INSTALL_NONE) {
+        uid_t globalUid = tzplatform_getuid(TZ_SYS_GLOBALAPP_USER);
+        if (req.uid == globalUid)
+            req.installationType = static_cast<int>(SM_APP_INSTALL_GLOBAL);
+        else
+            req.installationType = static_cast<int>(SM_APP_INSTALL_LOCAL);
+    }
+
     Serialization::Serialize(send, serviceImpl.appInstall(req, uid));
 }
 

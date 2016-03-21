@@ -113,7 +113,7 @@ int security_manager_app_inst_req_set_author_id(app_inst_req *p_req, const char 
 
 /*
  * This function is used to set up installation type (global, local, preloaded).
- * If type is not set and if installation is performed by global user, type is set to
+ * If type is not set and if installation is performed for global user, type is set to
  * 'SM_APP_INSTALL_GLOBAL'. Otherwise installation type is set to 'SM_APP_INSTALL_LOCAL'.
  *
  * \param[in] Pointer handling app_inst_req structure

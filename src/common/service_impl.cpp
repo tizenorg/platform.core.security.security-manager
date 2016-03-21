@@ -223,12 +223,19 @@ bool ServiceImpl::getUserAppDir(const uid_t &uid, const app_install_type &instal
 
     enum tzplatform_variable id;
 
-    if (installType == SM_APP_INSTALL_LOCAL)
+    switch (installType) {
+    case SM_APP_INSTALL_LOCAL:
         id = TZ_USER_APP;
-    else if (installType == SM_APP_INSTALL_GLOBAL)
+        break;
+    case SM_APP_INSTALL_GLOBAL:
         id = TZ_SYS_RW_APP;
-    else
+        break;
+    case SM_APP_INSTALL_PRELOADED:
         id = TZ_SYS_RO_APP;
+        break;
+    default:
+        return false;
+    }
 
     const char *appDir = tzplatform_context_getenv(tz_ctxPtr.get(), id);
     if (!appDir)

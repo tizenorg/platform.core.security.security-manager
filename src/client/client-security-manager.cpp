@@ -91,12 +91,6 @@ int security_manager_app_inst_req_new(app_inst_req **pp_req)
     }
     (*pp_req)->uid = geteuid();
 
-    uid_t globalUid = tzplatform_getuid(TZ_SYS_GLOBALAPP_USER);
-    if ((*pp_req)->uid == 0 || (*pp_req)->uid == globalUid)
-        (*pp_req)->installationType = static_cast<int>(SM_APP_INSTALL_GLOBAL);
-    else
-        (*pp_req)->installationType = static_cast<int>(SM_APP_INSTALL_LOCAL);
-
     return SECURITY_MANAGER_SUCCESS;
 }
 
