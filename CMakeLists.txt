@@ -21,6 +21,7 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT("security-manager")
+SET(API_VERSION 1.1.2 CACHE STRING "security-manager version")
 
 ############################# cmake packages ##################################
 
@@ -48,7 +49,6 @@ ADD_DEFINITIONS("-Werror")                      # Make all warnings into errors.
 ADD_DEFINITIONS("-Wall")                        # Generate all warnings
 ADD_DEFINITIONS("-Wextra")                      # Generate even more extra warnings
 
-STRING(REGEX MATCH "([^.]*)" API_VERSION "${VERSION}")
 ADD_DEFINITIONS("-DAPI_VERSION=\"$(API_VERSION)\"")
 
 ADD_DEFINITIONS("-DSMACK_ENABLED")

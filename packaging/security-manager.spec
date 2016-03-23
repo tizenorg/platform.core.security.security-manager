@@ -72,12 +72,22 @@ export FFLAGS="$FFLAGS -DTIZEN_DEBUG_ENABLE"
 
 export LDFLAGS+="-Wl,--rpath=%{_libdir}"
 
-%cmake . -DVERSION=%{version} \
-        -DBIN_INSTALL_DIR=%{_bindir} \
+%cmake . -DBIN_INSTALL_DIR=%{_bindir} \
         -DDB_INSTALL_DIR=%{TZ_SYS_DB} \
         -DSYSTEMD_INSTALL_DIR=%{_unitdir} \
         -DCMAKE_BUILD_TYPE=%{?build_type:%build_type}%{!?build_type:RELEASE} \
         -DCMAKE_VERBOSE_MAKEFILE=ON
+
+cmake_version=`grep API_VERSION CMakeCache.txt | cut -f 2 -d "="`
+
+echo "Security-manager version from spec  is: %{version}"
+echo "Security-manager version from cmake is: ${cmake_version}"
+
+if [ "x%{version}" != "x${cmake_version}"]; then
+    echo "Error: Version missmatch. spec: %{version} cmake: ${cmake_version}";
+    exit 1;
+fi
+
 make %{?jobs:-j%jobs}
 
 %install
