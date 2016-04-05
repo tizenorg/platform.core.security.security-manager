@@ -89,8 +89,10 @@ cp LICENSE %{buildroot}%{_datadir}/license/libsecurity-manager-client
 
 mkdir -p %{buildroot}/%{_unitdir}/sockets.target.wants
 mkdir -p %{buildroot}/%{_unitdir}/sysinit.target.wants
+mkdir -p %{buildroot}/%{_unitdir}/basic.target.wants
 ln -s ../security-manager.socket %{buildroot}/%{_unitdir}/sockets.target.wants/security-manager.socket
 ln -s ../security-manager-cleanup.service %{buildroot}/%{_unitdir}/sysinit.target.wants/security-manager-cleanup.service
+ln -s ../security-manager-rules-loader.service %{buildroot}/%{_unitdir}/basic.target.wants/security-manager-rules-loader.service
 
 %clean
 rm -rf %{buildroot}
@@ -105,6 +107,7 @@ fi
 
 if [ $1 = 2 ]; then
     # update
+    %{_bindir}/security-manager-migration
     systemctl restart security-manager.service
 fi
 chsmack -a System %{TZ_SYS_DB}/.security-manager.db
@@ -133,15 +136,20 @@ fi
 %files -n security-manager
 %manifest security-manager.manifest
 %defattr(-,root,root,-)
+%attr(755,root,root) %{_bindir}/security-manager-migration
 %attr(755,root,root) %{_bindir}/security-manager
 %attr(755,root,root) %{_bindir}/security-manager-cmd
 %attr(755,root,root) %{_bindir}/security-manager-cleanup
 %attr(755,root,root) %{_sysconfdir}/gumd/useradd.d/50_security-manager-add.post
 %attr(755,root,root) %{_sysconfdir}/gumd/userdel.d/50_security-manager-remove.pre
+%dir %attr(700,root,root) %{TZ_SYS_VAR}/security-manager/rules
+%dir %attr(700,root,root) %{TZ_SYS_VAR}/security-manager/rules-merged
 
 %{_libdir}/libsecurity-manager-commons.so.*
 %attr(-,root,root) %{_unitdir}/security-manager.*
 %attr(-,root,root) %{_unitdir}/security-manager-cleanup.*
+%attr(-,root,root) %{_unitdir}/security-manager-rules-loader.service
+%attr(-,root,root) %{_unitdir}/basic.target.wants/security-manager-rules-loader.service
 %attr(-,root,root) %{_unitdir}/sockets.target.wants/security-manager.*
 %attr(-,root,root) %{_unitdir}/sysinit.target.wants/security-manager-cleanup.*
 %config(noreplace) %attr(0600,root,root) %{TZ_SYS_DB}/.security-manager.db

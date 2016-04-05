@@ -53,6 +53,7 @@ SET(COMMON_SOURCES
     ${COMMON_PATH}/smack-rules.cpp
     ${COMMON_PATH}/smack-check.cpp
     ${COMMON_PATH}/service_impl.cpp
+    ${COMMON_PATH}/filesystem.cpp
     )
 
 ADD_LIBRARY(${TARGET_COMMON} SHARED ${COMMON_SOURCES})
@@ -70,3 +71,6 @@ TARGET_LINK_LIBRARIES(${TARGET_COMMON}
     )
 
 INSTALL(TARGETS ${TARGET_COMMON} DESTINATION ${LIB_INSTALL_DIR})
+INSTALL(DIRECTORY DESTINATION /opt/var/security-manager/rules)
+INSTALL(DIRECTORY DESTINATION /opt/var/security-manager/rules-merged)
+
