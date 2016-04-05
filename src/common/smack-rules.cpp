@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2014 Samsung Electronics Co., Ltd All Rights Reserved
+ *  Copyright (c) 2014-2016 Samsung Electronics Co., Ltd All Rights Reserved
  *
  *  Contact: Rafal Krypa <r.krypa@samsung.com>
  *
@@ -32,11 +32,14 @@
 #include <cstring>
 #include <sstream>
 #include <memory>
+#include <algorithm>
 
 #include <dpl/log/log.h>
 #include <tzplatform_config.h>
 #include <dpl/errno_string.h>
+#include <dpl/fstream_accessors.h>
 
+#include <filesystem.h>
 #include "smack-labels.h"
 #include "smack-rules.h"
 
@@ -49,6 +52,9 @@ const char *const APP_RULES_TEMPLATE_FILE_PATH = tzplatform_mkpath4(TZ_SYS_RO_SH
 const char *const PKG_RULES_TEMPLATE_FILE_PATH = tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "pkg-rules-template.smack");
 const char *const AUTHOR_RULES_TEMPLATE_FILE_PATH =
     tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "author-rules-template.smack");
+const char *const SMACK_RULES_PATH_MERGED      = LOCAL_STATE_DIR "security-manager/rules-merged/rules.merged";
+const char *const SMACK_RULES_PATH_MERGED_T    = LOCAL_STATE_DIR "security-manager/rules-merged/rules.merged.temp";
+const char *const SMACK_RULES_PATH             = LOCAL_STATE_DIR "security-manager/rules";
 const char *const SMACK_APP_IN_PACKAGE_PERMS   = "rwxat";
 const char *const SMACK_APP_CROSS_PKG_PERMS    = "rx";
 const char *const SMACK_APP_PATH_OWNER_PERMS = "rwxat";
@@ -58,6 +64,7 @@ const char *const SMACK_USER = "User";
 const char *const SMACK_SYSTEM = "System";
 const char *const SMACK_APP_PATH_SYSTEM_PERMS = "rwxat";
 const char *const SMACK_APP_PATH_USER_PERMS = "rwxat";
+const std::string TEMPORARY_FILE_SUFFIX = ".temp";
 
 SmackRules::SmackRules()
 {
@@ -119,10 +126,11 @@ void SmackRules::loadFromFile(const std::string &path)
     }
 }
 
-void SmackRules::saveToFile(const std::string &path, bool truncFile) const
+void SmackRules::saveToFile(const std::string &destPath, bool truncFile) const
 {
     int fd;
     int flags = O_CREAT | O_WRONLY | (truncFile ? O_TRUNC : O_APPEND);
+    std::string path = destPath + TEMPORARY_FILE_SUFFIX;
 
     fd = TEMP_FAILURE_RETRY(open(path.c_str(), flags, 0644));
     if (fd == -1) {
@@ -147,6 +155,14 @@ void SmackRules::saveToFile(const std::string &path, bool truncFile) const
             LogWarning("Error while closing the file: " << path << ", error: " << GetErrnoString(errno));
         }
     }
+
+    if (0 > rename(path.c_str(), destPath.c_str())) {
+        LogError("Error moving file " << path << " to " << destPath << ". Errno: " << GetErrnoString(errno));
+        unlink(path.c_str());
+        ThrowMsg(SmackException::FileError, "Error moving file " << path << " to " << destPath << ". Errno: " << GetErrnoString(errno));
+    }
+
+    mergeRules();
 }
 
 void SmackRules::addFromTemplateFile(
@@ -287,20 +303,82 @@ void SmackRules::generateAllowOther2XApplicationDeps(
 
 std::string SmackRules::getPackageRulesFilePath(const std::string &pkgName)
 {
-    std::string path(tzplatform_mkpath3(TZ_SYS_SMACK, "accesses.d", ("pkg_" + pkgName).c_str()));
-    return path;
+    return std::string(SMACK_RULES_PATH) + "/pkg_" + pkgName;
 }
 
 std::string SmackRules::getApplicationRulesFilePath(const std::string &appName)
 {
-    std::string path(tzplatform_mkpath3(TZ_SYS_SMACK, "accesses.d", ("app_" +  appName).c_str()));
-    return path;
+    return std::string(SMACK_RULES_PATH) + "/app_" + appName;
 }
 
 std::string SmackRules::getAuthorRulesFilePath(const int authorId)
 {
-    std::string authorIdStr = std::to_string(authorId);
-    return tzplatform_mkpath3(TZ_SYS_SMACK, "accesses.d", ("author_" + authorIdStr).c_str());
+    return std::string(SMACK_RULES_PATH) + "/author_" + std::to_string(authorId);
+}
+
+void SmackRules::mergeRules()
+{
+    int tmp;
+    FS::FileNameVector files = FS::getFilesFromDirectory(SMACK_RULES_PATH);
+
+    // remove ignore files with ".temp" suffix
+    files.erase(
+        std::remove_if(files.begin(), files.end(),
+            [&](const std::string &path) -> bool {
+                if (path.size() < TEMPORARY_FILE_SUFFIX.size())
+                    return false;
+                return std::equal(
+                    TEMPORARY_FILE_SUFFIX.rbegin(),
+                    TEMPORARY_FILE_SUFFIX.rend(),
+                    path.rbegin());
+            }),
+        files.end());
+
+    std::ofstream dst(SMACK_RULES_PATH_MERGED_T, std::ios::binary);
+
+    for(auto const &e : files) {
+        std::ifstream src(std::string(SMACK_RULES_PATH) + "/" + e, std::ios::binary);
+        dst << src.rdbuf() << '\n';
+        if (src.fail() || dst.fail()) {
+            dst.close();
+            LogError("Error during file merging. File: "
+                << SMACK_RULES_PATH_MERGED << " will not be updated!");
+            unlink(SMACK_RULES_PATH_MERGED_T);
+            ThrowMsg(SmackException::FileError, "Error merging files");
+        }
+    }
+
+    if (dst.flush().fail()) {
+        LogError("Error flushing file: " << SMACK_RULES_PATH_MERGED_T);
+        unlink(SMACK_RULES_PATH_MERGED_T);
+        ThrowMsg(SmackException::FileError, "Error flushing file: " << SMACK_RULES_PATH_MERGED_T);
+    }
+
+    if (0 > fsync(DPL::FstreamAccessors<std::ofstream>::GetFd(dst))) {
+        LogError("Error fsync on file: " << SMACK_RULES_PATH_MERGED_T);
+        unlink(SMACK_RULES_PATH_MERGED_T);
+        ThrowMsg(SmackException::FileError, "Error fsync on file: " << SMACK_RULES_PATH_MERGED_T);
+    }
+
+    dst.close();
+    if (dst.fail()) {
+        LogError("Error closing file: "  << SMACK_RULES_PATH_MERGED_T);
+        unlink(SMACK_RULES_PATH_MERGED_T);
+        ThrowMsg(SmackException::FileError, "Error closing file: " << SMACK_RULES_PATH_MERGED_T);
+    }
+
+    if ((tmp = rename(SMACK_RULES_PATH_MERGED_T, SMACK_RULES_PATH_MERGED)) == 0)
+        return;
+
+    int err = errno;
+
+    LogError("Error during file rename: "
+        << SMACK_RULES_PATH_MERGED_T << " to "
+        << SMACK_RULES_PATH_MERGED << " Errno: " << GetErrnoString(err));
+    unlink(SMACK_RULES_PATH_MERGED_T);
+    ThrowMsg(SmackException::FileError, "Error during file rename: "
+        << SMACK_RULES_PATH_MERGED_T << " to "
+        << SMACK_RULES_PATH_MERGED << " Errno: " << GetErrnoString(err));
 }
 
 void SmackRules::useTemplate(
