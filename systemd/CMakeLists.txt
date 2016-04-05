@@ -5,6 +5,7 @@ INSTALL(FILES
     security-manager.service
     security-manager.socket
     security-manager-cleanup.service
+    security-manager-rules-loader.service
     DESTINATION
     ${SYSTEMD_INSTALL_DIR}
 )
