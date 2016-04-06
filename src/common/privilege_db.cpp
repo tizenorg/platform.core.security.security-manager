@@ -208,7 +208,6 @@ void PrivilegeDb::AddApplication(
             LogDebug("Unexpected SQLITE_ROW answer to query: " <<
                     Queries.at(StmtType::EAddApplication));
         };
-
         LogDebug("Added appName: " << appName << ", pkgName: " << pkgName);
     });
 }
