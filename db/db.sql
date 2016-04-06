@@ -46,8 +46,8 @@ UNIQUE (path)
 );
 
 CREATE TABLE IF NOT EXISTS app_private_sharing (
-owner_app_name TEXT NOT NULL,
-target_app_name TEXT NOT NULL,
+owner_app_name TEXT NOT NULL,	/* TODO replace it with owner_app_id (app) */
+target_app_name TEXT NOT NULL,  /* TODO replace it with target_app_id (app) */
 path_id INTEGER NOT NULL,
 counter INTEGER NOT NULL,
 PRIMARY KEY (owner_app_name, target_app_name, path_id)
@@ -73,7 +73,6 @@ SELECT
 	app_privilege.app_id as app_id,
 	app.name as app_name,
 	app.uid as uid,
-	app.pkg_id as pkg_id,
 	pkg.name as pkg_name,
 	app_privilege.privilege_id as privilege_id,
 	privilege.name as privilege_name
@@ -87,11 +86,9 @@ CREATE VIEW app_pkg_view AS
 SELECT
     app.app_id,
     app.name as app_name,
-    app.pkg_id,
     app.uid,
     pkg.name as pkg_name,
     app.version as version,
-    app.author_id,
     author.name as author_name
 FROM app
 LEFT JOIN pkg USING (pkg_id)
