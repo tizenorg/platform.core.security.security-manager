@@ -12,16 +12,25 @@ name VARCHAR NOT NULL,
 UNIQUE (name)
 );
 
+/* Application */
 CREATE TABLE IF NOT EXISTS app (
 app_id INTEGER PRIMARY KEY,
 pkg_id INTEGER NOT NULL,
-uid INTEGER NOT NULL,
 name VARCHAR NOT NULL,
 version VARCHAR NOT NULL,
 author_id INTEGER,
-UNIQUE (name, uid),
+UNIQUE (name),
 FOREIGN KEY (pkg_id) REFERENCES pkg (pkg_id)
 FOREIGN KEY (author_id) REFERENCES author (author_id)
+);
+
+/* Instance of 'app' installed for given user ('uid') */
+CREATE TABLE IF NOT EXISTS user_app (
+user_app_id INTEGER PRIMARY KEY,
+app_id INTEGER NOT NULL,
+uid INTEGER NOT NULL,
+UNIQUE (app_id, uid),
+FOREIGN KEY (app_id) REFERENCES app (app_id)
 );
 
 CREATE TABLE IF NOT EXISTS privilege (
@@ -30,11 +39,11 @@ name VARCHAR NOT NULL,
 UNIQUE (name)
 );
 
-CREATE TABLE IF NOT EXISTS app_privilege (
-app_id INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS user_app_privilege (
+user_app_id INTEGER NOT NULL,
 privilege_id INTEGER NOT NULL ,
-PRIMARY KEY (app_id, privilege_id),
-FOREIGN KEY (app_id) REFERENCES app (app_id)
+PRIMARY KEY (user_app_id, privilege_id),
+FOREIGN KEY (user_app_id) REFERENCES user_app (user_app_id)
 FOREIGN KEY (privilege_id) REFERENCES privilege (privilege_id)
 );
 
@@ -67,72 +76,96 @@ CREATE TABLE IF NOT EXISTS author (
 	UNIQUE (name)
 );
 
-DROP VIEW IF EXISTS app_privilege_view;
-CREATE VIEW app_privilege_view AS
+DROP VIEW IF EXISTS user_app_privilege_view;
+CREATE VIEW user_app_privilege_view AS
 SELECT
-	app_privilege.app_id as app_id,
+	user_app_privilege.user_app_id as user_app_id,
+	user_app.uid as uid,
 	app.name as app_name,
-	app.uid as uid,
 	app.pkg_id as pkg_id,
 	pkg.name as pkg_name,
-	app_privilege.privilege_id as privilege_id,
+	user_app_privilege.privilege_id as privilege_id,
 	privilege.name as privilege_name
-FROM app_privilege
+FROM user_app_privilege
+LEFT JOIN user_app USING (user_app_id)
 LEFT JOIN app USING (app_id)
 LEFT JOIN pkg USING (pkg_id)
 LEFT JOIN privilege USING (privilege_id);
 
-DROP VIEW IF EXISTS app_pkg_view;
-CREATE VIEW app_pkg_view AS
+DROP VIEW IF EXISTS user_app_pkg_view;
+CREATE VIEW user_app_pkg_view AS
 SELECT
-    app.app_id,
+    user_app.user_app_id as user_app_id,
+    user_app.uid,
+    user_app.app_id,
     app.name as app_name,
     app.pkg_id,
-    app.uid,
-    pkg.name as pkg_name,
     app.version as version,
     app.author_id,
+    pkg.name as pkg_name,
     author.name as author_name
-FROM app
+FROM user_app
+LEFT JOIN app USING (app_id)
 LEFT JOIN pkg USING (pkg_id)
 LEFT JOIN author USING (author_id);
 
-DROP TRIGGER IF EXISTS app_privilege_view_insert_trigger;
-CREATE TRIGGER app_privilege_view_insert_trigger
-INSTEAD OF INSERT ON app_privilege_view
+DROP TRIGGER IF EXISTS user_app_privilege_view_insert_trigger;
+CREATE TRIGGER user_app_privilege_view_insert_trigger
+INSTEAD OF INSERT ON user_app_privilege_view
 BEGIN
 	INSERT OR IGNORE INTO privilege(name) VALUES (NEW.privilege_name);
-	INSERT OR IGNORE INTO app_privilege(app_id, privilege_id) VALUES
-		((SELECT app_id FROM app WHERE name=NEW.app_name AND uid=NEW.uid),
+	INSERT OR IGNORE INTO user_app_privilege(user_app_id, privilege_id) VALUES
+		((SELECT user_app_id FROM user_app_pkg_view WHERE app_name=NEW.app_name AND uid=NEW.uid),
 		 (SELECT privilege_id FROM privilege WHERE name=NEW.privilege_name));
 END;
 
-DROP TRIGGER IF EXISTS app_privilege_view_delete_trigger;
-CREATE TRIGGER app_privilege_view_delete_trigger
-INSTEAD OF DELETE ON app_privilege_view
+DROP TRIGGER IF EXISTS user_app_privilege_view_delete_trigger;
+CREATE TRIGGER user_app_privilege_view_delete_trigger
+INSTEAD OF DELETE ON user_app_privilege_view
 BEGIN
-	DELETE FROM app_privilege WHERE app_id=OLD.app_id AND privilege_id=OLD.privilege_id;
+	DELETE FROM user_app_privilege WHERE user_app_id=OLD.user_app_id AND privilege_id=OLD.privilege_id;
 END;
 
-DROP TRIGGER IF EXISTS app_pkg_view_insert_trigger;
-CREATE TRIGGER app_pkg_view_insert_trigger
-INSTEAD OF INSERT ON app_pkg_view
+DROP TRIGGER IF EXISTS user_app_pkg_view_insert_trigger;
+CREATE TRIGGER user_app_pkg_view_insert_trigger
+INSTEAD OF INSERT ON user_app_pkg_view
 BEGIN
+    SELECT RAISE(ABORT, 'Application already installed with different pkg_name')
+        WHERE EXISTS (SELECT 1 FROM user_app_pkg_view
+                      WHERE app_name=NEW.app_name
+                      AND pkg_name!=NEW.pkg_name);
+
+    SELECT RAISE(ABORT, 'Application already installed with different version')
+        WHERE EXISTS (SELECT 1 FROM user_app_pkg_view
+                      WHERE app_name=NEW.app_name
+                      AND version!=NEW.version);
+
+    SELECT RAISE(ABORT, 'Application already installed with different author')
+        WHERE EXISTS (SELECT 1 FROM user_app_pkg_view
+                      WHERE app_name=NEW.app_name
+                      AND (IFNULL(author_name, '')!=IFNULL(NEW.author_name, '')));
+
     INSERT OR IGNORE INTO author(name) VALUES (NEW.author_name);
     INSERT OR IGNORE INTO pkg(name) VALUES (NEW.pkg_name);
-    INSERT OR IGNORE INTO app(pkg_id, name, uid, version, author_id) VALUES (
+
+    /* At this point we are sure that no other app with conflicting attributes exists */
+    INSERT OR IGNORE INTO app(pkg_id, name, version, author_id) VALUES(
         (SELECT pkg_id FROM pkg WHERE name=NEW.pkg_name),
         NEW.app_name,
-        NEW.uid,
         NEW.version,
         (SELECT author_id FROM author WHERE name=NEW.author_name));
+
+    INSERT INTO user_app(app_id, uid) VALUES (
+        (SELECT app_id FROM app WHERE name=NEW.app_name),
+        NEW.uid);
 END;
 
-DROP TRIGGER IF EXISTS app_pkg_view_delete_trigger;
-CREATE TRIGGER app_pkg_view_delete_trigger
-INSTEAD OF DELETE ON app_pkg_view
+DROP TRIGGER IF EXISTS user_app_pkg_view_delete_trigger;
+CREATE TRIGGER user_app_pkg_view_delete_trigger
+INSTEAD OF DELETE ON user_app_pkg_view
 BEGIN
-    DELETE FROM app WHERE app_id=OLD.app_id AND uid=OLD.uid;
+    DELETE FROM user_app WHERE app_id=OLD.app_id AND uid=OLD.uid;
+    DELETE FROM app WHERE app_id NOT IN (SELECT DISTINCT app_id FROM user_app);
     DELETE FROM pkg WHERE pkg_id NOT IN (SELECT DISTINCT pkg_id from app);
     DELETE FROM author WHERE author_id NOT IN (SELECT author_id FROM app WHERE author_id IS NOT NULL);
 END;
