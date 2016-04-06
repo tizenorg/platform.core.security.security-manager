@@ -323,13 +323,6 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid)
                  << ", target Tizen API ver: " << (req.tizenVersion.empty()?"unknown":req.tizenVersion));
 
         PrivilegeDb::getInstance().BeginTransaction();
-        std::string pkg;
-        PrivilegeDb::getInstance().GetAppPkgName(req.appName, pkg);
-        if (!pkg.empty() && pkg != req.pkgName) {
-            LogError("Application already installed with different package name");
-            PrivilegeDb::getInstance().RollbackTransaction();
-            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
-        }
 
         PrivilegeDb::getInstance().AddApplication(req.appName, req.pkgName, uid, req.tizenVersion, req.authorName);
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, uid, req.privileges);
