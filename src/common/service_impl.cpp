@@ -350,13 +350,6 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
                  << "app label: " << appLabel << ", pkg label: " << pkgLabel);
 
         PrivilegeDb::getInstance().BeginTransaction();
-        std::string pkg;
-        PrivilegeDb::getInstance().GetAppPkgName(req.appName, pkg);
-        if (!pkg.empty() && pkg != req.pkgName) {
-            LogError("Application already installed with different package name");
-            PrivilegeDb::getInstance().RollbackTransaction();
-            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
-        }
 
         PrivilegeDb::getInstance().AddApplication(req.appName, req.pkgName, req.uid, req.tizenVersion, req.authorName);
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, req.uid, req.privileges);
