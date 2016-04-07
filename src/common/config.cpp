@@ -35,6 +35,14 @@ const std::string PRIVILEGE_VERSION =
         "3.0"
 #endif
 ;
+
+const std::string PRIVILEGE_APPINST_USER     = "http://tizen.org/privilege/notexist";
+const std::string PRIVILEGE_APPINST_ADMIN    = "http://tizen.org/privilege/notexist";
+const std::string PRIVILEGE_USER_ADMIN       = "http://tizen.org/privilege/internal/usermanagement";
+const std::string PRIVILEGE_POLICY_USER      = "http://tizen.org/privilege/notexist";
+const std::string PRIVILEGE_POLICY_ADMIN     = "http://tizen.org/privilege/internal/usermanagement";
+const std::string PRIVILEGE_APPSHARING_ADMIN = "http://tizen.org/privilege/notexist";
+
 };
 
 } /* namespace SecurityManager */
