@@ -28,6 +28,7 @@
 #include <limits.h>
 #include <pwd.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 
 #include <cstring>
 #include <algorithm>
@@ -138,6 +139,12 @@ bool isTizen2XVersion(const std::string &version)
     if (version.at(notWhitePos) == '2')
         return true;
     return false;
+}
+
+bool sharingExists(const std::string &targetAppName, const std::string &path) {
+    int targetPathCount;
+    PrivilegeDb::getInstance().GetTargetPathSharingCount(targetAppName, path, targetPathCount);
+    return targetPathCount != 0;
 }
 
 class ScopedTransaction {
@@ -1119,6 +1126,11 @@ int ServiceImpl::dropPrivatePathSharing(
         }
 
         for(const auto &path : paths) {
+            if (!sharingExists(targetAppName, path)) {
+                LogError("Sharing doesn't exist: owner=" << ownerAppName
+                         << ", target=" << targetAppName << ", path=" << path);
+                return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+            }
             std::string pathLabel = SmackLabels::getSmackLabelFromPath(path);
             if (pathLabel != SmackLabels::generatePkgLabel(ownerPkgName)) {
                 std::string generatedPathLabel = SmackLabels::generateSharedPrivateLabel(ownerPkgName, path);
