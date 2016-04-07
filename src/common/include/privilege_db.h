@@ -64,6 +64,7 @@ enum class StmtType {
     EGetAllSharedPaths,
     EGetSharingForOwner,
     EGetSharingForTarget,
+    ESquashSharing,
     EClearSharing,
     EClearPrivatePaths,
     EGetPrivilegeGroups,
@@ -121,6 +122,7 @@ private:
         { StmtType::EGetAllSharedPaths, "SELECT owner_app_name, path FROM app_private_sharing_view ORDER BY owner_app_name"},
         { StmtType::EGetSharingForOwner, "SELECT target_app_name, path FROM app_private_sharing_view WHERE owner_app_name = ?"},
         { StmtType::EGetSharingForTarget, "SELECT owner_app_name, path FROM app_private_sharing_view WHERE target_app_name = ?"},
+        { StmtType::ESquashSharing, "UPDATE app_private_sharing_view SET counter = 1 WHERE target_app_name = ? AND path = ?"},
         { StmtType::EClearSharing, "DELETE FROM app_private_sharing;"},
         { StmtType::EClearPrivatePaths, "DELETE FROM shared_path;"},
         { StmtType::EGetPrivilegeGroups, " SELECT group_name FROM privilege_group_view WHERE privilege_name = ?" },
@@ -381,8 +383,8 @@ public:
      * Get all owner path labels shared with target application names
      *
      * @param appName - owner of queried sharings
-     * @param appPathMap - map containing vectors of paths labels shared by specified application
-     *                     mapped by target application names
+     * @param appPathMap - map containing vectors of paths labels and counters shared by specified
+     *                     application mapped by target application names
      * @exception DB::SqlConnection::Exception::InternalError on internal error
      */
     void GetPrivateSharingForOwner(const std::string &appName,
@@ -391,12 +393,23 @@ public:
      * Get all paths shared with owner application names
      *
      * @param appName - target of queried sharings
-     * @param appPathMap - map containing vectors of paths labels shared with specified application
-     *                     mapped by owner application names
+     * @param appPathMap - map containing vectors of paths labels and counters shared with specified
+     *                     application mapped by owner application names
      * @exception DB::SqlConnection::Exception::InternalError on internal error
      */
     void GetPrivateSharingForTarget(const std::string &appName,
                                     std::map<std::string, std::vector<std::string>> &ownerSharing);
+
+    /**
+     * Change sharing counter to 1.
+     *
+     * @param targetAppName - target application name
+     * @param path - path name
+     *
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     */
+    void SquashSharing(const std::string &targetAppName, const std::string &path);
+
     /**
      * Clear information about private sharing.
      *

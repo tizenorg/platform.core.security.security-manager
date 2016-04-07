@@ -168,6 +168,16 @@ BEGIN
                      0) + 1);
 END;
 
+DROP TRIGGER IF EXISTS app_private_sharing_view_update_trigger;
+CREATE TRIGGER app_private_sharing_view_update_trigger
+INSTEAD OF UPDATE ON app_private_sharing_view
+BEGIN
+    UPDATE app_private_sharing
+    SET counter = NEW.counter
+    WHERE   target_app_name = OLD.target_app_name
+    AND     path_id = (SELECT path_id FROM shared_path WHERE path = OLD.path);
+END;
+
 DROP TRIGGER IF EXISTS app_private_sharing_view_remove_delete_trigger;
 CREATE TRIGGER app_private_sharing_view_remove_delete_trigger
 INSTEAD OF DELETE ON app_private_sharing_view
