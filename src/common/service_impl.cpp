@@ -340,6 +340,10 @@ int ServiceImpl::appInstall(const app_inst_req &req, uid_t uid)
     } catch (const PrivilegeDb::Exception::IOError &e) {
         LogError("Cannot access application database: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    } catch (const PrivilegeDb::Exception::ConstraintError &e) {
+        PrivilegeDb::getInstance().RollbackTransaction();
+        LogError("Application conflicts with existing one: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
     } catch (const PrivilegeDb::Exception::InternalError &e) {
         PrivilegeDb::getInstance().RollbackTransaction();
         LogError("Error while saving application info to database: " << e.DumpToString());
