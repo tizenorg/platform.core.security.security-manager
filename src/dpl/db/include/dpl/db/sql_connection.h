@@ -53,6 +53,7 @@ class SqlConnection
         DECLARE_EXCEPTION_TYPE(Base, SyntaxError)
         DECLARE_EXCEPTION_TYPE(Base, ConnectionBroken)
         DECLARE_EXCEPTION_TYPE(Base, InternalError)
+        DECLARE_EXCEPTION_TYPE(InternalError, ConstraintError)
         DECLARE_EXCEPTION_TYPE(Base, InvalidColumn)
     };
 

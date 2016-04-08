@@ -159,6 +159,7 @@ public:
         DECLARE_EXCEPTION_TYPE(SecurityManager::Exception, Base)
         DECLARE_EXCEPTION_TYPE(Base, IOError)
         DECLARE_EXCEPTION_TYPE(Base, InternalError)
+        DECLARE_EXCEPTION_TYPE(InternalError, ConstraintError)
     };
 
     ~PrivilegeDb(void);
