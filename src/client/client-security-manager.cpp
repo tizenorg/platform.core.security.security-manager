@@ -48,6 +48,7 @@
 #include <service_impl.h>
 #include <connection.h>
 #include <credentials.h>
+#include <utils.h>
 
 #include <security-manager.h>
 #include <client-offline.h>
@@ -325,8 +326,7 @@ static bool setup_smack(const char *label)
 
     // Set Smack label for open socket file descriptors
 
-    std::unique_ptr<DIR, std::function<int(DIR*)>> dir(
-        opendir("/proc/self/fd"), closedir);
+    auto dir = unique_ptr_wrap(opendir("/proc/self/fd"), &closedir);
     if (!dir.get()) {
         LogError("Unable to read list of open file descriptors: " <<
             GetErrnoString(errno));
