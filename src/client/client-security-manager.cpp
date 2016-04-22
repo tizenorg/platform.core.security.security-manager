@@ -48,6 +48,7 @@
 #include <service_impl.h>
 #include <connection.h>
 #include <credentials.h>
+#include <utils.h>
 
 #include <security-manager.h>
 #include <client-offline.h>
@@ -325,8 +326,7 @@ static bool setup_smack(const char *label)
 
     // Set Smack label for open socket file descriptors
 
-    std::unique_ptr<DIR, std::function<int(DIR*)>> dir(
-        opendir("/proc/self/fd"), closedir);
+    auto dir = make_unique(opendir("/proc/self/fd"), &closedir);
     if (!dir.get()) {
         LogError("Unable to read list of open file descriptors: " <<
             GetErrnoString(errno));
@@ -985,11 +985,12 @@ int security_manager_groups_get(char ***groups, size_t *groups_count)
         const auto vgroups_size = vgroups.size();
         LogInfo("Number of groups: " << vgroups_size);
 
-        std::unique_ptr<char *, std::function<void(char **)>> array(
-            static_cast<char **>(calloc(vgroups_size, sizeof(char *))),
-            std::bind(security_manager_groups_free, std::placeholders::_1, vgroups_size));
+        auto array = make_unique(static_cast<char **>(calloc(vgroups_size, sizeof(char *))),
+            [vgroups_size](char **arr) {
+                return security_manager_groups_free(arr, vgroups_size);
+            });
 
-        if (array == nullptr)
+        if (!array)
             return SECURITY_MANAGER_ERROR_MEMORY;
 
         for (size_t i = 0; i < vgroups_size; ++i) {

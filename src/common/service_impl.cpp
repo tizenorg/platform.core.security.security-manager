@@ -43,6 +43,7 @@
 #include "smack-rules.h"
 #include "smack-labels.h"
 #include "security-manager.h"
+#include "utils.h"
 
 #include "service_impl.h"
 
@@ -198,9 +199,7 @@ bool ServiceImpl::getUserAppDir(const uid_t &uid, const app_install_type &instal
         return false;
     }
 
-    std::unique_ptr<struct tzplatform_context, decltype(tzplatform_context_destroy)*> tz_ctxPtr(
-        tz_ctx, &tzplatform_context_destroy);
-
+    auto tz_ctxPtr = make_unique(tz_ctx, &tzplatform_context_destroy);
     if (tzplatform_context_set_user(tz_ctxPtr.get(), uid)) {
         LogError("Error in tzplatform_context_set_user()");
         return false;
@@ -228,7 +227,7 @@ bool ServiceImpl::getUserAppDir(const uid_t &uid, const app_install_type &instal
         return false;
     }
 
-    std::unique_ptr<char, decltype(free)*> real_pathPtr(realpath(appDir, NULL), free);
+    auto real_pathPtr = make_unique(realpath(appDir, NULL), &free);
     if (!real_pathPtr.get()) {
         LogError("Error in realpath(): " << GetErrnoString(errno) << " for: " << appDir);
         return false;
@@ -295,8 +294,7 @@ bool ServiceImpl::installRequestPathsCheck(const app_inst_req &req, std::string 
     LogDebug("correctPath: " << correctPath);
 
     for (const auto &path : req.appPaths) {
-        std::unique_ptr<char, std::function<void(void*)>> real_path(
-            realpath(path.first.c_str(), NULL), free);
+        auto real_path = make_unique(realpath(path.first.c_str(), NULL), &free);
         if (!real_path.get()) {
             LogError("realpath failed with '" << path.first.c_str()
                     << "' as parameter: " << GetErrnoString(errno));
