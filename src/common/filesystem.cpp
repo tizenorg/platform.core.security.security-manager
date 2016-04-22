@@ -37,6 +37,7 @@
 
 #include <filesystem.h>
 #include <filesystem-exception.h>
+#include <utils.h>
 
 namespace SecurityManager {
 namespace FS {
@@ -46,9 +47,9 @@ FileNameVector getFilesFromDirectory(const std::string &path)
     FileNameVector result;
     dirent tmp, *ptr;
     int err;
-    std::unique_ptr<DIR, std::function<void(DIR*)>> dir(opendir(path.c_str()), closedir);
+    auto dir = make_unique(opendir(path.c_str()), closedir);
 
-    if (!dir.get()) {
+    if (!dir) {
         err = errno;
         ThrowMsg(FS::Exception::FileError, "Error opening directory: " << GetErrnoString(err));
     }
