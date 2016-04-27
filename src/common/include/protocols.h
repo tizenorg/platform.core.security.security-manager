@@ -54,6 +54,12 @@ struct private_sharing_req {
     std::vector<std::string> paths;
 };
 
+struct path_req {
+    std::string pkgName;
+    uid_t uid;
+    std::vector<std::pair<std::string, int>> appPaths;
+};
+
 namespace SecurityManager {
 
 extern char const * const SERVICE_SOCKET;

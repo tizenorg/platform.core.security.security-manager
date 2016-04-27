@@ -6,5 +6,6 @@ INSTALL(FILES
     ${INCLUDE_PATH}/app-sharing.h
     ${INCLUDE_PATH}/user-manager.h
     ${INCLUDE_PATH}/policy-manager.h
+    ${INCLUDE_PATH}/pkg-paths.h
     DESTINATION ${INCLUDE_INSTALL_DIR}/security-manager
     )
