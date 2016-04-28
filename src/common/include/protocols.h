@@ -36,7 +36,7 @@ struct app_inst_req {
     std::string appName;
     std::string pkgName;
     std::vector<std::string> privileges;
-    std::vector<std::pair<std::string, int>> appPaths;
+    std::vector<std::pair<std::string, int>> appPaths; // TODO: it's deprecated
     uid_t uid;
     std::string tizenVersion;
     std::string authorName;
