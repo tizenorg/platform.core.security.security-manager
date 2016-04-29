@@ -87,6 +87,8 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}%{_datadir}/license
 cp LICENSE %{buildroot}%{_datadir}/license/%{name}
 cp LICENSE %{buildroot}%{_datadir}/license/libsecurity-manager-client
+mkdir -p %{buildroot}%{_sysconfdir}/skel
+cp smack-apps-labels %{buildroot}%{_sysconfdir}/skel/smack-apps-labels
 %make_install
 
 mkdir -p %{buildroot}/%{_unitdir}/sockets.target.wants
@@ -150,6 +152,8 @@ fi
 %attr(755,root,root) %{_bindir}/security-manager-cleanup
 %attr(755,root,root) %{_sysconfdir}/gumd/useradd.d/50_security-manager-add.post
 %attr(755,root,root) %{_sysconfdir}/gumd/userdel.d/50_security-manager-remove.pre
+%attr(755,root,root) %{_sysconfdir}/gumd/userdel.d/50_security-manager-remove.pre
+%attr(446,root,root) %{_sysconfdir}/skel/smack-apps-labels
 %dir %attr(700,root,root) %{TZ_SYS_VAR}/security-manager/rules
 %dir %attr(700,root,root) %{TZ_SYS_VAR}/security-manager/rules-merged
 
