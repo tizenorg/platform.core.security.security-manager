@@ -36,6 +36,7 @@ namespace SecurityManager {
 
 class ServiceImpl {
 private:
+
     static uid_t getGlobalUserId(void);
 
     static bool isSubDir(const char *parent, const char *subdir);
