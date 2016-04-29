@@ -100,6 +100,14 @@ ln -s ../security-manager-rules-loader.service %{buildroot}/%{_unitdir}/basic.ta
 mkdir -p %{buildroot}/%{TZ_SYS_DB}
 touch %{buildroot}/%{TZ_SYS_DB}/.security-manager.db
 touch %{buildroot}/%{TZ_SYS_DB}/.security-manager.db-journal
+mkdir -p %{buildroot}/root/apps_rw/skel
+touch %{buildroot}/root/apps_rw/smack-apps-labels
+mkdir -p %{buildroot}%{_sysconfdir}/skel/apps_rw
+touch %{buildroot}%{_sysconfdir}/skel/apps_rw/smack-apps-labels
+chsmack -a _ %{buildroot}%{_sysconfdir}/skel/apps_rw/smack-apps-labels
+mkdir -p %{buildroot}%{TZ_SYS_RW_APP}
+touch %{buildroot}%{TZ_SYS_RW_APP}/smack-global-apps-labels
+chsmack -a _ %{buildroot}%{TZ_SYS_RW_APP}/smack-global-apps-labels
 
 %clean
 rm -rf %{buildroot}
@@ -151,6 +159,9 @@ fi
 %attr(755,root,root) %{_bindir}/security-manager-cleanup
 %attr(755,root,root) %{_sysconfdir}/gumd/useradd.d/50_security-manager-add.post
 %attr(755,root,root) %{_sysconfdir}/gumd/userdel.d/50_security-manager-remove.pre
+%attr(000,root,root) /root/apps_rw/smack-apps-labels
+%attr(000,root,root) %{_sysconfdir}/skel/apps_rw/smack-apps-labels
+%attr(000,root,root) %{TZ_SYS_RW_APP}/smack-global-apps-labels
 %dir %attr(700,root,root) %{TZ_SYS_VAR}/security-manager/rules
 %dir %attr(700,root,root) %{TZ_SYS_VAR}/security-manager/rules-merged
 
