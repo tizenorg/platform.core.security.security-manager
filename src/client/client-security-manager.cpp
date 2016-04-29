@@ -406,11 +406,49 @@ int security_manager_set_process_label_from_appid(const char *app_name)
     return SECURITY_MANAGER_SUCCESS;
 }
 
+static int getProcessGroups(std::vector<gid_t> &groups)
+{
+    int ret = getgroups(0, nullptr);
+    if (ret == -1) {
+        LogError("Unable to get list of current supplementary groups: " <<
+            GetErrnoString(errno));
+        return SECURITY_MANAGER_ERROR_UNKNOWN;
+    }
+    int cnt = ret;
+
+    std::unique_ptr<gid_t[]> groupsPtr(new gid_t[cnt]);
+    if (!groupsPtr) {
+        LogError("Memory allocation failed.");
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+
+    ret = getgroups(cnt, groupsPtr.get());
+    if (ret == -1) {
+        LogError("Unable to get list of current supplementary groups: " <<
+            GetErrnoString(errno));
+        return SECURITY_MANAGER_ERROR_UNKNOWN;
+    }
+
+    groups.assign(groupsPtr.get(), groupsPtr.get() + cnt);
+    return SECURITY_MANAGER_SUCCESS;
+}
+
+static int setProcessGroups(const std::vector<gid_t> &groups)
+{
+    int ret = setgroups(groups.size(), groups.data());
+    if (ret == -1) {
+        LogError("Unable to get list of current supplementary groups: " <<
+            GetErrnoString(errno));
+        return SECURITY_MANAGER_ERROR_UNKNOWN;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
 SECURITY_MANAGER_API
 int security_manager_set_process_groups_from_appid(const char *app_name)
 {
     using namespace SecurityManager;
-    MessageBuffer send, recv;
     int ret;
 
     LogDebug("security_manager_set_process_groups_from_appid() called");
@@ -423,70 +461,75 @@ int security_manager_set_process_groups_from_appid(const char *app_name)
             return SECURITY_MANAGER_ERROR_INPUT_PARAM;
         }
 
-        //put data into buffer
-        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::APP_GET_GROUPS),
-            std::string(app_name));
+        auto getGroupsFromService = [](SecurityModuleCall call,
+            const char *app_name, std::vector<gid_t> &groups) -> int
+        {
+            int retval;
+            MessageBuffer send, recv;
+            //put data into buffer
+            Serialization::Serialize(send, static_cast<int>(call));
+            if (app_name)
+                Serialization::Serialize(send, std::string(app_name));
 
-        //send buffer to server
-        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogDebug("Error in sendToServer. Error code: " << retval);
-            return retval;
-        }
+            //send buffer to server
+            retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+            if (retval != SECURITY_MANAGER_SUCCESS) {
+                LogDebug("Error in sendToServer. Error code: " << retval);
+                return retval;
+            }
 
-        //receive response from server
-        Deserialization::Deserialize(recv, retval);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogError("Failed to get list of groups from security-manager service. Error code: " << retval);
-            return retval;
-        }
+            //receive response from server
+            Deserialization::Deserialize(recv, retval);
+            if (retval != SECURITY_MANAGER_SUCCESS) {
+                LogError("Failed to get list of groups from security-manager service. " <<
+                    "Error code: " << retval);
+                return retval;
+            }
 
-        //How many new groups?
-        int newGroupsCnt;
-        Deserialization::Deserialize(recv, newGroupsCnt);
+            std::vector<std::string> groupNames;
+            Deserialization::Deserialize(recv, groupNames);
+            groups.reserve(groupNames.size());
+            for (const auto &groupName : groupNames) {
+                struct group *grp = getgrnam(groupName.c_str());
+                if (grp == nullptr) {
+                    LogError("No such group: " << groupName);
+                    return SECURITY_MANAGER_ERROR_UNKNOWN;
+                }
+                groups.push_back(grp->gr_gid);
+            }
 
-        //And how many groups do we belong to already?
-        int oldGroupsCnt;
-        ret = getgroups(0, nullptr);
-        if (ret == -1) {
-            LogError("Unable to get list of current supplementary groups: " <<
-                GetErrnoString(errno));
-            return SECURITY_MANAGER_ERROR_UNKNOWN;
-        }
-        oldGroupsCnt = ret;
+            return SECURITY_MANAGER_SUCCESS;
+        };
 
-        //Allocate an array for both old and new groups gids
-        std::unique_ptr<gid_t[]> groups(new gid_t[oldGroupsCnt + newGroupsCnt]);
-        if (!groups.get()) {
-            LogError("Memory allocation failed.");
-            return SECURITY_MANAGER_ERROR_MEMORY;
-        }
+        std::vector<gid_t> currentGroups;
+        ret = getProcessGroups(currentGroups);
+        if (ret != SECURITY_MANAGER_SUCCESS)
+            return ret;
+        LogDebug("Current supplementary groups count: " << currentGroups.size());
 
-        //Get the old groups from process
-        ret = getgroups(oldGroupsCnt, groups.get());
-        if (ret == -1) {
-            LogError("Unable to get list of current supplementary groups: " <<
-                GetErrnoString(errno));
-            return SECURITY_MANAGER_ERROR_UNKNOWN;
-        }
+        std::vector<gid_t> privilegedGroups;
+        ret = getGroupsFromService(SecurityModuleCall::GROUPS_GET, nullptr, privilegedGroups);
+        if (ret != SECURITY_MANAGER_SUCCESS)
+            return ret;
+        LogDebug("All privileged supplementary groups count: " << privilegedGroups.size());
 
-        //Get the new groups from server response
-        for (int i = 0; i < newGroupsCnt; ++i) {
-            gid_t gid;
-            Deserialization::Deserialize(recv, gid);
-            groups.get()[oldGroupsCnt + i] = gid;
-            LogDebug("Adding process to group " << gid);
-        }
+        std::vector<gid_t> allowedGroups;
+        ret = getGroupsFromService(SecurityModuleCall::APP_GET_GROUPS, app_name, allowedGroups);
+        if (ret != SECURITY_MANAGER_SUCCESS)
+            return ret;
+        LogDebug("Allowed privileged supplementary groups count: " << allowedGroups.size());
 
-        //Apply the modified groups list
-        ret = setgroups(oldGroupsCnt + newGroupsCnt, groups.get());
-        if (ret == -1) {
-            LogError("Unable to get list of current supplementary groups: " <<
-                GetErrnoString(errno));
-            return SECURITY_MANAGER_ERROR_UNKNOWN;
-        }
+        // Remove all groups that are mapped to privileges, so if app is not granted
+        // the privilege, the group will be dropped from current process
+        std::unordered_set<gid_t> groupsSet(currentGroups.begin(), currentGroups.end());
+        for (gid_t group : privilegedGroups)
+            groupsSet.erase(group);
 
-        return SECURITY_MANAGER_SUCCESS;
+        // Re-add those privileged groups that an app is entitled to
+        groupsSet.insert(allowedGroups.begin(), allowedGroups.end());
+        LogDebug("Final supplementary groups count: " << groupsSet.size());
+
+        return setProcessGroups(std::vector<gid_t>(groupsSet.begin(), groupsSet.end()));
     });
 }
 
