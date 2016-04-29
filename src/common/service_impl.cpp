@@ -37,9 +37,11 @@
 #include <dpl/errno_string.h>
 
 #include <config.h>
+
 #include "protocols.h"
 #include "privilege_db.h"
 #include "cynara.h"
+#include "label-files.h"
 #include "smack-rules.h"
 #include "smack-labels.h"
 #include "security-manager.h"
@@ -378,6 +380,8 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
         // WTF? Why this commit is here? Shouldn't it be at the end of this function?
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application installation commited to database");
+        if (!LabelFiles::addLabelToPermissibleSet(appLabel, cynaraUserStr, req.installationType))
+            LogError("addLabelToPermissableSet failed");
     } catch (const PrivilegeDb::Exception::IOError &e) {
         LogError("Cannot access application database: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
@@ -490,6 +494,8 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
 
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application uninstallation commited to database");
+        if (!LabelFiles::deleteLabelFromPermissibleSet(smackLabel, cynaraUserStr, req.installationType))
+            LogError("deleteLabelFromPermissableSet failed");
     } catch (const PrivilegeDb::Exception::IOError &e) {
         LogError("Cannot access application database: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
