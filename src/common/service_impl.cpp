@@ -438,7 +438,6 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
         }
 
         PrivilegeDb::getInstance().AddApplication(req.appName, req.pkgName, req.uid, req.tizenVersion, req.authorName);
-        PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, req.uid, req.privileges);
         /* Get all application ids in the package to generate rules withing the package */
         PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
         PrivilegeDb::getInstance().GetPkgAuthorId(req.pkgName, authorId);
@@ -556,7 +555,6 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
         PrivilegeDb::getInstance().GetPkgAuthorId(req.pkgName, authorId);
         PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
         PrivilegeDb::getInstance().GetAppVersion(req.appName, req.tizenVersion);
-        PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, req.uid, std::vector<std::string>());
         PrivilegeDb::getInstance().RemoveApplication(req.appName, req.uid, removeApp, removePkg, removeAuthor);
 
         // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
@@ -981,9 +979,8 @@ int ServiceImpl::getPolicy(const Credentials &creds, const policy_entry &filter,
                 std::string smackLabelForApp = SmackLabels::generateAppLabel(appName);
                 std::vector<std::string> listOfPrivileges;
 
-                // FIXME: also fetch privileges of global applications
-                // FIXME: fetch privileges from cynara, drop PrivilegeDb::GetAppPrivileges
-                PrivilegeDb::getInstance().GetAppPrivileges(appName, user, listOfPrivileges);
+                CynaraAdmin::getInstance().GetAppPolicy(smackLabelForApp, userStr, listOfPrivileges);
+                CynaraAdmin::getInstance().GetAppPolicy(smackLabelForApp, CYNARA_ADMIN_WILDCARD, listOfPrivileges);
 
                 if (filter.privilege.compare(SECURITY_MANAGER_ANY)) {
                     LogDebug("Limitting Cynara query to privilege: " << filter.privilege);
