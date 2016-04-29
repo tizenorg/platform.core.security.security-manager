@@ -40,6 +40,7 @@
 #include "protocols.h"
 #include "privilege_db.h"
 #include "cynara.h"
+#include "permissible-set.h"
 #include "smack-rules.h"
 #include "smack-labels.h"
 #include "security-manager.h"
@@ -373,6 +374,11 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
         if(isTizen2XVersion(req.tizenVersion))
             PrivilegeDb::getInstance().GetTizen2XAppsAndPackages(req.appName, allTizen2XApps, allTizen2XPackages);
 
+        if (!PermissibleSet::addLabelToPermissibleSet(appLabel, cynaraUserStr, req.installationType)) {
+            LogError("Error addLabelToPermissableSet failed");
+            PrivilegeDb::getInstance().RollbackTransaction();
+            return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+        }
         // WTF? Why this commit is here? Shouldn't it be at the end of this function?
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application installation commited to database");
@@ -488,6 +494,8 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
 
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application uninstallation commited to database");
+        if (!PermissibleSet::deleteLabelFromPermissibleSet(smackLabel, cynaraUserStr, req.installationType))
+            LogError("deleteLabelFromPermissableSet failed");
     } catch (const PrivilegeDb::Exception::IOError &e) {
         LogError("Cannot access application database: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
