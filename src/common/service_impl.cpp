@@ -40,6 +40,7 @@
 #include "protocols.h"
 #include "privilege_db.h"
 #include "cynara.h"
+#include "permissible-set.h"
 #include "smack-rules.h"
 #include "smack-labels.h"
 #include "security-manager.h"
@@ -316,6 +317,16 @@ bool ServiceImpl::installRequestPathsCheck(const app_inst_req &req, std::string 
     return true;
 }
 
+bool ServiceImpl::updatePermissibleSets(const app_inst_req &req)
+{
+    if (req.installationType == SM_APP_INSTALL_GLOBAL
+        || req.installationType == SM_APP_INSTALL_PRELOADED) {
+          return PermissibleSet::updatePermissibleFile(getGlobalUserId(), req.installationType);
+        }
+    return PermissibleSet::updatePermissibleFile(req.uid, req.installationType);
+
+}
+
 int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
 {
     std::vector<std::string> addedPermissions;
@@ -372,10 +383,11 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
         // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
         if(isTizen2XVersion(req.tizenVersion))
             PrivilegeDb::getInstance().GetTizen2XAppsAndPackages(req.appName, allTizen2XApps, allTizen2XPackages);
-
         // WTF? Why this commit is here? Shouldn't it be at the end of this function?
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application installation commited to database");
+        if (!updatePermissibleSets(req))
+            LogError("Error updatePermissableSet failed");
     } catch (const PrivilegeDb::Exception::IOError &e) {
         LogError("Cannot access application database: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
@@ -488,6 +500,8 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
 
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application uninstallation commited to database");
+        if (!updatePermissibleSets(req))
+            LogError("deleteLabelFromPermissableSet failed");
     } catch (const PrivilegeDb::Exception::IOError &e) {
         LogError("Cannot access application database: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;

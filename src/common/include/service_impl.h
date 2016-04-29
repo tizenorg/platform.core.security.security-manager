@@ -50,7 +50,7 @@ private:
 
     static bool installRequestPathsCheck(const app_inst_req &req, std::string &appPath);
 
-    static bool getZoneId(std::string &zoneId);
+    static bool updatePermissibleSets(const app_inst_req &req);
 
     int dropOnePrivateSharing(const std::string &ownerAppName,
                               const std::string &ownerPkgName,
