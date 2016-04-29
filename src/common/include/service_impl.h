@@ -64,8 +64,6 @@ private:
                              app_install_type installationType,
                              const uid_t &uid);
 
-    static bool getZoneId(std::string &zoneId);
-
     int dropOnePrivateSharing(const std::string &ownerAppName,
                               const std::string &ownerPkgName,
                               const std::vector<std::string> &ownerPkgContents,

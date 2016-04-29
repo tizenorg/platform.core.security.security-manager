@@ -40,6 +40,7 @@
 #include "protocols.h"
 #include "privilege_db.h"
 #include "cynara.h"
+#include "permissible-set.h"
 #include "smack-rules.h"
 #include "smack-labels.h"
 #include "security-manager.h"
@@ -424,10 +425,10 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
         // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
         if(isTizen2XVersion(req.tizenVersion))
             PrivilegeDb::getInstance().GetTizen2XAppsAndPackages(req.appName, allTizen2XApps, allTizen2XPackages);
-
         // WTF? Why this commit is here? Shouldn't it be at the end of this function?
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application installation commited to database");
+        PermissibleSet::updatePermissibleFile(req.uid, req.installationType);
     } catch (const PrivilegeDb::Exception::IOError &e) {
         LogError("Cannot access application database: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
@@ -442,6 +443,9 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
     } catch (const CynaraException::Base &e) {
         PrivilegeDb::getInstance().RollbackTransaction();
         LogError("Error while setting Cynara rules for application: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    } catch (const PermissibleSet::PermissibleSetException::Base &e) {
+        LogError("Error while updating permissible file: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
     } catch (const SmackException::InvalidLabel &e) {
         PrivilegeDb::getInstance().RollbackTransaction();
@@ -537,6 +541,7 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
 
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application uninstallation commited to database");
+        PermissibleSet::updatePermissibleFile(req.uid, req.installationType);
     } catch (const PrivilegeDb::Exception::IOError &e) {
         LogError("Cannot access application database: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
@@ -547,6 +552,9 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
     } catch (const CynaraException::Base &e) {
         PrivilegeDb::getInstance().RollbackTransaction();
         LogError("Error while setting Cynara rules for application: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    } catch (const PermissibleSet::PermissibleSetException::Base &e) {
+        LogError("Error while updating permissible file: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SERVER_ERROR;
     } catch (const SmackException::InvalidLabel &e) {
         PrivilegeDb::getInstance().RollbackTransaction();
