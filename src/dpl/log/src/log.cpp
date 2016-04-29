@@ -51,12 +51,12 @@ LogSystem::LogSystem() :
     m_isLoggingEnabled(!getenv(SECURITY_MANAGER_LOG_OFF))
 {
 #ifdef BUILD_TYPE_DEBUG
-    bool oldStyleLogs = false;
+    bool oldStyleLogs = true;
     bool oldStyleDebugLogs = true;
     bool oldStyleInfoLogs = true;
     bool oldStyleWarningLogs = true;
     bool oldStyleErrorLogs = true;
-    bool oldStylePedanticLogs = false;
+    bool oldStylePedanticLogs = true;
 
     // Check environment settings about pedantic logs
     const char *value = getenv(OLD_STYLE_LOGS_ENV_NAME);
