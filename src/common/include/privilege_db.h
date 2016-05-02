@@ -70,7 +70,7 @@ enum class StmtType {
     EGetAllTizen2XPackages,
     EGetAppsInPkg,
     EGetGroups,
-    EGetAppAuthorId,
+    EGetPkgAuthorId,
     EAuthorIdExists,
 };
 
@@ -125,7 +125,7 @@ private:
         { StmtType::EGetAllTizen2XPackages,  "SELECT DISTINCT pkg_name FROM app_pkg_view WHERE version LIKE '2.%%' AND app_name <> ?" },
         { StmtType::EGetAppsInPkg, " SELECT app_name FROM app_pkg_view WHERE pkg_name = ?" },
         { StmtType::EGetGroups, "SELECT DISTINCT group_name FROM privilege_group_view" },
-        { StmtType::EGetAppAuthorId, "SELECT author_id FROM app_pkg_view WHERE app_name = ? AND author_id IS NOT NULL"},
+        { StmtType::EGetPkgAuthorId, "SELECT author_id FROM pkg WHERE name = ? AND author_id IS NOT NULL"},
         { StmtType::EAuthorIdExists, "SELECT count(*) FROM author where author_id=?"},
     };
 
@@ -462,13 +462,13 @@ public:
 
     /* Retrive an id of an author from database
      *
-     * @param appName[in] application identifier
-     * @param authorId[out] author id associated with the application, or -1 if no
+     * @param pkgName[in] package identifier
+     * @param authorId[out] author id associated with the package, or -1 if no
      *                      author was assigned during installation
      * @exception DB::SqlConnection::Exception::InternalError on internal error
      * @exception DB::SqlConnection::Exception::ConstraintError on constraint violation
      */
-    void GetAppAuthorId(const std::string &appName, int &authorId);
+    void GetPkgAuthorId(const std::string &pkgName, int &authorId);
 
     /**
      * Retrieve list of resource groups

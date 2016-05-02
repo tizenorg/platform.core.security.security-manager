@@ -50,6 +50,7 @@ const char *const SMACK_PKG_LABEL_TEMPLATE     = "~PKG~";
 const char *const SMACK_AUTHOR_LABEL_TEMPLATE  = "~AUTHOR~";
 const char *const APP_RULES_TEMPLATE_FILE_PATH = tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "app-rules-template.smack");
 const char *const PKG_RULES_TEMPLATE_FILE_PATH = tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "pkg-rules-template.smack");
+const char *const APP_AUTHOR_RULES_TEMPLATE_FILE_PATH = tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "app-author-rules-template.smack");
 const char *const AUTHOR_RULES_TEMPLATE_FILE_PATH =
     tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "author-rules-template.smack");
 const char *const SMACK_RULES_PATH_MERGED      = LOCAL_STATE_DIR "/security-manager/rules-merged/rules.merged";
@@ -393,9 +394,12 @@ void SmackRules::useTemplate(
         const std::string &outputPath,
         const std::string &appName,
         const std::string &pkgName,
-        const int authorId)
+        const int authorId,
+        bool truncateOutput)
 {
     SmackRules smackRules;
+    if (!truncateOutput)
+        smackRules.loadFromFile(outputPath);
     smackRules.addFromTemplateFile(templatePath, appName, pkgName, authorId);
 
     if (smack_smackfs_path() != NULL)
@@ -407,15 +411,48 @@ void SmackRules::useTemplate(
 void SmackRules::installApplicationRules(
         const std::string &appName,
         const std::string &pkgName,
+        const int oldAuthorId,
         const int authorId,
         const std::vector<std::string> &pkgContents,
         const std::vector<std::string> &appsGranted,
         const std::vector<std::string> &accessPackages)
 {
-    useTemplate(APP_RULES_TEMPLATE_FILE_PATH, getApplicationRulesFilePath(appName), appName, pkgName, authorId);
+    // grant app rules for new application
+    useTemplate(APP_RULES_TEMPLATE_FILE_PATH,
+                getApplicationRulesFilePath(appName),
+                appName,
+                pkgName,
+                authorId);
 
-    if (authorId >= 0)
-        useTemplate(AUTHOR_RULES_TEMPLATE_FILE_PATH, getAuthorRulesFilePath(authorId), appName, pkgName, authorId);
+    if (authorId >= 0) {
+        // grant author rules for package (System & User)
+        /* TODO: Author rules for package could be merged with package rules but
+         * if author is unknown (-1) lines with ~AUTHOR~ should be ignored. */
+        useTemplate(AUTHOR_RULES_TEMPLATE_FILE_PATH,
+                    getAuthorRulesFilePath(authorId),
+                    appName,
+                    pkgName,
+                    authorId);
+
+        // Author is unchanged -> grant author rules for new application
+        if(oldAuthorId == authorId) {
+            useTemplate(APP_AUTHOR_RULES_TEMPLATE_FILE_PATH,
+                        getApplicationRulesFilePath(appName),
+                        appName,
+                        pkgName,
+                        authorId,
+                        false);
+        } else {
+            // pkg author has been set -> update rules of all apps in package
+            for (const auto& app:pkgContents)
+                useTemplate(APP_AUTHOR_RULES_TEMPLATE_FILE_PATH,
+                            getApplicationRulesFilePath(app),
+                            app,
+                            pkgName,
+                            authorId,
+                            false);
+        }
+    }
 
     updatePackageRules(pkgName, pkgContents, appsGranted);
     generateAppToOtherPackagesDeps(appName, accessPackages);
@@ -441,7 +478,6 @@ void SmackRules::updatePackageRules(
 
     smackRules.saveToFile(getPackageRulesFilePath(pkgName));
 }
-
 
 void SmackRules::revokeAppSubject(const std::string &appName)
 {
