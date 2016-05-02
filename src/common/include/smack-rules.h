@@ -92,7 +92,8 @@ public:
      *
      * @param[in] appName - application identifier
      * @param[in] pkgName - package identifier
-     * @param[in] authorId - author id of application
+     * @param[in] oldAuthorId - old author id of applications in the package
+     * @param[in] authorId - new author id of applications in the package
      * @param[in] pkgContents - list of all applications in the package
      * @param[in] appsGranted - list of 2.x apps granted access
      * @param[in] accessPackages - list of 2.x packages to be accessed
@@ -100,6 +101,7 @@ public:
     static void installApplicationRules(
             const std::string &appName,
             const std::string &pkgName,
+            const int oldAuthorId,
             const int authorId,
             const std::vector<std::string> &pkgContents,
             const std::vector<std::string> &appsGranted,

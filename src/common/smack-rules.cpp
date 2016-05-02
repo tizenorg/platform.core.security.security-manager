@@ -50,6 +50,7 @@ const char *const SMACK_PKG_LABEL_TEMPLATE     = "~PKG~";
 const char *const SMACK_AUTHOR_LABEL_TEMPLATE  = "~AUTHOR~";
 const char *const APP_RULES_TEMPLATE_FILE_PATH = tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "app-rules-template.smack");
 const char *const PKG_RULES_TEMPLATE_FILE_PATH = tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "pkg-rules-template.smack");
+const char *const APP_AUTHOR_RULES_TEMPLATE_FILE_PATH = tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "app-author-rules-template.smack");
 const char *const AUTHOR_RULES_TEMPLATE_FILE_PATH =
     tzplatform_mkpath4(TZ_SYS_RO_SHARE, "security-manager", "policy", "author-rules-template.smack");
 const char *const SMACK_RULES_PATH_MERGED      = LOCAL_STATE_DIR "/security-manager/rules-merged/rules.merged";
@@ -407,6 +408,7 @@ void SmackRules::useTemplate(
 void SmackRules::installApplicationRules(
         const std::string &appName,
         const std::string &pkgName,
+        const int oldAuthorId,
         const int authorId,
         const std::vector<std::string> &pkgContents,
         const std::vector<std::string> &appsGranted,
@@ -414,8 +416,19 @@ void SmackRules::installApplicationRules(
 {
     useTemplate(APP_RULES_TEMPLATE_FILE_PATH, getApplicationRulesFilePath(appName), appName, pkgName, authorId);
 
-    if (authorId >= 0)
+    if (authorId >= 0) {
+        // grant rules for System & User
         useTemplate(AUTHOR_RULES_TEMPLATE_FILE_PATH, getAuthorRulesFilePath(authorId), appName, pkgName, authorId);
+
+        // grant rules for new application
+        if(oldAuthorId == authorId) {
+            useTemplate(APP_AUTHOR_RULES_TEMPLATE_FILE_PATH, getApplicationRulesFilePath(appName), appName, pkgName, authorId);
+        } else {
+            // pkg author has changed -> update rules of all apps
+            for (const auto& app:pkgContents)
+                useTemplate(APP_AUTHOR_RULES_TEMPLATE_FILE_PATH, getApplicationRulesFilePath(app), app, pkgName, authorId);
+        }
+    }
 
     updatePackageRules(pkgName, pkgContents, appsGranted);
     generateAppToOtherPackagesDeps(appName, accessPackages);
@@ -441,7 +454,6 @@ void SmackRules::updatePackageRules(
 
     smackRules.saveToFile(getPackageRulesFilePath(pkgName));
 }
-
 
 void SmackRules::revokeAppSubject(const std::string &appName)
 {
