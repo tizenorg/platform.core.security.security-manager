@@ -1245,4 +1245,14 @@ int ServiceImpl::dropPrivatePathSharing(
     return errorRet;
 }
 
+int ServiceImpl::pathsRegister(
+        const Credentials &/*creds*/,
+        const std::string &/*pkgName*/,
+        uid_t /*uid*/,
+        const pkg_paths &/*paths*/)
+{
+    // TODO
+    return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
 } /* namespace SecurityManager */

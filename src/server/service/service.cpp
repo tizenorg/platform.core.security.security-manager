@@ -125,6 +125,9 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::APP_DROP_PRIVATE_SHARING:
                     processDropPrivateSharing(buffer, send, creds);
                     break;
+                case SecurityModuleCall::PATHS_REGISTER:
+                    processPathsRegister(buffer, send, creds);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -338,6 +341,18 @@ void Service::processDropPrivateSharing(MessageBuffer &recv, MessageBuffer &send
     Deserialization::Deserialize(recv, targetAppName);
     Deserialization::Deserialize(recv, paths);
     int ret = serviceImpl.dropPrivatePathSharing(creds, ownerAppName, targetAppName, paths);
+    Serialization::Serialize(send, ret);
+}
+
+void Service::processPathsRegister(MessageBuffer &recv, MessageBuffer &send, const Credentials &creds)
+{
+    std::string pkgName;
+    uid_t uid;
+    pkg_paths paths;
+    Deserialization::Deserialize(recv, pkgName);
+    Deserialization::Deserialize(recv, uid);
+    Deserialization::Deserialize(recv, paths);
+    int ret = serviceImpl.pathsRegister(creds, pkgName, uid, paths);
     Serialization::Serialize(send, ret);
 }
 } // namespace SecurityManager
