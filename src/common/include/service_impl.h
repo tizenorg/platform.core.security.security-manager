@@ -31,6 +31,7 @@
 
 #include "credentials.h"
 #include "security-manager.h"
+#include "protocols.h"
 
 namespace SecurityManager {
 
@@ -223,6 +224,21 @@ public:
                                const std::string &ownerAppName,
                                const std::string &targetAppName,
                                const std::vector<std::string> &paths);
+
+    /**
+     * Process package paths registration.
+     *
+     * @param[in] creds credentials of the requesting process
+     * @param[in] pkgName package name
+     * @param[in] uid uid of the affected user
+     * @param[in] paths vector of paths to be registered
+     *
+     * @return API return code, as defined in protocols.h
+     */
+    int pathsRegister(const Credentials &creds,
+                      const std::string &pkgName,
+                      uid_t uid,
+                      const pkg_paths &paths);
 };
 
 } /* namespace SecurityManager */
