@@ -323,6 +323,7 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
     std::string pkgLabel;
     std::vector<std::string> allTizen2XApps, allTizen2XPackages;
     int authorId;
+    int oldAuthorId;
 
     installRequestMangle(req, cynaraUserStr);
 
@@ -357,12 +358,14 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
             PrivilegeDb::getInstance().RollbackTransaction();
             return SECURITY_MANAGER_ERROR_INPUT_PARAM;
         }
+        // Get existing author id
+        PrivilegeDb::getInstance().GetPkgAuthorId(req.pkgName, oldAuthorId);
 
         PrivilegeDb::getInstance().AddApplication(req.appName, req.pkgName, req.uid, req.tizenVersion, req.authorName);
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, req.uid, req.privileges);
         /* Get all application ids in the package to generate rules withing the package */
         PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
-        PrivilegeDb::getInstance().GetAppAuthorId(req.appName, authorId);
+        PrivilegeDb::getInstance().GetPkgAuthorId(req.pkgName, authorId);
         CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, cynaraUserStr, req.privileges);
 
         // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
@@ -410,7 +413,7 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
 
         LogDebug("Adding Smack rules for new appName: " << req.appName << " with pkgName: "
                 << req.pkgName << ". Applications in package: " << pkgContents.size());
-        SmackRules::installApplicationRules(req.appName, req.pkgName, authorId, pkgContents, allTizen2XApps, allTizen2XPackages);
+        SmackRules::installApplicationRules(req.appName, req.pkgName, oldAuthorId, authorId, pkgContents, allTizen2XApps, allTizen2XPackages);
         SmackRules::mergeRules();
     } catch (const SmackException::InvalidParam &e) {
         LogError("Invalid paramater during labeling: " << e.GetMessage());
@@ -471,7 +474,7 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req,
         /* Before we remove the app from the database, let's fetch all apps in the package
             that this app belongs to, this will allow us to remove all rules withing the
             package that the app appears in */
-        PrivilegeDb::getInstance().GetAppAuthorId(req.appName, authorId);
+        PrivilegeDb::getInstance().GetPkgAuthorId(req.pkgName, authorId);
         PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, req.uid, std::vector<std::string>());
         PrivilegeDb::getInstance().RemoveApplication(req.appName, req.uid, removeApp, removePkg, removeAuthor);
