@@ -43,13 +43,17 @@ private:
 
     static bool isSubDir(const char *parent, const char *subdir);
 
-    static bool getUserPkgDir(const uid_t &uid, const app_install_type &installType, std::string &userAppDir);
+    static bool getUserPkgDir(const uid_t &uid,
+                              const std::string &pkgName,
+                              const app_install_type &installType,
+                              std::string &userPkgDir);
 
     static void installRequestMangle(app_inst_req &req, std::string &cynaraUserStr);
 
     static bool installRequestAuthCheck(const Credentials &creds, const app_inst_req &req);
 
-    static bool installRequestPathsCheck(const app_inst_req &req, std::string &appPath);
+    static bool pathsCheck(const pkg_paths &requestedPaths,
+                           const std::vector<std::string> &allowedPaths);
 
     static bool getZoneId(std::string &zoneId);
 
