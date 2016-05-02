@@ -394,9 +394,12 @@ void SmackRules::useTemplate(
         const std::string &outputPath,
         const std::string &appName,
         const std::string &pkgName,
-        const int authorId)
+        const int authorId,
+        bool truncateOutput)
 {
     SmackRules smackRules;
+    if (!truncateOutput)
+        smackRules.loadFromFile(outputPath);
     smackRules.addFromTemplateFile(templatePath, appName, pkgName, authorId);
 
     if (smack_smackfs_path() != NULL)
@@ -414,19 +417,40 @@ void SmackRules::installApplicationRules(
         const std::vector<std::string> &appsGranted,
         const std::vector<std::string> &accessPackages)
 {
-    useTemplate(APP_RULES_TEMPLATE_FILE_PATH, getApplicationRulesFilePath(appName), appName, pkgName, authorId);
+    // grant app rules for new application
+    useTemplate(APP_RULES_TEMPLATE_FILE_PATH,
+                getApplicationRulesFilePath(appName),
+                appName,
+                pkgName,
+                authorId);
 
     if (authorId >= 0) {
-        // grant rules for System & User
-        useTemplate(AUTHOR_RULES_TEMPLATE_FILE_PATH, getAuthorRulesFilePath(authorId), appName, pkgName, authorId);
+        // grant author rules for package (System & User)
+        /* TODO: Author rules for package could be merged with package rules but
+         * if author is unknown (-1) lines with ~AUTHOR~ should be ignored. */
+        useTemplate(AUTHOR_RULES_TEMPLATE_FILE_PATH,
+                    getAuthorRulesFilePath(authorId),
+                    appName,
+                    pkgName,
+                    authorId);
 
-        // grant rules for new application
+        // Author is unchanged -> grant author rules for new application
         if(oldAuthorId == authorId) {
-            useTemplate(APP_AUTHOR_RULES_TEMPLATE_FILE_PATH, getApplicationRulesFilePath(appName), appName, pkgName, authorId);
+            useTemplate(APP_AUTHOR_RULES_TEMPLATE_FILE_PATH,
+                        getApplicationRulesFilePath(appName),
+                        appName,
+                        pkgName,
+                        authorId,
+                        false);
         } else {
-            // pkg author has changed -> update rules of all apps
+            // pkg author has been set -> update rules of all apps in package
             for (const auto& app:pkgContents)
-                useTemplate(APP_AUTHOR_RULES_TEMPLATE_FILE_PATH, getApplicationRulesFilePath(app), app, pkgName, authorId);
+                useTemplate(APP_AUTHOR_RULES_TEMPLATE_FILE_PATH,
+                            getApplicationRulesFilePath(app),
+                            app,
+                            pkgName,
+                            authorId,
+                            false);
         }
     }
 

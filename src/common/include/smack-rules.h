@@ -211,7 +211,8 @@ private:
             const std::string &outputPath,
             const std::string &appName,
             const std::string &pkgName,
-            const int authorId = -1);
+            const int authorId = -1,
+            bool truncateOutput = true);
 
     /**
      * Create a path for package rules
