@@ -27,7 +27,6 @@
 #include <message-buffer.h>
 #include <protocols.h>
 #include <connection.h>
-#include <dpl/serialization.h>
 #include <dpl/log/log.h>
 
 namespace SecurityManager {
@@ -45,14 +44,10 @@ ClientOffline::ClientOffline()
     try {
         serviceLock = new SecurityManager::FileLocker(SecurityManager::SERVICE_LOCK_FILE, false);
         if (serviceLock->Locked()) {
-            int retval;
-            MessageBuffer send, recv;
-
             LogInfo("Service isn't running, try to trigger it via socket activation.");
             serviceLock->Unlock();
-            Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::NOOP));
-            retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-            if (retval != SECURITY_MANAGER_SUCCESS) {
+            ClientRequest request(SecurityModuleCall::NOOP);
+            if (!request.send()) {
                 LogInfo("Socket activation attempt failed.");
                 serviceLock->Lock();
                 offlineMode = serviceLock->Locked();
