@@ -207,29 +207,16 @@ int security_manager_app_install(const app_inst_req *p_req)
             Credentials creds = offlineMode.getCredentials();
             retval = SecurityManager::ServiceImpl().appInstall(creds, app_inst_req(*p_req));
         } else {
-            MessageBuffer send, recv;
-
-            //put data into buffer
-            Serialization::Serialize(send,
-                                     (int)SecurityModuleCall::APP_INSTALL,
-                                     p_req->appName,
-                                     p_req->pkgName,
-                                     p_req->privileges,
-                                     p_req->pkgPaths,
-                                     p_req->uid,
-                                     p_req->tizenVersion,
-                                     p_req->authorName,
-                                     p_req->installationType);
-
-            //send buffer to server
-            retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-            if (retval != SECURITY_MANAGER_SUCCESS) {
-                LogError("Error in sendToServer. Error code: " << retval);
-                return retval;
-            }
-
-            //receive response from server
-            Deserialization::Deserialize(recv, retval);
+            ClientRequest request(SecurityModuleCall::APP_INSTALL);
+            request.send(p_req->appName,
+                         p_req->pkgName,
+                         p_req->privileges,
+                         p_req->pkgPaths,
+                         p_req->uid,
+                         p_req->tizenVersion,
+                         p_req->authorName,
+                         p_req->installationType);
+            retval = request.getStatus();
         }
         return retval;
     });
@@ -239,7 +226,6 @@ SECURITY_MANAGER_API
 int security_manager_app_uninstall(const app_inst_req *p_req)
 {
     using namespace SecurityManager;
-    MessageBuffer send, recv;
 
     return try_catch([&]() -> int {
         //checking parameters
@@ -248,20 +234,9 @@ int security_manager_app_uninstall(const app_inst_req *p_req)
         if (p_req->appName.empty())
             return SECURITY_MANAGER_ERROR_REQ_NOT_COMPLETE;
 
-        //put data into buffer
-        Serialization::Serialize(send, (int)SecurityModuleCall::APP_UNINSTALL,
-            p_req->appName);
-
-        //send buffer to server
-        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogError("Error in sendToServer. Error code: " << retval);
-            return retval;
-        }
-
-        //receive response from server
-        Deserialization::Deserialize(recv, retval);
-        return retval;
+        ClientRequest request(SecurityModuleCall::APP_UNINSTALL);
+        request.send(p_req->appName);
+        return request.getStatus();
     });
 }
 
@@ -269,7 +244,6 @@ SECURITY_MANAGER_API
 int security_manager_get_app_pkgid(char **pkg_name, const char *app_name)
 {
     using namespace SecurityManager;
-    MessageBuffer send, recv;
 
     LogDebug("security_manager_get_app_pkgid() called");
 
@@ -286,24 +260,12 @@ int security_manager_get_app_pkgid(char **pkg_name, const char *app_name)
             return SECURITY_MANAGER_ERROR_INPUT_PARAM;
         }
 
-        //put data into buffer
-        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::APP_GET_PKG_NAME),
-            std::string(app_name));
-
-        //send buffer to server
-        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogDebug("Error in sendToServer. Error code: " << retval);
-            return retval;
-        }
-
-        //receive response from server
-        Deserialization::Deserialize(recv, retval);
-        if (retval != SECURITY_MANAGER_SUCCESS)
-            return retval;
+        ClientRequest request(SecurityModuleCall::APP_GET_PKG_NAME);
+        if (!request.send(std::string(app_name)))
+            return request.getStatus();
 
         std::string pkgNameString;
-        Deserialization::Deserialize(recv, pkgNameString);
+        request.recv(pkgNameString);
         if (pkgNameString.empty()) {
             LogError("Unexpected empty pkgName");
             return SECURITY_MANAGER_ERROR_UNKNOWN;
@@ -463,49 +425,27 @@ static int groupNamesToGids(const std::vector<std::string> &groupNames,
 
 static int getPrivilegedGroups(std::vector<gid_t> &groups)
 {
-    MessageBuffer send, recv;
-    int ret;
-
-    Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::GROUPS_GET));
-    ret = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-    if (ret != SECURITY_MANAGER_SUCCESS) {
-        LogDebug("Error in sendToServer. Error code: " << ret);
-        return ret;
-    }
-
-    Deserialization::Deserialize(recv, ret);
-    if (ret != SECURITY_MANAGER_SUCCESS) {
-        LogError("Failed to get list of groups from security-manager service. " <<
-            "Error code: " << ret);
-        return ret;
+    ClientRequest request(SecurityModuleCall::GROUPS_GET);
+    if (!request.send()) {
+        LogError("Failed to get list of groups from security-manager service.");
+        return request.getStatus();
     }
 
     std::vector<std::string> groupNames;
-    Deserialization::Deserialize(recv, groupNames);
+    request.recv(groupNames);
     return groupNamesToGids(groupNames, groups);
 }
 
 static int getAppGroups(const std::string appName, std::vector<gid_t> &groups)
 {
-    MessageBuffer send, recv;
-    int ret;
-
-    Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::APP_GET_GROUPS), appName);
-    ret = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-    if (ret != SECURITY_MANAGER_SUCCESS) {
-        LogDebug("Error in sendToServer. Error code: " << ret);
-        return ret;
-    }
-
-    Deserialization::Deserialize(recv, ret);
-    if (ret != SECURITY_MANAGER_SUCCESS) {
-        LogError("Failed to get list of groups from security-manager service. " <<
-            "Error code: " << ret);
-        return ret;
+    ClientRequest request(SecurityModuleCall::APP_GET_GROUPS);
+    if (!request.send(appName)) {
+        LogError("Failed to get list of groups from security-manager service.");
+        return request.getStatus();
     }
 
     std::vector<std::string> groupNames;
-    Deserialization::Deserialize(recv, groupNames);
+    request.recv(groupNames);
     return groupNamesToGids(groupNames, groups);
 }
 
@@ -662,22 +602,10 @@ int security_manager_user_add(const user_req *p_req)
             Credentials creds = offlineMode.getCredentials();
             retval = SecurityManager::ServiceImpl().userAdd(creds, p_req->uid, p_req->utype);
         } else {
-            MessageBuffer send, recv;
             //server is working
-
-            //put data into buffer
-            Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::USER_ADD),
-                p_req->uid, p_req->utype);
-
-            //send buffer to server
-            retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-            if (retval != SECURITY_MANAGER_SUCCESS) {
-                LogError("Error in sendToServer. Error code: " << retval);
-                return retval;
-            }
-
-            //receive response from server
-            Deserialization::Deserialize(recv, retval);
+            ClientRequest request(SecurityModuleCall::USER_ADD);
+            request.send(p_req->uid, p_req->utype);
+            retval = request.getStatus();
         }
         return retval;
     });
@@ -687,25 +615,12 @@ SECURITY_MANAGER_API
 int security_manager_user_delete(const user_req *p_req)
 {
     using namespace SecurityManager;
-    MessageBuffer send, recv;
     if (!p_req)
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
     return try_catch([&]() -> int {
-
-        //put data into buffer
-        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::USER_DELETE),
-            p_req->uid);
-
-        //send buffer to server
-        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogError("Error in sendToServer. Error code: " << retval);
-            return retval;
-        }
-
-        //receive response from server
-        Deserialization::Deserialize(recv, retval);
-        return retval;
+        ClientRequest request(SecurityModuleCall::USER_DELETE);
+        request.send(p_req->uid);
+        return request.getStatus();
     });
 }
 
@@ -737,27 +652,14 @@ SECURITY_MANAGER_API
 int security_manager_policy_update_send(policy_update_req *p_req)
 {
     using namespace SecurityManager;
-    MessageBuffer send, recv;
 
     if (p_req == nullptr || p_req->units.size() == 0)
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
 
     return try_catch([&] {
-
-        //put request into buffer
-        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::POLICY_UPDATE),
-            p_req->units);
-
-        //send it to server
-        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogError("Error in sendToServer. Error code: " << retval);
-            return retval;
-        }
-
-        //receive response from server
-        Deserialization::Deserialize(recv, retval);
-        return retval;
+        ClientRequest request(SecurityModuleCall::POLICY_UPDATE);
+        request.send(p_req->units);
+        return request.getStatus();
     });
 }
 
@@ -768,7 +670,6 @@ static inline int security_manager_get_policy_internal(
         size_t *p_size)
 {
     using namespace SecurityManager;
-    MessageBuffer send, recv;
 
     if (ppp_privs_policy == nullptr
         || p_size == nullptr
@@ -776,44 +677,30 @@ static inline int security_manager_get_policy_internal(
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
 
     return try_catch([&]() -> int {
-        //put request into buffer
-        Serialization::Serialize(send, static_cast<int>(call_type),
-            *p_filter);
+        ClientRequest request(call_type);
+        if (!request.send(*p_filter))
+            return request.getStatus();
 
-        //send it to server
-        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogError("Error in sendToServer. Error code: " << retval);
-            return retval;
+        //extract and allocate buffers for privs policy entries
+        int entriesCnt = 0;
+        policy_entry **entries = nullptr;
+        try {
+            request.recv(entriesCnt);
+            entries = new policy_entry*[entriesCnt]();
+            for (int i = 0; i < entriesCnt; ++i) {
+                entries[i] = new policy_entry;
+                request.recv(entries[i]);
+            };
+        } catch (...) {
+            LogError("Error while parsing server response");
+            for (int i = 0; i < entriesCnt; ++i)
+                delete(entries[i]);
+            delete[] entries;
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
-        //receive response from server
-        Deserialization::Deserialize(recv, retval);
-        switch (retval) {
-            default:
-                return retval;
-            case SECURITY_MANAGER_SUCCESS: {
-                //extract and allocate buffers for privs policy entries
-                int entriesCnt = 0;
-                policy_entry **entries = nullptr;
-                try {
-                    Deserialization::Deserialize(recv, entriesCnt);
-                    entries = new policy_entry*[entriesCnt]();
-                    for (int i = 0; i < entriesCnt; ++i) {
-                        entries[i] = new policy_entry;
-                        Deserialization::Deserialize(recv, entries[i]);
-                    };
-                } catch (...) {
-                    LogError("Error while parsing server response");
-                    for (int i = 0; i < entriesCnt; ++i)
-                        delete(entries[i]);
-                    delete[] entries;
-                    return SECURITY_MANAGER_ERROR_UNKNOWN;
-                }
-                *p_size = entriesCnt;
-                *ppp_privs_policy = entries;
-                return SECURITY_MANAGER_SUCCESS;
-            }
-        }
+        *p_size = entriesCnt;
+        *ppp_privs_policy = entries;
+        return SECURITY_MANAGER_SUCCESS;
     });
 }
 
@@ -963,38 +850,21 @@ SECURITY_MANAGER_API
 int security_manager_policy_levels_get(char ***levels, size_t *levels_count)
 {
     using namespace SecurityManager;
-    MessageBuffer send, recv;
     if (!levels || !levels_count)
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
     return try_catch([&]() -> int {
+        ClientRequest request(SecurityModuleCall::POLICY_GET_DESCRIPTIONS);
+        if (!request.send())
+            return request.getStatus();
 
-        //put data into buffer
-        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::POLICY_GET_DESCRIPTIONS));
-
-        //send buffer to server
-        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogError("Error in sendToServer. Error code: " << retval);
-            return retval;
-        }
-
-        //receive response from server
-        Deserialization::Deserialize(recv, retval);
-
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            return retval;
-        }
-
-        int count;
-        Deserialization::Deserialize(recv, count);
-        *levels_count = count;
+        request.recv(*levels_count);
         LogInfo("Number of policy descriptions: " << *levels_count);
 
         char **array = new char *[*levels_count];
 
         for (unsigned int i = 0; i < *levels_count; ++i) {
             std::string level;
-            Deserialization::Deserialize(recv, level);
+            request.recv(level);
 
             if (level.empty()) {
                 LogError("Unexpected empty level");
@@ -1025,30 +895,15 @@ SECURITY_MANAGER_API
 int security_manager_groups_get(char ***groups, size_t *groups_count)
 {
     using namespace SecurityManager;
-    MessageBuffer send, recv;
     if (!groups || !groups_count)
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
     return try_catch([&]() -> int {
-
-        //put data into buffer
-        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::GROUPS_GET));
-
-        //send buffer to server
-        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogError("Error in sendToServer. Error code: " << retval);
-            return retval;
-        }
-
-        //receive response from server
-        Deserialization::Deserialize(recv, retval);
-
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            return retval;
-        }
+        ClientRequest request(SecurityModuleCall::GROUPS_GET);
+        if (!request.send())
+            return request.getStatus();
 
         std::vector<std::string> vgroups;
-        Deserialization::Deserialize(recv, vgroups);
+        request.recv(vgroups);
         const auto vgroups_size = vgroups.size();
         LogInfo("Number of groups: " << vgroups_size);
 
@@ -1162,27 +1017,15 @@ int security_manager_app_has_privilege(const char *app_name, const char *privile
                                        uid_t uid, int *result)
 {
     using namespace SecurityManager;
-    MessageBuffer send, recv;
     return try_catch([&]() -> int {
-        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::APP_HAS_PRIVILEGE),
-            std::string(app_name), std::string(privilege), uid);
-
-        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            LogError("Error in sendToServer. Error code: " << retval);
-            return retval;
+        ClientRequest request(SecurityModuleCall::APP_HAS_PRIVILEGE);
+        request.send(std::string(app_name), std::string(privilege), uid);
+        if (!request.failed()) {
+            request.recv(*result);
+            LogDebug("app_has_privilege result: " << *result);
         }
 
-        Deserialization::Deserialize(recv, retval);
-
-        if (retval != SECURITY_MANAGER_SUCCESS) {
-            return retval;
-        }
-
-        Deserialization::Deserialize(recv, *result);
-        LogDebug("app_has_privilege result: " << *result);
-
-        return SECURITY_MANAGER_SUCCESS;
+        return request.getStatus();
     });
 }
 
@@ -1256,22 +1099,9 @@ int security_manager_private_sharing_apply(const private_sharing_req *p_req)
         if (p_req->ownerAppName.empty() || p_req->targetAppName.empty() || p_req->paths.empty())
             return SECURITY_MANAGER_ERROR_REQ_NOT_COMPLETE;
 
-        MessageBuffer send, recv;
-        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::APP_APPLY_PRIVATE_SHARING));
-        Serialization::Serialize(send, p_req->ownerAppName);
-        Serialization::Serialize(send, p_req->targetAppName);
-        Serialization::Serialize(send, p_req->paths);
-
-        //send buffer to server
-       int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-       if (retval != SECURITY_MANAGER_SUCCESS) {
-           LogError("Error in sendToServer. Error code: " << retval);
-           return retval;
-       }
-
-       //receive response from server
-       Deserialization::Deserialize(recv, retval);
-       return retval;
+        ClientRequest request(SecurityModuleCall::APP_APPLY_PRIVATE_SHARING);
+        request.send(p_req->ownerAppName, p_req->targetAppName, p_req->paths);
+        return request.getStatus();
     });
 }
 
@@ -1285,22 +1115,9 @@ int security_manager_private_sharing_drop(const private_sharing_req *p_req)
         if (p_req->ownerAppName.empty() || p_req->targetAppName.empty() || p_req->paths.empty())
             return SECURITY_MANAGER_ERROR_REQ_NOT_COMPLETE;
 
-        MessageBuffer send, recv;
-        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::APP_DROP_PRIVATE_SHARING));
-        Serialization::Serialize(send, p_req->ownerAppName);
-        Serialization::Serialize(send, p_req->targetAppName);
-        Serialization::Serialize(send, p_req->paths);
-
-        //send buffer to server
-       int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-       if (retval != SECURITY_MANAGER_SUCCESS) {
-           LogError("Error in sendToServer. Error code: " << retval);
-           return retval;
-       }
-
-       //receive response from server
-       Deserialization::Deserialize(recv, retval);
-       return retval;
+        ClientRequest request(SecurityModuleCall::APP_DROP_PRIVATE_SHARING);
+        request.send(p_req->ownerAppName, p_req->targetAppName, p_req->paths);
+        return request.getStatus();
     });
 }
 
@@ -1401,25 +1218,13 @@ int security_manager_paths_register(const path_req *p_req)
             Credentials creds = offlineMode.getCredentials();
             retval = SecurityManager::ServiceImpl().pathsRegister(creds, *p_req);
         } else {
-            MessageBuffer send, recv;
-
-            //put data into buffer
-            Serialization::Serialize(send,
-                                     (int)SecurityModuleCall::PATHS_REGISTER,
-                                     p_req->pkgName,
-                                     p_req->uid,
-                                     p_req->pkgPaths,
-                                     p_req->installationType);
-
-            //send buffer to server
-            retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
-            if (retval != SECURITY_MANAGER_SUCCESS) {
-                LogError("Error in sendToServer. Error code: " << retval);
-                return retval;
-            }
-
-            //receive response from server
-            Deserialization::Deserialize(recv, retval);
+            ClientRequest request(SecurityModuleCall::PATHS_REGISTER);
+            request.send(
+                p_req->pkgName,
+                p_req->uid,
+                p_req->pkgPaths,
+                p_req->installationType);
+            retval = request.getStatus();
         }
         return retval;
     });

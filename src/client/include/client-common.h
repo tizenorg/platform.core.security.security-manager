@@ -26,7 +26,14 @@
 #ifndef _SECURITY_MANAGER_CLIENT_
 #define _SECURITY_MANAGER_CLIENT_
 
+#include <cassert>
 #include <functional>
+
+#include <connection.h>
+#include <dpl/log/log.h>
+#include <message-buffer.h>
+#include <protocols.h>
+#include <security-manager-types.h>
 
 #define SECURITY_MANAGER_API __attribute__((visibility("default")))
 #define SECURITY_MANAGER_UNUSED __attribute__((unused))
@@ -38,6 +45,56 @@ namespace SecurityManager {
  * SS client API functions. Accepts lambda expression as an argument.
  */
 int try_catch(const std::function<int()>& func);
+
+class ClientRequest {
+private:
+    bool m_sent = false;
+    int m_status = SECURITY_MANAGER_SUCCESS;
+    MessageBuffer m_send, m_recv;
+
+public:
+    ClientRequest(SecurityModuleCall action)
+    {
+        Serialization::Serialize(m_send, static_cast<int>(action));
+    }
+
+    int getStatus()
+    {
+        return m_status;
+    }
+
+    bool failed()
+    {
+        return m_status != SECURITY_MANAGER_SUCCESS;
+    }
+
+    bool send()
+    {
+        assert(!m_sent); // Only one call to send() is expected
+        m_sent = true;
+
+        m_status = sendToServer(SERVICE_SOCKET, m_send.Pop(), m_recv);
+        if (!failed())
+            Deserialization::Deserialize(m_recv, m_status);
+        else
+            LogError("Error in sendToServer. Error code: " << m_status);
+
+        return !failed();
+    }
+
+    template <typename... T> bool send(const T&... args)
+    {
+        Serialization::Serialize(m_send, args...);
+        return send();
+    }
+
+    template <typename T> void recv(T &arg)
+    {
+        assert(m_sent); // Call to send() must happen before call to recv()
+        if (!failed())
+            Deserialization::Deserialize(m_recv, arg);
+    }
+};
 
 } // namespace SecurityManager
 
