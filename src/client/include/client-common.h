@@ -28,6 +28,10 @@
 
 #include <functional>
 
+#include <message-buffer.h>
+#include <protocols.h>
+#include <security-manager-types.h>
+
 #define SECURITY_MANAGER_API __attribute__((visibility("default")))
 #define SECURITY_MANAGER_UNUSED __attribute__((unused))
 
@@ -38,6 +42,40 @@ namespace SecurityManager {
  * SS client API functions. Accepts lambda expression as an argument.
  */
 int try_catch(const std::function<int()>& func);
+
+class ClientRequest {
+public:
+    ClientRequest(SecurityModuleCall action);
+    int getStatus();
+    bool send();
+    template <typename... T> bool send(const T&...);
+    template <typename T> bool recv(T&);
+
+private:
+    MessageBuffer m_send, m_recv;
+    int m_status = SECURITY_MANAGER_SUCCESS;
+    bool m_statusFetched = false;
+};
+
+template <typename... T>
+bool ClientRequest::send(const T&... args)
+{
+    if (m_status != SECURITY_MANAGER_SUCCESS)
+        return false;
+
+    Serialization::Serialize(m_send, args...);
+    return send();
+}
+
+template <typename T>
+bool ClientRequest::recv(T& arg)
+{
+    if (getStatus() != SECURITY_MANAGER_SUCCESS)
+        return false;
+
+    Deserialization::Deserialize(m_recv, arg);
+    return true;
+}
 
 } // namespace SecurityManager
 

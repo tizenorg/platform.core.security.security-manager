@@ -37,8 +37,9 @@
 #include <dpl/singleton.h>
 #include <dpl/singleton_safe_impl.h>
 
+#include <connection.h>
+#include <client-common.h>
 #include <message-buffer.h>
-
 #include <protocols.h>
 
 IMPLEMENT_SAFE_SINGLETON(SecurityManager::Log::LogSystem);
@@ -65,6 +66,34 @@ int try_catch(const std::function<int()>& func)
         LogError("Unknown exception occured");
     }
     return SECURITY_MANAGER_ERROR_UNKNOWN;
+}
+
+ClientRequest::ClientRequest(SecurityManager::SecurityModuleCall action)
+{
+    Serialization::Serialize(m_send, static_cast<int>(action));
+}
+
+int ClientRequest::getStatus()
+{
+    if (!m_statusFetched && m_status == SECURITY_MANAGER_SUCCESS) {
+        Deserialization::Deserialize(m_recv, m_status);
+        m_statusFetched = true;
+    }
+
+    return m_status;
+}
+
+bool ClientRequest::send()
+{
+    if (m_status != SECURITY_MANAGER_SUCCESS)
+        return false;
+
+    m_status = sendToServer(SERVICE_SOCKET, m_send.Pop(), m_recv);
+    if (m_status != SECURITY_MANAGER_SUCCESS) {
+        LogError("Error in sendToServer. Error code: " << m_status);
+        return false;
+    }
+    return true;
 }
 
 } // namespace SecurityMANAGER
