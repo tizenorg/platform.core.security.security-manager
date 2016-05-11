@@ -325,7 +325,8 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
     std::string appPath;
     std::string appLabel;
     std::string pkgLabel;
-    std::vector<std::string> allTizen2XApps, allTizen2XPackages;
+    std::vector<std::pair<std::string, std::string>> allTizen2XApps;
+    std::vector<std::string> allTizen2XPackages;
     int authorId;
 
     installRequestMangle(req, cynaraUserStr);
@@ -444,7 +445,7 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
     bool removePkg = false;
     bool removeAuthor = false;
     std::string cynaraUserStr;
-    std::vector<std::string> allTizen2XApps;
+    std::vector<std::pair<std::string, std::string>> allTizen2XApps;
     int authorId;
 
     installRequestMangle(req, cynaraUserStr);

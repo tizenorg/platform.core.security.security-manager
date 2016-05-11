@@ -82,7 +82,7 @@ public:
      */
     void generateAllowOther2XApplicationDeps(
             const std::string pkgName,
-            const std::vector<std::string> &other2XApps);
+            const std::vector<std::pair<std::string, std::string>> &other2XApps);
 
     /**
      * Install package-specific smack rules plus add rules for specified external apps.
@@ -102,7 +102,7 @@ public:
             const std::string &pkgName,
             const int authorId,
             const std::vector<std::string> &pkgContents,
-            const std::vector<std::string> &appsGranted,
+            const std::vector<std::pair<std::string, std::string>> &appsGranted,
             const std::vector<std::string> &accessPackages);
 
     /**
@@ -139,7 +139,7 @@ public:
     static void updatePackageRules(
             const std::string &pkgName,
             const std::vector<std::string> &pkgContents,
-            const std::vector<std::string> &appsGranted);
+            const std::vector<std::pair<std::string, std::string>> &appsGranted);
 
     /**
      * Uninstall author-specific smack rules.
