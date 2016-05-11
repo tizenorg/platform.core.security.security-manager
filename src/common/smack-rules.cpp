@@ -287,7 +287,7 @@ void SmackRules::generateAppToOtherPackagesDeps(
  */
 void SmackRules::generateAllowOther2XApplicationDeps(
         const std::string pkgName,
-        const std::vector<std::string> &other2XApps)
+        const std::vector<std::pair<std::string, std::string>> &other2XApps)
 {
     LogDebug("Generating cross-package rules");
 
@@ -296,7 +296,11 @@ void SmackRules::generateAllowOther2XApplicationDeps(
 
     // allow other app to access installed package contents
     for (const auto &subject : other2XApps) {
-        std::string subjectLabel = SmackLabels::generateAppLabel(subject);
+        // do not add a rule for apps to their own package, it already exists
+        if (pkgName == subject.second)
+            continue;
+
+        std::string subjectLabel = SmackLabels::generateAppLabel(subject.first);
 
         LogDebug("Addding cross 2.x app rule subject: " << subjectLabel << " to newly installed object: "
             << objectLabel << " perms: " << SMACK_APP_CROSS_PKG_PERMS);
@@ -414,7 +418,7 @@ void SmackRules::installApplicationRules(
         const std::string &pkgName,
         const int authorId,
         const std::vector<std::string> &pkgContents,
-        const std::vector<std::string> &appsGranted,
+        const std::vector<std::pair<std::string, std::string>> &appsGranted,
         const std::vector<std::string> &accessPackages)
 {
     useTemplate(APP_RULES_TEMPLATE_FILE_PATH, getApplicationRulesFilePath(appName), appName, pkgName, authorId);
@@ -429,7 +433,7 @@ void SmackRules::installApplicationRules(
 void SmackRules::updatePackageRules(
         const std::string &pkgName,
         const std::vector<std::string> &pkgContents,
-        const std::vector<std::string> &appsGranted)
+        const std::vector<std::pair<std::string, std::string>> &appsGranted)
 {
     SmackRules smackRules;
     smackRules.addFromTemplateFile(
