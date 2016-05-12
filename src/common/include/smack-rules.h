@@ -246,10 +246,12 @@ private:
      * Allow application to access other packages shared directory.
      *
      * @param[in] appName - application identifier
+     * @param[in] pkgName - application package
      * @param[in] other2XPackages - list of 2.x packages to be accessed
      */
     static void generateAppToOtherPackagesDeps(
-            const std::string appName,
+            const std::string &appName,
+            const std::string &pkgName,
             const std::vector<std::string> &other2XPackages);
 
     /**
