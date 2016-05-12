@@ -384,7 +384,7 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
     std::string pkgBasePath;
     std::string appLabel;
     std::string pkgLabel;
-    std::vector<std::string> allTizen2XApps, allTizen2XPackages;
+    std::vector<std::string> allTizen2XApps, tizen2XPackages;
     int authorId;
 
     try {
@@ -424,7 +424,7 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
         // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
         if(isTizen2XVersion(req.tizenVersion)) {
             PrivilegeDb::getInstance().GetTizen2XApps(req.appName, allTizen2XApps);
-            PrivilegeDb::getInstance().GetTizen2XPackages(allTizen2XPackages);
+            PrivilegeDb::getInstance().GetTizen2XPackages(req.pkgName, tizen2XPackages);
         }
 
         // WTF? Why this commit is here? Shouldn't it be at the end of this function?
@@ -465,7 +465,7 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
     try {
         LogDebug("Adding Smack rules for new appName: " << req.appName << " with pkgName: "
                 << req.pkgName << ". Applications in package: " << pkgContents.size());
-        SmackRules::installApplicationRules(req.appName, req.pkgName, authorId, pkgContents, allTizen2XApps, allTizen2XPackages);
+        SmackRules::installApplicationRules(req.appName, req.pkgName, authorId, pkgContents, allTizen2XApps, tizen2XPackages);
         SmackRules::mergeRules();
     } catch (const SmackException::InvalidParam &e) {
         LogError("Invalid paramater during labeling: " << e.GetMessage());

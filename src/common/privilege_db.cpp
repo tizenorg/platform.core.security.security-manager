@@ -448,10 +448,11 @@ void PrivilegeDb::GetTizen2XApps(const std::string& origApp, std::vector<std::st
      });
 }
 
-void PrivilegeDb::GetTizen2XPackages(std::vector<std::string> &packages)
+void PrivilegeDb::GetTizen2XPackages(const std::string &origPkg, std::vector<std::string> &packages)
 {
     try_catch<void>([&] {
-        auto command = getStatement(StmtType::EGetAllTizen2XPackages);
+        auto command = getStatement(StmtType::EGetTizen2XPackages);
+        command->BindString(1, origPkg);
         packages.clear();
         while (command->Step()) {
             const std::string & tizen2XPkg = command->GetColumnString(0);
