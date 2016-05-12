@@ -256,12 +256,17 @@ void SmackRules::generatePackageCrossDeps(const std::vector<std::string> &pkgCon
 }
 
 void SmackRules::generateAppToOtherPackagesDeps(
-        const std::string appName,
+        const std::string &appName,
+        const std::string &pkgName,
         const std::vector<std::string> &other2XPackages)
 {
     // reverse: allow installed app to access others' contents
     // for every 2.X package
     for (const auto &object : other2XPackages) {
+        // do not add a rule to app's own package, this rule already exists
+        if (pkgName == object)
+            continue;
+
         std::string otherObjectLabel = SmackLabels::generatePkgLabelOwnerRWothersRO(object);
 
         SmackRules packageRules;
@@ -418,7 +423,7 @@ void SmackRules::installApplicationRules(
         useTemplate(AUTHOR_RULES_TEMPLATE_FILE_PATH, getAuthorRulesFilePath(authorId), appName, pkgName, authorId);
 
     updatePackageRules(pkgName, pkgContents, appsGranted);
-    generateAppToOtherPackagesDeps(appName, accessPackages);
+    generateAppToOtherPackagesDeps(appName, pkgName, accessPackages);
 }
 
 void SmackRules::updatePackageRules(
