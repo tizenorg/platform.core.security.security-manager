@@ -434,11 +434,12 @@ void PrivilegeDb::GetUserApps(uid_t uid, std::vector<std::string> &apps)
     });
 }
 
-void PrivilegeDb::GetTizen2XApps(const std::string& origApp, std::vector<std::string> &apps)
+void PrivilegeDb::GetTizen2XApps(const std::string &origApp, const std::string &origPkg, std::vector<std::string> &apps)
 {
     try_catch<void>([&] {
         auto command = getStatement(StmtType::EGetAllTizen2XApps);
         command->BindString(1, origApp);
+        command->BindString(2, origPkg);
         apps.clear();
         while (command->Step()) {
             const std::string & tizen2XApp = command->GetColumnString(0);

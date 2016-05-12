@@ -423,7 +423,7 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
 
         // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
         if(isTizen2XVersion(req.tizenVersion)) {
-            PrivilegeDb::getInstance().GetTizen2XApps(req.appName, allTizen2XApps);
+            PrivilegeDb::getInstance().GetTizen2XApps(req.appName, req.pkgName, allTizen2XApps);
             PrivilegeDb::getInstance().GetTizen2XPackages(allTizen2XPackages);
         }
 
@@ -533,7 +533,7 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
         // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
         PrivilegeDb::getInstance().GetAppVersion(req.appName, tizenVersion);
         if (isTizen2XVersion(tizenVersion))
-            PrivilegeDb::getInstance().GetTizen2XApps(req.appName, allTizen2XApps);
+            PrivilegeDb::getInstance().GetTizen2XApps(req.appName, "", allTizen2XApps);
 
         CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, cynaraUserStr, std::vector<std::string>());
 
