@@ -384,7 +384,7 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
     std::string pkgBasePath;
     std::string appLabel;
     std::string pkgLabel;
-    std::vector<std::string> allTizen2XApps, tizen2XPackages;
+    std::vector<std::string> tizen2XApps, tizen2XPackages;
     int authorId;
 
     try {
@@ -423,7 +423,7 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
 
         // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
         if(isTizen2XVersion(req.tizenVersion)) {
-            PrivilegeDb::getInstance().GetTizen2XApps(req.appName, allTizen2XApps);
+            PrivilegeDb::getInstance().GetTizen2XApps(req.pkgName, tizen2XApps);
             PrivilegeDb::getInstance().GetTizen2XPackages(req.pkgName, tizen2XPackages);
         }
 
@@ -465,7 +465,7 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
     try {
         LogDebug("Adding Smack rules for new appName: " << req.appName << " with pkgName: "
                 << req.pkgName << ". Applications in package: " << pkgContents.size());
-        SmackRules::installApplicationRules(req.appName, req.pkgName, authorId, pkgContents, allTizen2XApps, tizen2XPackages);
+        SmackRules::installApplicationRules(req.appName, req.pkgName, authorId, pkgContents, tizen2XApps, tizen2XPackages);
         SmackRules::mergeRules();
     } catch (const SmackException::InvalidParam &e) {
         LogError("Invalid paramater during labeling: " << e.GetMessage());
@@ -493,7 +493,7 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
     bool removePkg = false;
     bool removeAuthor = false;
     std::string cynaraUserStr;
-    std::vector<std::string> allTizen2XApps;
+    std::vector<std::string> tizen2XApps;
     int authorId;
 
     installRequestMangle(req, cynaraUserStr);
@@ -533,7 +533,7 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
         // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
         PrivilegeDb::getInstance().GetAppVersion(req.appName, tizenVersion);
         if (isTizen2XVersion(tizenVersion))
-            PrivilegeDb::getInstance().GetTizen2XApps(req.appName, allTizen2XApps);
+            PrivilegeDb::getInstance().GetTizen2XApps(req.pkgName, tizen2XApps);
 
         CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, cynaraUserStr, std::vector<std::string>());
 
@@ -569,7 +569,7 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
             if (!removePkg) {
                 LogDebug("Recreating Smack rules for pkgName " << req.pkgName);
                 pkgContents.erase(std::remove(pkgContents.begin(), pkgContents.end(),req.appName), pkgContents.end());
-                SmackRules::updatePackageRules(req.pkgName, pkgContents, allTizen2XApps);
+                SmackRules::updatePackageRules(req.pkgName, pkgContents, tizen2XApps);
             }
         }
 
