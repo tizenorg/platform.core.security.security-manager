@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <sys/file.h>
@@ -36,31 +37,35 @@
 
 #include <config.h>
 #include <dpl/errno_string.h>
+#include <dpl/fstream_accessors.h>
 #include <dpl/log/log.h>
 #include <permissible-set.h>
 #include <privilege_db.h>
 #include <security-manager-types.h>
 #include <smack-labels.h>
 
-typedef std::unique_ptr<FILE, int (*)(FILE *)> filePtr;
-
 namespace SecurityManager {
 namespace PermissibleSet {
 
-static filePtr openAndLockLabelFile(const std::string &labelFile, const char* mode)
+template <typename T>
+static inline int getFd(T &fstream)
 {
-    filePtr file(fopen(labelFile.c_str(), mode), fclose);
-    if (!file) {
+    return DPL::FstreamAccessors<T>::GetFd(fstream);
+}
+
+template <typename T>
+static void openAndLockLabelFile(const std::string &labelFile, T &fstream)
+{
+    fstream.open(labelFile);
+    if (!fstream.is_open()) {
         LogError("Unable to open file " << labelFile << ": " << GetErrnoString(errno));
-        return filePtr(nullptr, nullptr);
+        // throw
     }
 
-    int ret = TEMP_FAILURE_RETRY(flock(fileno(file.get()), LOCK_EX));
-    if (ret == -1) {
+    if (TEMP_FAILURE_RETRY(flock(getFd(fstream), LOCK_EX)) == -1) {
         LogError("Unable to lock file " << labelFile << ": " << GetErrnoString(errno));
-        return filePtr(nullptr, nullptr);
+        // throw
     }
-    return file;
 }
 
 void getUserAppLabels(const uid_t uid, std::vector<std::string> &appLabels)
@@ -83,46 +88,42 @@ bool updatePermissibleFile(const uid_t user, const int installationType)
         LogError("Installation type: unknown");
         return false;
     }
-    filePtr file = openAndLockLabelFile(labelFile, "w");
-    if (!file) {
-        LogError("Unable to open file "<< GetErrnoString(errno));
-        return false;
-    }
+
+    std::ofstream fstream;
+    openAndLockLabelFile(labelFile, fstream);
+
     std::vector<std::string> appLabels;
     getUserAppLabels(user, appLabels);
-    for (auto label : appLabels) {
-        if (fprintf(file.get(), "%s\n", label.c_str()) < 0) {
-            LogError("Unable to fprintf() to file " << labelFile << ": " << GetErrnoString(errno));
-            return false;
+    for (const auto label : appLabels) {
+        fstream << label << std::endl;
+        if (fstream.bad()) {
+            LogError("I/O error during write to file " << labelFile);
+            // throw
         }
     }
+
+    if (fstream.flush().fail()) {
+        LogError("Error flushing file " << labelFile);
+        // throw
+    }
+
+    if (TEMP_FAILURE_RETRY(fsync(getFd(fstream))) == -1) {
+        LogError("Error fsync on file " << labelFile);
+        // throw
+    }
+
     return true;
 }
 
 lib_retcode readLabelsFromPermissibleFile(const std::string &labelFile,
         std::vector<std::string> &labels)
 {
-    filePtr file = openAndLockLabelFile(labelFile, "r");
-    int ret;
-    do {
-        char *buf = nullptr;
-        std::size_t bufSize = 0;
-        switch (ret = getline(&buf, &bufSize, file.get())) {
-        case 0:
-            continue;
-        case -1:
-            if (feof(file.get()))
-                break;
-            LogError("Failure while reading file " << labelFile << ": " << GetErrnoString(errno));
-            return SECURITY_MANAGER_ERROR_FILE_OPEN_FAILED;
-        default:
-            std::unique_ptr<char, decltype(free)*> buf_up(buf, free);
-            if (buf[ret - 1] == '\n')
-                buf[ret - 1] = '\0';
-            labels.push_back(buf);
-            buf_up.release();
-        }
-    } while (ret != -1);
+    std::ifstream fstream;
+    openAndLockLabelFile(labelFile, fstream);
+
+    std::string line;
+    while (std::getline(fstream, line))
+        labels.push_back(line);
 
     return SECURITY_MANAGER_SUCCESS;
 }
