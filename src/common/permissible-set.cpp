@@ -28,6 +28,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <memory>
 #include <pwd.h>
 #include <string>
@@ -39,31 +40,36 @@
 #include <config.h>
 #include <dpl/errno_string.h>
 #include <dpl/exception.h>
+#include <dpl/fstream_accessors.h>
 #include <dpl/log/log.h>
 #include <permissible-set.h>
 #include <privilege_db.h>
 #include <security-manager-types.h>
 #include <tzplatform_config.h>
 
-typedef std::unique_ptr<FILE, int (*)(FILE *)> filePtr;
-
 namespace SecurityManager {
 namespace PermissibleSet {
 
-static filePtr openAndLockLabelFile(const std::string &labelFile, const char* mode)
+template <typename T>
+static inline int getFd(T &fstream)
 {
-    filePtr file(fopen(labelFile.c_str(), mode), fclose);
-    if (!file) {
+    return DPL::FstreamAccessors<T>::GetFd(fstream);
+}
+
+template <typename T>
+static void openAndLockLabelFile(const std::string &labelFile, T &fstream)
+{
+    fstream.open(labelFile);
+    if (!fstream.is_open()) {
         LogError("Unable to open file" << labelFile << ": " << GetErrnoString(errno));
         ThrowMsg(PermissibleSetException::FileOpenError, "Unable to open file ");
     }
 
-    int ret = TEMP_FAILURE_RETRY(flock(fileno(file.get()), LOCK_EX));
+    int ret = TEMP_FAILURE_RETRY(flock(getFd(fstream), LOCK_EX));
     if (ret == -1) {
         LogError("Unable to lock file " << labelFile << ": " << GetErrnoString(errno));
         ThrowMsg(PermissibleSetException::FileLockError, "Unable to lock file");
     }
-    return file;
 }
 
 std::string getPerrmissibleFileLocation(int installationType)
@@ -77,54 +83,39 @@ std::string getPerrmissibleFileLocation(int installationType)
 
 void updatePermissibleFile(uid_t uid, int installationType) {
     std::string labelFile = getPerrmissibleFileLocation(installationType);
-    filePtr file = openAndLockLabelFile(labelFile, "w");
-    if (chmod(labelFile.c_str(), 0400) == -1)  //owner w
+    std::ofstream fstream;
+    openAndLockLabelFile(labelFile, fstream);
+    if (fchmod(getFd(fstream), 0400) == -1)  //owner w
         LogError("Error at chmod " << labelFile << ": " << GetErrnoString(errno));
     std::vector<std::string> appLabels;
     PrivilegeDb::getInstance().GetUserApps(uid, appLabels);
     for (auto label : appLabels) {
-        if (fprintf(file.get(), "%s\n", label.c_str()) < 0) {
+        fstream << label << std::endl;
+        if (fstream.bad()) {
             LogError("Unable to fprintf() to file " << labelFile << ": " << GetErrnoString(errno));
             ThrowMsg(PermissibleSetException::PermissibleSetException::FileWriteError,
                     "Unable to fprintf() to file");
         }
     }
-    if (fflush(file.get()) != 0) {
+    if (fstream.flush().fail()) {
         LogError("Error at fflush " << labelFile << ": " << GetErrnoString(errno));
     }
-    if (fsync(fileno(file.get())) == -1) {
+    if (fsync(getFd(fstream)) == -1) {
         LogError("Error at fsync " << labelFile << ": " << GetErrnoString(errno));
     }
-    if (fchmod(fileno(file.get()), 00640) == -1) { //owner rw, group r
+    if (fchmod(getFd(fstream), 00640) == -1) { //owner rw, group r
         LogError("Error at fchmod " << labelFile << ": " << GetErrnoString(errno));
     }
 }
 
 void readLabelsFromPermissibleFile(const std::string &labelFile, std::vector<std::string> &labels)
 {
-    filePtr file = openAndLockLabelFile(labelFile, "r");
-    int ret;
-    do {
-        char *buf = nullptr;
-        std::size_t bufSize = 0;
-        switch (ret = getline(&buf, &bufSize, file.get())) {
-        case 0:
-            continue;
-        case -1:
-            if (feof(file.get()))
-                break;
-            LogError("Failure while reading file " << labelFile << ": " << GetErrnoString(errno));
-            ThrowMsg(PermissibleSetException::FileReadError, "Failure while reading file");
-        default:
-            std::unique_ptr<char, decltype(free)*> buf_up(buf, free);
-            if (buf[ret - 1] == '\n')
-                buf[ret - 1] = '\0';
-            labels.push_back(buf);
-            buf_up.release();
-        }
-    } while (ret != -1);
+    std::ifstream fstream;
+    openAndLockLabelFile(labelFile, fstream);
 
-    return;
+    std::string line;
+    while (std::getline(fstream, line))
+        labels.push_back(line);
 }
 
 } // PermissibleSet
