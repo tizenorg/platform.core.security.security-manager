@@ -375,6 +375,21 @@ int ServiceImpl::labelPaths(const pkg_paths &paths,
     }
 }
 
+void ServiceImpl::generateSharedRORules()
+{
+    std::vector<std::string> tizen2XPackages;
+    PrivilegeDb::getInstance().GetTizen2XPackages(tizen2XPackages);
+
+    std::vector<std::pair<std::string, std::vector<std::string>>> tizen2XApps;
+    tizen2XApps.resize(tizen2XPackages.size());
+    for (size_t i = 0; i < tizen2XPackages.size(); ++i) {
+        tizen2XApps[i].first = std::move(tizen2XPackages[i]);
+        PrivilegeDb::getInstance().GetPkgApps(tizen2XApps[i].first, tizen2XApps[i].second);
+    }
+
+    SmackRules::generateSharedRORules(tizen2XApps);
+}
+
 int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
 {
     std::vector<std::string> addedPermissions;
@@ -384,7 +399,6 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
     std::string pkgBasePath;
     std::string appLabel;
     std::string pkgLabel;
-    std::vector<std::string> allTizen2XApps, allTizen2XPackages;
     int authorId;
 
     try {
@@ -420,12 +434,6 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
         PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
         PrivilegeDb::getInstance().GetPkgAuthorId(req.pkgName, authorId);
         CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, cynaraUserStr, req.privileges);
-
-        // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
-        if(isTizen2XVersion(req.tizenVersion)) {
-            PrivilegeDb::getInstance().GetTizen2XApps(req.appName, allTizen2XApps);
-            PrivilegeDb::getInstance().GetTizen2XPackages(allTizen2XPackages);
-        }
 
         // WTF? Why this commit is here? Shouldn't it be at the end of this function?
         PrivilegeDb::getInstance().CommitTransaction();
@@ -465,8 +473,16 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
     try {
         LogDebug("Adding Smack rules for new appName: " << req.appName << " with pkgName: "
                 << req.pkgName << ". Applications in package: " << pkgContents.size());
-        SmackRules::installApplicationRules(req.appName, req.pkgName, authorId, pkgContents, allTizen2XApps, allTizen2XPackages);
+        SmackRules::installApplicationRules(req.appName, req.pkgName, authorId, pkgContents);
+
+        // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
+        if (isTizen2XVersion(req.tizenVersion))
+            generateSharedRORules();
+
         SmackRules::mergeRules();
+    } catch (const PrivilegeDb::Exception::Base &e) {
+        LogError("Unknown database error: " << e.GetMessage());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
     } catch (const SmackException::InvalidParam &e) {
         LogError("Invalid paramater during labeling: " << e.GetMessage());
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
@@ -493,7 +509,6 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
     bool removePkg = false;
     bool removeAuthor = false;
     std::string cynaraUserStr;
-    std::vector<std::string> allTizen2XApps;
     int authorId;
 
     installRequestMangle(req, cynaraUserStr);
@@ -527,16 +542,11 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
             package that the app appears in */
         PrivilegeDb::getInstance().GetPkgAuthorId(req.pkgName, authorId);
         PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
+        PrivilegeDb::getInstance().GetAppVersion(req.appName, tizenVersion);
         PrivilegeDb::getInstance().UpdateAppPrivileges(req.appName, req.uid, std::vector<std::string>());
         PrivilegeDb::getInstance().RemoveApplication(req.appName, req.uid, removeApp, removePkg, removeAuthor);
 
-        // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
-        PrivilegeDb::getInstance().GetAppVersion(req.appName, tizenVersion);
-        if (isTizen2XVersion(tizenVersion))
-            PrivilegeDb::getInstance().GetTizen2XApps(req.appName, allTizen2XApps);
-
         CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, cynaraUserStr, std::vector<std::string>());
-
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application uninstallation commited to database");
     } catch (const PrivilegeDb::Exception::IOError &e) {
@@ -569,7 +579,7 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
             if (!removePkg) {
                 LogDebug("Recreating Smack rules for pkgName " << req.pkgName);
                 pkgContents.erase(std::remove(pkgContents.begin(), pkgContents.end(),req.appName), pkgContents.end());
-                SmackRules::updatePackageRules(req.pkgName, pkgContents, allTizen2XApps);
+                SmackRules::updatePackageRules(req.pkgName, pkgContents);
             }
         }
 
@@ -578,7 +588,14 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
             SmackRules::uninstallAuthorRules(authorId);
         }
 
+        // if uninstalled app is targetted to Tizen 2.X, remove other 2.X apps RO rules it's shared dir
+        if (isTizen2XVersion(req.tizenVersion))
+            generateSharedRORules();
+
         SmackRules::mergeRules();
+    } catch (const PrivilegeDb::Exception::Base &e) {
+        LogError("Unknown database error: " << e.GetMessage());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
     } catch (const SmackException::Base &e) {
         LogError("Error while removing Smack rules for application: " << e.DumpToString());
         return SECURITY_MANAGER_ERROR_SETTING_FILE_LABEL_FAILED;
