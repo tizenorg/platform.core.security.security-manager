@@ -75,14 +75,14 @@ public:
     void generatePackageCrossDeps(const std::vector<std::string> &pkgContents);
 
     /**
-     * Create cross dependencies for all other 2.X applications
+     * Generate SharedRO rules for Tizen 2.x applications
+     * Each 2.X application gets read-only access to files shared by all other 2.X packages.
      *
-     * @param[in] pkgName - installed package identifier to access it's shared dir
-     * @param[in] other2XApps - list of 2.x apps to grant access
+     * @param[in] tizen2XApps vector of Tizen 2.X applications - each element contains
+     *                        a pair with package name and contents
      */
-    void generateAllowOther2XApplicationDeps(
-            const std::string pkgName,
-            const std::vector<std::string> &other2XApps);
+    static void generateSharedRORules(
+        std::vector<std::pair<std::string, std::vector<std::string>>> tizen2XApps);
 
     /**
      * Install package-specific smack rules plus add rules for specified external apps.
@@ -94,16 +94,12 @@ public:
      * @param[in] pkgName - package identifier
      * @param[in] authorId - author id of application
      * @param[in] pkgContents - list of all applications in the package
-     * @param[in] appsGranted - list of 2.x apps granted access
-     * @param[in] accessPackages - list of 2.x packages to be accessed
      */
     static void installApplicationRules(
             const std::string &appName,
             const std::string &pkgName,
             const int authorId,
-            const std::vector<std::string> &pkgContents,
-            const std::vector<std::string> &appsGranted,
-            const std::vector<std::string> &accessPackages);
+            const std::vector<std::string> &pkgContents);
 
     /**
      * Uninstall package-specific smack rules.
@@ -134,12 +130,10 @@ public:
      *
      * @param[in] pkgName - package identifier that the application is in
      * @param[in] pkgContents - list of all applications in the package
-     * @param[in] appsGranted - list of 2.x apps granted access
      */
     static void updatePackageRules(
             const std::string &pkgName,
-            const std::vector<std::string> &pkgContents,
-            const std::vector<std::string> &appsGranted);
+            const std::vector<std::string> &pkgContents);
 
     /**
      * Uninstall author-specific smack rules.
@@ -194,8 +188,6 @@ public:
                                         bool isPathSharedNoMore,
                                         bool isTargetSharingNoMore);
 
-    static void updatePackageRules(const std::string &pkgName, const std::vector<std::string> &pkgContents);
-
     /**
      * This function will read all rules created by security-manager and
      * save them in one file. This file will be used during next system
@@ -241,16 +233,6 @@ private:
      * @param[in] path - path to the file that contains the rules
      */
     static void uninstallRules(const std::string &path);
-
-    /**
-     * Allow application to access other packages shared directory.
-     *
-     * @param[in] appName - application identifier
-     * @param[in] other2XPackages - list of 2.x packages to be accessed
-     */
-    static void generateAppToOtherPackagesDeps(
-            const std::string appName,
-            const std::vector<std::string> &other2XPackages);
 
     /**
      * Helper method: replace all occurrences of \ref needle in \ref haystack
