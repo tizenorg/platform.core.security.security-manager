@@ -41,6 +41,8 @@ private:
 
     static uid_t getGlobalUserId(void);
 
+    static bool userExists(const uid_t uid);
+
     static bool isSubDir(const char *parent, const char *subdir);
 
     static bool getUserPkgDir(const uid_t &uid,

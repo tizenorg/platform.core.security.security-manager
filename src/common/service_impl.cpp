@@ -188,6 +188,11 @@ uid_t ServiceImpl::getGlobalUserId(void)
     return globaluid;
 }
 
+bool ServiceImpl::userExists(const uid_t uid)
+{
+    return getpwuid(uid) != NULL;
+}
+
 bool ServiceImpl::isSubDir(const char *parent, const char *subdir)
 {
     while (*parent && *subdir)
@@ -394,6 +399,11 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
                  << ", uid: " << req.uid << ", target Tizen API ver: "
                  << (req.tizenVersion.empty() ? "unknown" : req.tizenVersion));
 
+        if (!userExists(req.uid)) {
+            LogError("Nonexistent user ID passed: uid=" << req.uid);
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+        }
+
         if (!authCheck(creds, req.uid, req.installationType)) {
             LogError("Request from uid=" << creds.uid << ", Smack=" << creds.label <<
                 " for app installation denied");
@@ -499,6 +509,11 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
     installRequestMangle(req, cynaraUserStr);
 
     LogDebug("Uninstall parameters: appName=" << req.appName << ", uid=" << req.uid);
+
+    if (!userExists(req.uid)) {
+        LogError("Nonexistent user ID passed: uid=" << req.uid);
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    }
 
     if (!authCheck(creds, req.uid, req.installationType)) {
         LogError("Request from uid=" << creds.uid << ", Smack=" << creds.label <<
@@ -1304,6 +1319,11 @@ int ServiceImpl::pathsRegister(const Credentials &creds, path_req req)
         return SECURITY_MANAGER_SUCCESS;
 
     setRequestDefaultValues(req.uid, req.installationType);
+
+    if (!userExists(req.uid)) {
+        LogError("Nonexistent user ID passed: uid=" << req.uid);
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    }
 
     try {
         if (!authCheck(creds, req.uid, req.installationType)) {
