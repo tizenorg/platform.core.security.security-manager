@@ -41,6 +41,8 @@ extern const std::string PRIVILEGE_POLICY_USER;
 extern const std::string PRIVILEGE_POLICY_ADMIN;
 extern const std::string PRIVILEGE_APPSHARING_ADMIN;
 
+extern const std::string SKEL_DIR;
+
 };
 
 } /* namespace SecurityManager */
