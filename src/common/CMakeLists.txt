@@ -50,6 +50,7 @@ SET(COMMON_SOURCES
     ${COMMON_PATH}/connection.cpp
     ${COMMON_PATH}/credentials.cpp
     ${COMMON_PATH}/cynara.cpp
+    ${COMMON_PATH}/filesystem.cpp
     ${COMMON_PATH}/file-lock.cpp
     ${COMMON_PATH}/protocols.cpp
     ${COMMON_PATH}/message-buffer.cpp
@@ -58,7 +59,7 @@ SET(COMMON_SOURCES
     ${COMMON_PATH}/smack-rules.cpp
     ${COMMON_PATH}/smack-check.cpp
     ${COMMON_PATH}/service_impl.cpp
-    ${COMMON_PATH}/filesystem.cpp
+    ${COMMON_PATH}/tzplatform-config.cpp
     )
 
 IF(DPL_WITH_DLOG)
