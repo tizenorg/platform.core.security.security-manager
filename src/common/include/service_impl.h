@@ -58,7 +58,7 @@ private:
                                         int installationType);
 
     static bool pathsCheck(const pkg_paths &requestedPaths,
-                           const std::string pkgPath);
+                           const std::vector<std::string> allowedDirs);
 
     static int labelPaths(const pkg_paths &paths,
                              const std::string &pkgName,

@@ -303,9 +303,13 @@ bool ServiceImpl::authCheck(const Credentials &creds,
 }
 
 bool ServiceImpl::pathsCheck(const pkg_paths &requestedPaths,
-                             const std::string pkgPath)
+                             const std::vector<std::string> allowedDirs)
 
 {
+    LogDebug("Validating installation paths. Allowed directories: ");
+    for (const auto &dir : allowedDirs)
+        LogDebug("- " << dir);
+
     for (const auto &path : requestedPaths) {
         std::unique_ptr<char, std::function<void(void*)>> real_path(
             realpath(path.first.c_str(), NULL), free);
@@ -314,10 +318,14 @@ bool ServiceImpl::pathsCheck(const pkg_paths &requestedPaths,
                     << "' as parameter: " << GetErrnoString(errno));
             return false;
         }
-        LogDebug("Requested path is '" << path.first.c_str()
-                << "'. User's pkg dir is '" << pkgPath << "'");
-        if (!isSubDir(pkgPath.c_str(), real_path.get())) {
-            LogWarning("Installation is outside correct path: " << pkgPath << "," << real_path.get());
+
+        LogDebug("Requested path is '" << path.first.c_str() << "'");
+        bool allowed = std::any_of(allowedDirs.begin(), allowedDirs.end(),
+            [&](const std::string &dir)
+                {return isSubDir(dir.c_str(), real_path.get());});
+        if (!allowed) {
+            LogWarning("Installation path " << real_path.get()
+                << " is outside allowed directories");
             return false;
         }
     }
@@ -344,7 +352,10 @@ int ServiceImpl::labelPaths(const pkg_paths &paths,
             return SECURITY_MANAGER_ERROR_SERVER_ERROR;
 
         // check if paths are inside
-        if (!pathsCheck(paths, pkgBasePath))
+        bool pathsOK = (installationType == SM_APP_INSTALL_LOCAL) ?
+            pathsCheck(paths, {pkgBasePath}) :
+            pathsCheck(paths, {pkgBasePath, "/etc/skel/apps_rw"});
+        if (!pathsOK)
             return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
 
         if (!paths.empty())
