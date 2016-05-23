@@ -69,6 +69,10 @@ private:
 
     static bool getZoneId(std::string &zoneId);
 
+    int squashDropPrivateSharing(const std::string &ownerAppName,
+                                 const std::string &targetAppName,
+                                 const std::string &path);
+
     int dropOnePrivateSharing(const std::string &ownerAppName,
                               const std::string &ownerPkgName,
                               const std::vector<std::string> &ownerPkgContents,
