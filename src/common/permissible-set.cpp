@@ -67,13 +67,24 @@ static filePtr openAndLockNameFile(const std::string &nameFile, const char* mode
     return file;
 }
 
-std::string getPerrmissibleFileLocation(int installationType)
+std::string getPerrmissibleFileLocation(const uid_t uid, int installationType)
 {
+    struct tzplatform_context *ctx;
+    if (tzplatform_context_create(&ctx) || ctx == nullptr)
+        ThrowMsg(PermissibleSetException::FileConfigError, "Error in tzplatform_context_create()");
+
+    if (tzplatform_context_set_user(ctx, uid)) {
+        tzplatform_context_destroy(ctx);
+        ThrowMsg(PermissibleSetException::FileConfigError, "Error in tzplatform_context_set_user()");
+    }
+    std::string path;
     if ((installationType == SM_APP_INSTALL_GLOBAL)
             || (installationType == SM_APP_INSTALL_PRELOADED))
-        return tzplatform_mkpath(TZ_SYS_RW_APP, Config::APPS_NAME_FILE.c_str());
-    return tzplatform_mkpath(TZ_USER_APP, Config::APPS_NAME_FILE.c_str());
-
+        path = tzplatform_context_mkpath(ctx, TZ_SYS_RW_APP, Config::APPS_NAME_FILE.c_str());
+    else
+        path = tzplatform_context_mkpath(ctx, TZ_USER_APP, Config::APPS_NAME_FILE.c_str());
+    tzplatform_context_destroy(ctx);
+    return path;
 }
 
 static void markPermissibleFileValid(int fd, const std::string &nameFile, bool valid)
@@ -91,7 +102,7 @@ static void markPermissibleFileValid(int fd, const std::string &nameFile, bool v
 
 void updatePermissibleFile(uid_t uid, int installationType)
 {
-    std::string nameFile = getPerrmissibleFileLocation(installationType);
+    std::string nameFile = getPerrmissibleFileLocation(uid, installationType);
     filePtr file = openAndLockNameFile(nameFile, "w");
     markPermissibleFileValid(fileno(file.get()), nameFile, false);
     std::vector<std::string> appNames;
