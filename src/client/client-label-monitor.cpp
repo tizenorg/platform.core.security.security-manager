@@ -108,9 +108,9 @@ int security_manager_app_labels_monitor_init(app_labels_monitor **monitor)
         int ret;
         lib_retcode ret_lib;
         const std::string globalFile =
-            PermissibleSet::getPerrmissibleFileLocation(SM_APP_INSTALL_GLOBAL);
+            PermissibleSet::getPerrmissibleFileLocation(getuid(), SM_APP_INSTALL_GLOBAL);
         const std::string userFile =
-            PermissibleSet::getPerrmissibleFileLocation(SM_APP_INSTALL_LOCAL);
+            PermissibleSet::getPerrmissibleFileLocation(getuid(), SM_APP_INSTALL_LOCAL);
 
         *monitor = nullptr;
 
@@ -212,7 +212,7 @@ int security_manager_app_labels_monitor_process(app_labels_monitor *monitor)
             return SECURITY_MANAGER_ERROR_INPUT_PARAM;
         }
         const std::string globalFile =
-            PermissibleSet::getPerrmissibleFileLocation(SM_APP_INSTALL_GLOBAL);
+            PermissibleSet::getPerrmissibleFileLocation(getuid(), SM_APP_INSTALL_GLOBAL);
 
         if (monitor->inotify == -1 || monitor->global_labels_file_watch == -1 ||
             monitor->user_labels_file_watch == -1) {
