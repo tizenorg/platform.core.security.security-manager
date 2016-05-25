@@ -54,9 +54,11 @@ struct app_labels_monitor {
     int global_labels_file_watch;
     int user_labels_file_watch;
     bool fresh;
+    uid_t uid;
     std::string user_label_file_path;
+    std::string global_label_file_path;
     app_labels_monitor() : inotify(-1), global_labels_file_watch(-1), user_labels_file_watch(-1),
-                           fresh(true) {}
+                           fresh(true), uid(0) {}
 };
 
 static lib_retcode apply_relabel_list(const std::string &global_label_file,
@@ -107,10 +109,6 @@ int security_manager_app_labels_monitor_init(app_labels_monitor **monitor)
         }
         int ret;
         lib_retcode ret_lib;
-        const std::string globalFile =
-            PermissibleSet::getPerrmissibleFileLocation(SM_APP_INSTALL_GLOBAL);
-        const std::string userFile =
-            PermissibleSet::getPerrmissibleFileLocation(SM_APP_INSTALL_LOCAL);
 
         *monitor = nullptr;
 
@@ -119,6 +117,14 @@ int security_manager_app_labels_monitor_init(app_labels_monitor **monitor)
             LogError("Bad memory allocation for app_labels_monitor");
             return SECURITY_MANAGER_ERROR_MEMORY;
         }
+
+        m->uid = getuid();
+        const std::string globalFile =
+            PermissibleSet::getPerrmissibleFileLocation(m->uid, SM_APP_INSTALL_GLOBAL);
+        const std::string userFile =
+            PermissibleSet::getPerrmissibleFileLocation(m->uid, SM_APP_INSTALL_LOCAL);
+
+
         ret = inotify_init();
         if (ret == -1) {
             LogError("Inotify init failed: " << GetErrnoString(errno));
@@ -136,6 +142,7 @@ int security_manager_app_labels_monitor_init(app_labels_monitor **monitor)
             return ret_lib;
         }
         m->user_label_file_path = userFile;
+        m->global_label_file_path = globalFile;
         *monitor = m.release();
         return SECURITY_MANAGER_SUCCESS;
     });
@@ -211,8 +218,6 @@ int security_manager_app_labels_monitor_process(app_labels_monitor *monitor)
             LogWarning("Error input param \"monitor\"");
             return SECURITY_MANAGER_ERROR_INPUT_PARAM;
         }
-        const std::string globalFile =
-            PermissibleSet::getPerrmissibleFileLocation(SM_APP_INSTALL_GLOBAL);
 
         if (monitor->inotify == -1 || monitor->global_labels_file_watch == -1 ||
             monitor->user_labels_file_watch == -1) {
@@ -222,7 +227,8 @@ int security_manager_app_labels_monitor_process(app_labels_monitor *monitor)
 
         if (monitor->fresh) {
             monitor->fresh = false;
-            return apply_relabel_list(globalFile, monitor->user_label_file_path);
+            return apply_relabel_list(monitor->global_label_file_path,
+                   monitor->user_label_file_path);
         }
 
         int avail;
@@ -252,7 +258,8 @@ int security_manager_app_labels_monitor_process(app_labels_monitor *monitor)
                 ((event.wd == monitor->global_labels_file_watch) ||
                  (event.wd == monitor->user_labels_file_watch))
                ){
-                lib_retcode r = apply_relabel_list(globalFile, monitor->user_label_file_path);
+                lib_retcode r = apply_relabel_list(monitor->global_label_file_path,
+                                                   monitor->user_label_file_path);
                 if (r != SECURITY_MANAGER_SUCCESS)
                     return r;
                 break;
