@@ -43,15 +43,17 @@ public:
     DECLARE_EXCEPTION_TYPE(Base, FileOpenError)
     DECLARE_EXCEPTION_TYPE(Base, FileReadError)
     DECLARE_EXCEPTION_TYPE(Base, FileWriteError)
+    DECLARE_EXCEPTION_TYPE(Base, FileConfigError)
 };
 /**
  * Return path to file with current list of application names
  * installed globally or locally for the user.
  *
+ * @param[in] uid identifier of the user whose application it should be
  * @param[in] installationType type of installation (global or local)
  * @return path to file with names
  */
-std::string getPerrmissibleFileLocation(int installationType);
+std::string getPerrmissibleFileLocation(const uid_t uid, int installationType);
 /**
  * Update permissable file with current content of database
  * @throws FileLockError
