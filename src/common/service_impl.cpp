@@ -44,6 +44,7 @@
 #include "smack-labels.h"
 #include "security-manager.h"
 #include "tzplatform-config.h"
+#include "utils.h"
 
 #include "service_impl.h"
 
@@ -203,7 +204,7 @@ bool ServiceImpl::isSubDir(const std::string &parent, const std::string &subdir)
 
 std::string ServiceImpl::realPath(const std::string &path)
 {
-    std::unique_ptr<char, decltype(free)*> real_pathPtr(realpath(path.c_str(), nullptr), free);
+    auto real_pathPtr = make_unique(realpath(path.c_str(), nullptr), free);
     if (!real_pathPtr) {
         LogError("Error in realpath(): " << GetErrnoString(errno) << " for: " << path);
         return std::string();
