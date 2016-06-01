@@ -36,6 +36,13 @@
 
 namespace SecurityManager {
 
+class SecurityImplException
+{
+public:
+    DECLARE_EXCEPTION_TYPE(SecurityManager::Exception, Base)
+    DECLARE_EXCEPTION_TYPE(Base, PrivilegeCheckerError)
+};
+
 class ServiceImpl {
 private:
     static bool authenticate(const Credentials &creds, const std::string &privilege);
@@ -71,6 +78,8 @@ private:
                              const uid_t &uid);
 
     static void getTizen2XApps(SmackRules::PkgsApps &pkgsApps);
+
+    static bool isPrivilegePrivacy(const char* privilege);
 
     int dropOnePrivateSharing(const std::string &ownerAppName,
                               const std::string &ownerPkgName,
