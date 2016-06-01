@@ -24,7 +24,8 @@
 
 #include "check-proper-drop.h"
 #include "smack-labels.h"
-#include <dpl/log/log.h>
+#include "dpl/log/log.h"
+#include "utils.h"
 
 #include <sys/capability.h>
 
@@ -32,10 +33,6 @@
 #include <string>
 
 namespace SecurityManager {
-
-using proctabPtr = std::unique_ptr<PROCTAB, void (*)(PROCTAB*)>;
-using capPtr = std::unique_ptr<_cap_struct, int (*)(void*)>;
-using capStrPtr = std::unique_ptr<char, int(*)(void*)>;
 
 CheckProperDrop::~CheckProperDrop()
 {
@@ -47,18 +44,17 @@ CheckProperDrop::~CheckProperDrop()
 void CheckProperDrop::getThreads()
 {
     pid_t pid[2] = {m_pid, 0};
-    proctabPtr PT(openproc(PROC_FILLSTATUS | PROC_PID, pid), closeproc);
-    if (!PT)
-        ThrowMsg(Exception::ProcError,
-            "Unable to open proc interface");
+    auto proctabPtr = makeUnique(openproc(PROC_FILLSTATUS | PROC_PID, pid), closeproc);
+    if (!proctabPtr)
+        ThrowMsg(Exception::ProcError, "Unable to open proc interface");
 
-    m_proc = readproc(PT.get(), nullptr);
+    m_proc = readproc(proctabPtr.get(), nullptr);
     if (!m_proc)
         ThrowMsg(Exception::ProcError,
             "Unable read process information for " << pid);
 
     proc_t *thread;
-    while ((thread = readtask(PT.get(), m_proc, nullptr)))
+    while ((thread = readtask(proctabPtr.get(), m_proc, nullptr)))
         if (thread->tid != m_pid)
             m_threads.push_back(thread);
 }
@@ -79,13 +75,13 @@ bool CheckProperDrop::checkThreads()
 
     std::string smackProc = SmackLabels::getSmackLabelFromPid(m_pid);
 
-    capPtr capProc(cap_get_pid(m_pid), cap_free);
-    if (!capProc)
+    auto capPtr = makeUnique(cap_get_pid(m_pid), cap_free);
+    if (!capPtr)
         ThrowMsg(Exception::CapError,
             "Unable to get capabilities for " << m_pid);
 
-    capStrPtr capStrProc(cap_to_text(capProc.get(), nullptr), cap_free);
-    if (!capStrProc)
+    auto capStrPtr = makeUnique(cap_to_text(capPtr.get(), nullptr), cap_free);
+    if (!capStrPtr)
         ThrowMsg(Exception::CapError,
             "Unable to get capabilities for " << m_pid);
 
@@ -95,13 +91,13 @@ bool CheckProperDrop::checkThreads()
             ThrowMsg(Exception::CapError,
                 "Unable to get capabilities for " << thread->tid);
 
-        if (cap_compare(capProc.get(), capThread.get())) {
+        if (cap_compare(capPtr.get(), capThread.get())) {
             capStrPtr capStrThread(cap_to_text(capThread.get(), nullptr), cap_free);
             if (!capStrThread)
                 ThrowMsg(Exception::CapError, "Unable to get capabilities for " << thread->tid);
 
             REPORT_THREAD_ERROR(thread->tid, "capabilities",
-                capStrProc.get(), capStrThread.get());
+                capStrPtr.get(), capStrThread.get());
         }
 
         std::string smackThread = SmackLabels::getSmackLabelFromPid(thread->tid);
