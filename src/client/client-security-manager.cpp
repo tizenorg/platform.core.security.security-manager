@@ -30,6 +30,7 @@
 #include <memory>
 #include <unordered_set>
 #include <utility>
+#include <atomic>
 
 #include <unistd.h>
 #include <grp.h>
@@ -39,6 +40,8 @@
 #include <sys/xattr.h>
 #include <sys/smack.h>
 #include <sys/capability.h>
+#include <sys/syscall.h>
+#include <signal.h>
 
 #include <dpl/log/log.h>
 #include <dpl/exception.h>
@@ -52,6 +55,8 @@
 #include <security-manager.h>
 #include <client-offline.h>
 #include <dpl/errno_string.h>
+
+#include "filesystem.h"
 
 static const char *EMPTY = "";
 
@@ -509,6 +514,86 @@ static int getAppGroups(const std::string appName, std::vector<gid_t> &groups)
     return groupNamesToGids(groupNames, groups);
 }
 
+static std::string g_app_name;
+static volatile sig_atomic_t g_threads_count = 0;
+
+static uid_t gettid()
+{
+    return syscall(SYS_gettid);
+}
+
+static void tkill(const uid_t &tid)
+{
+    syscall(SYS_tkill, tid, SIGUSR1);
+}
+
+static int label_for_self(const std::string &label)
+{
+	int fd;
+	int ret;
+	char buf[512];
+
+	snprintf(buf, 512, "/proc/%d/attr/current", gettid());
+	fd = open(buf, O_WRONLY);
+	if (fd < 0)
+		return -1;
+
+	ret = write(fd, label.c_str(), label.length());
+	close(fd);
+
+	return (ret < 0) ? -1 : 0;
+}
+
+static int syncThreadsSecurityCtx(const char *app_name)
+{
+    LogDebug("Inside syncThreads");
+
+    FS::FileNameVector files = FS::getDirsFromDirectory("/proc/self/task");
+    uid_t cur_tid = gettid();
+    g_app_name = app_name;
+
+    std::atomic_thread_fence(std::memory_order_release);
+
+    struct sigaction act;
+    struct sigaction old;
+    memset(&act, '\0', sizeof(act));
+    memset(&old, '\0', sizeof(old));
+
+    act.sa_handler = [](int signo) {
+        LogDebug("Got signal nr: " << signo);
+        std::atomic_thread_fence(std::memory_order_acquire);
+        label_for_self(SecurityManager::SmackLabels::generateAppLabel(g_app_name));
+        g_threads_count--;
+    };
+
+    if (sigaction(SIGUSR1, &act, &old) < 0) {
+        LogError("Error in sigaction()");
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    }
+
+    for (auto const &e : files) {
+        if (e.compare(".") == 0 || e.compare("..") == 0)
+            continue;
+
+        int tid = atoi(e.c_str());
+        if (tid == static_cast<int>(cur_tid))
+            continue;
+
+        g_threads_count++;
+        tkill(tid);
+    }
+
+    LogDebug("g_threads_count: " << g_threads_count);
+
+    sigaction(SIGUSR1, &old, nullptr);
+    if (g_threads_count != 0) {
+        LogError("Not all threads synced with security ctx!");
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
 SECURITY_MANAGER_API
 int security_manager_set_process_groups_from_appid(const char *app_name)
 {
@@ -594,6 +679,10 @@ int security_manager_prepare_app(const char *app_name)
     int ret;
 
     ret = security_manager_set_process_label_from_appid(app_name);
+    if (ret != SECURITY_MANAGER_SUCCESS)
+        return ret;
+
+    ret = syncThreadsSecurityCtx(app_name);
     if (ret != SECURITY_MANAGER_SUCCESS)
         return ret;
 
