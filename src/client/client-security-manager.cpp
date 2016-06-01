@@ -30,6 +30,7 @@
 #include <memory>
 #include <unordered_set>
 #include <utility>
+#include <atomic>
 
 #include <unistd.h>
 #include <grp.h>
@@ -39,6 +40,8 @@
 #include <sys/xattr.h>
 #include <sys/smack.h>
 #include <sys/capability.h>
+#include <sys/syscall.h>
+#include <signal.h>
 
 #include <dpl/log/log.h>
 #include <dpl/exception.h>
@@ -52,6 +55,8 @@
 #include <security-manager.h>
 #include <client-offline.h>
 #include <dpl/errno_string.h>
+
+#include "filesystem.h"
 
 static const char *EMPTY = "";
 
@@ -68,6 +73,11 @@ static std::map<enum lib_retcode, std::string> lib_retcode_string_map = {
                                                    "rigths to perform an operation"},
     {SECURITY_MANAGER_ERROR_ACCESS_DENIED, "Insufficient privileges"},
 };
+
+// variables & definitions for thread security attributes
+static std::string g_app_label;
+static volatile sig_atomic_t g_threads_count;
+#define MAX_SIG_WAIT_TIME   1000
 
 SECURITY_MANAGER_API
 const char *security_manager_strerror(enum lib_retcode rc)
@@ -509,6 +519,118 @@ static int getAppGroups(const std::string appName, std::vector<gid_t> &groups)
     return groupNamesToGids(groupNames, groups);
 }
 
+inline static uid_t gettid() 
+{
+    return syscall(SYS_gettid);
+}
+
+inline static int label_for_self_internal(const std::string &label)
+{
+    int fd;
+    int ret;
+    std::string path = "/proc/self/task/" + std::to_string(gettid()) + "/attr/current";
+    fd = open(path.c_str(), O_WRONLY);
+    if (fd < 0) {
+        LogError("open failed at: " << path);
+        return -1;
+    }
+    ret = write(fd, label.c_str(), label.length());
+    close(fd);
+
+    if (ret < 0) {
+        LogError("write failed: " << ret << " label: " << label);
+        return -1;
+    }
+    return 0;
+}
+
+static inline int security_manager_sync_threads_internal(const char *app_name)
+{
+    LogDebug("security_manager_sync_threads_internal called for app_name: " << app_name);
+
+    FS::FileNameVector files = FS::getDirsFromDirectory("/proc/self/task");
+    uid_t cur_tid = gettid();
+
+    g_app_label = SecurityManager::SmackLabels::generateAppLabel(app_name);
+    g_threads_count = 0;
+
+    std::atomic_thread_fence(std::memory_order_release);
+
+    struct sigaction act;
+    struct sigaction old;
+    memset(&act, '\0', sizeof(act));
+    memset(&old, '\0', sizeof(old));
+
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_RESTART;
+    act.sa_handler = [](int signo) {
+        std::atomic_thread_fence(std::memory_order_acquire);
+
+        LogDebug("caught signal number: " << signo);
+
+        if (smack_smackfs_path() != NULL)
+            if(label_for_self_internal(g_app_label) != 0) {
+                LogError("Can't set label in this thread");
+                return;
+            }
+
+        if (security_manager_drop_process_privileges() != SECURITY_MANAGER_SUCCESS) {
+            LogError("Can't drop thread capabilities");
+            return;
+        }
+
+        g_threads_count++;
+    };
+
+    if (sigaction(SIGUSR1, &act, &old) < 0) {
+        LogError("Error in sigaction()");
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    }
+
+    sigset_t blocked;
+    sigemptyset(&blocked);
+    sigaddset(&blocked, SIGUSR1);
+
+    int sent_signals_count = 0;
+
+    for (auto const &e : files) {
+        if (e.compare(".") == 0 || e.compare("..") == 0)
+            continue;
+
+        int tid = atoi(e.c_str());
+        if (tid == static_cast<int>(cur_tid))
+            continue;
+
+        sent_signals_count++;
+        syscall(SYS_tkill, tid, SIGUSR1);
+    }
+
+    LogDebug("sent_signals_count: " << sent_signals_count);
+
+    for (int i = 0; g_threads_count != sent_signals_count && i < MAX_SIG_WAIT_TIME; ++i)
+        usleep(1000);   // 1 ms
+
+    sigaction(SIGUSR1, &old, nullptr);
+
+    if (g_threads_count != sent_signals_count) {
+        LogError("Not all threads synchronized: threads left: " << g_threads_count);
+        return SECURITY_MANAGER_ERROR_UNKNOWN;
+    }
+
+    if (smack_smackfs_path() != NULL)
+        if (smack_set_label_for_self(g_app_label.c_str()) != 0) {
+            LogError("smack_set_label_for_self failed");
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+    if (security_manager_drop_process_privileges() != SECURITY_MANAGER_SUCCESS) {
+        LogError("Can't drop main thread capabilities");
+        return SECURITY_MANAGER_ERROR_UNKNOWN;
+    }
+
+    return SECURITY_MANAGER_SUCCESS;
+}
+
 SECURITY_MANAGER_API
 int security_manager_set_process_groups_from_appid(const char *app_name)
 {
@@ -593,17 +715,18 @@ int security_manager_prepare_app(const char *app_name)
     LogDebug("security_manager_prepare_app() called");
     int ret;
 
-    ret = security_manager_set_process_label_from_appid(app_name);
-    if (ret != SECURITY_MANAGER_SUCCESS)
-        return ret;
-
     ret = security_manager_set_process_groups_from_appid(app_name);
     if (ret != SECURITY_MANAGER_SUCCESS) {
         LogWarning("Unable to setup process groups for application. Privileges with direct access to resources will not work.");
         ret = SECURITY_MANAGER_SUCCESS;
     }
 
-    ret = security_manager_drop_process_privileges();
+    ret = security_manager_sync_threads_internal(app_name);
+    if (ret != SECURITY_MANAGER_SUCCESS) {
+        LogError("Can't properly setup application threads (Smack label & capabilities)");
+        return ret;
+    }
+
     return ret;
 }
 
