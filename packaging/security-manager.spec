@@ -9,6 +9,7 @@ Source1:    security-manager.manifest
 Source3:    libsecurity-manager-client.manifest
 Requires: security-manager-policy
 Requires: nether
+Requires: askuser
 Requires(post): sqlite3
 Requires(post): smack
 BuildRequires: cmake
@@ -25,6 +26,7 @@ BuildRequires: pkgconfig(sqlite3)
 BuildRequires: pkgconfig(db-util)
 BuildRequires: pkgconfig(cynara-admin)
 BuildRequires: pkgconfig(cynara-client-async)
+BuildRequires: pkgconfig(security-privilege-manager)
 BuildRequires: boost-devel
 %{?systemd_requires}
 
