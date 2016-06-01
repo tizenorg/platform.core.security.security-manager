@@ -35,6 +35,8 @@
 #include <dpl/log/log.h>
 #include <dpl/errno_string.h>
 
+#include <privilege_info.h>
+
 #include <config.h>
 #include "protocols.h"
 #include "privilege_db.h"
@@ -442,7 +444,8 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
         /* Get all application ids in the package to generate rules withing the package */
         PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
         PrivilegeDb::getInstance().GetPkgAuthorId(req.pkgName, authorId);
-        CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, cynaraUserStr, req.privileges);
+        CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, cynaraUserStr, req.privileges,
+                                                   privilege_info_is_privacy);
 
         // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
         if (isTizen2XVersion(req.tizenVersion))
@@ -563,7 +566,8 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
         if (isTizen2XVersion(req.tizenVersion))
             getTizen2XApps(tizen2XpkgsApps);
 
-        CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, cynaraUserStr, std::vector<std::string>());
+        CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, cynaraUserStr, std::vector<std::string>(),
+                                                   privilege_info_is_privacy);
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application uninstallation commited to database");
         PermissibleSet::updatePermissibleFile(req.uid, req.installationType);
@@ -713,7 +717,8 @@ int ServiceImpl::userAdd(const Credentials &creds, uid_t uidAdded, int userType)
     }
 
     try {
-        CynaraAdmin::getInstance().UserInit(uidAdded, static_cast<security_manager_user_type>(userType));
+        CynaraAdmin::getInstance().UserInit(uidAdded, static_cast<security_manager_user_type>(userType),
+                                            privilege_info_is_privacy);
     } catch (CynaraException::InvalidParam &e) {
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
     }
