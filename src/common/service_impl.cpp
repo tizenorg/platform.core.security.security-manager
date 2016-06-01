@@ -21,6 +21,7 @@
  * @author      Jacek Bukarewicz <j.bukarewicz@samsung.com>
  * @author      Rafal Krypa <r.krypa@samsung.com>
  * @author      Krzysztof Sasiak <k.sasiak@samsung.com>
+ * @author      Tomasz Swierczek <t.swierczek@samsung.com>
  * @brief       Implementation of the service methods
  */
 
@@ -44,6 +45,7 @@
 #include "smack-labels.h"
 #include "security-manager.h"
 #include "tzplatform-config.h"
+#include "privilege_info.h"
 
 #include "service_impl.h"
 
@@ -398,10 +400,29 @@ void ServiceImpl::getTizen2XApps(SmackRules::PkgsApps &pkgsApps)
     }
 }
 
+void ServiceImpl::filterPrivacyPrivileges(const std::vector<std::string> &allPrivileges,
+                                     std::vector<std::string> &privacyPrivileges)
+{
+    for (auto &privilege : allPrivileges) {
+        int ret = privilege_info_is_privacy(privilege.c_str());
+        if (ret == 1)
+            privacyPrivileges.push_back(privilege);
+        else
+            LogDebug("For privilege " << privilege << " privilege_info_is_privacy returned " << ret);
+    }
+}
+
+void ServiceImpl::getPrivacyPrivileges(std::vector<std::string> &privacyPrivileges)
+{
+//TODO fill this
+    privacyPrivileges = std::vector<std::string>();
+}
+
 int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
 {
     std::vector<std::string> addedPermissions;
     std::vector<std::string> removedPermissions;
+    std::vector<std::string> privacyPermissions;
     std::vector<std::string> pkgContents;
     std::string cynaraUserStr;
     std::string pkgBasePath;
@@ -442,7 +463,10 @@ int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
         /* Get all application ids in the package to generate rules withing the package */
         PrivilegeDb::getInstance().GetPkgApps(req.pkgName, pkgContents);
         PrivilegeDb::getInstance().GetPkgAuthorId(req.pkgName, authorId);
-        CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, cynaraUserStr, req.privileges);
+        CynaraAdmin::getInstance().UpdateAppPolicy(appLabel, cynaraUserStr, req.privileges,
+                                                   [](const char* prv){
+                                                      return privilege_info_is_privacy(prv) == 1;
+                                                   });
 
         // if app is targetted to Tizen 2.X, give other 2.X apps RO rules to it's shared dir
         if (isTizen2XVersion(req.tizenVersion))
@@ -563,7 +587,10 @@ int ServiceImpl::appUninstall(const Credentials &creds, app_inst_req &&req)
         if (isTizen2XVersion(req.tizenVersion))
             getTizen2XApps(tizen2XpkgsApps);
 
-        CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, cynaraUserStr, std::vector<std::string>());
+        CynaraAdmin::getInstance().UpdateAppPolicy(smackLabel, cynaraUserStr, std::vector<std::string>(),
+                                                   [](const char*){
+                                                      return false;
+                                                   });
         PrivilegeDb::getInstance().CommitTransaction();
         LogDebug("Application uninstallation commited to database");
         PermissibleSet::updatePermissibleFile(req.uid, req.installationType);
@@ -713,7 +740,11 @@ int ServiceImpl::userAdd(const Credentials &creds, uid_t uidAdded, int userType)
     }
 
     try {
-        CynaraAdmin::getInstance().UserInit(uidAdded, static_cast<security_manager_user_type>(userType));
+        CynaraAdmin::getInstance().UserInit(uidAdded,
+                            static_cast<security_manager_user_type>(userType),
+                            [](const char* prv){
+                               return privilege_info_is_privacy(prv) == 1;
+                              });
     } catch (CynaraException::InvalidParam &e) {
         return SECURITY_MANAGER_ERROR_INPUT_PARAM;
     }
