@@ -337,6 +337,7 @@ void CynaraAdmin::UpdateAppPolicy(
         static_cast<int>(CynaraAdminPolicy::Operation::Allow),
         policies);
 
+#ifdef ASKUSER_ENABLED
     int askUserPolicy = convertToPolicyType(PrivacyDescription);
 
     std::vector<std::string> privacyPrivileges;
@@ -359,7 +360,9 @@ void CynaraAdmin::UpdateAppPolicy(
         calcPolicies(user, privacyPrivileges, Buckets.at(Bucket::PRIVACY_MANAGER),
             askUserPolicy, policies);
     }
-
+#else
+    (void)isPrivacy;
+#endif
     SetPolicies(policies);
 }
 
@@ -411,6 +414,7 @@ void CynaraAdmin::UserInit(uid_t uid, security_manager_user_type userType,
                                             Buckets.at(bucket),
                                             Buckets.at(Bucket::MAIN)));
 
+#ifdef ASKUSER_ENABLED
     // for each global app: retrieve its privacy-related privileges and set
     // their policy in PRIVACY_MANAGER bucket to "Ask user"
     int askUserPolicy = convertToPolicyType(PrivacyDescription);
@@ -426,6 +430,9 @@ void CynaraAdmin::UserInit(uid_t uid, security_manager_user_type userType,
                 policy.privilege,
                 askUserPolicy,
                 Buckets.at(Bucket::PRIVACY_MANAGER)));
+#else
+    (void)isPrivacy;
+#endif
 
     CynaraAdmin::getInstance().SetPolicies(policies);
 }

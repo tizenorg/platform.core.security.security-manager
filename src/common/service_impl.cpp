@@ -402,6 +402,7 @@ void ServiceImpl::getTizen2XApps(SmackRules::PkgsApps &pkgsApps)
 
 bool ServiceImpl::isPrivilegePrivacy(const char* privilege)
 {
+#ifdef ASKUSER_ENABLED
     int ret = privilege_info_is_privacy(privilege);
     if (ret == 1)
         return true;
@@ -411,6 +412,10 @@ bool ServiceImpl::isPrivilegePrivacy(const char* privilege)
     // However, currently privielge-checker seems to return -1 with so many real prvileges
     // that it would make ask-user testing impossible.
     return false;
+#else
+    (void)privilege;
+    return false;
+#endif
 }
 
 int ServiceImpl::appInstall(const Credentials &creds, app_inst_req &&req)
