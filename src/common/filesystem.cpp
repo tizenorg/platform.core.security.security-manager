@@ -42,7 +42,17 @@
 namespace SecurityManager {
 namespace FS {
 
+FileNameVector getDirsFromDirectory(const std::string &path)
+{
+    return getDirContents(path, (const unsigned char)S_IFDIR);
+}
+
 FileNameVector getFilesFromDirectory(const std::string &path)
+{
+    return getDirContents(path, (const unsigned char)S_IFREG);
+}
+
+FileNameVector getDirContents(const std::string &path, const unsigned char &d_type)
 {
     FileNameVector result;
     dirent tmp, *ptr;
@@ -68,9 +78,8 @@ FileNameVector getFilesFromDirectory(const std::string &path)
             ThrowMsg(FS::Exception::FileError, "Error reading: " << ptr->d_name);
         }
 
-        if (S_ISREG(finfo.st_mode)) {
+        if ((finfo.st_mode & S_IFMT) == d_type)
             result.push_back(ptr->d_name);
-        }
     }
 
     return result;
