@@ -180,6 +180,24 @@ private:
      * @param  creds  credentials of the requesting process
      */
     void processPathsRegister(MessageBuffer &recv, MessageBuffer &send, const Credentials &creds);
+
+    /**
+     * Process prepare file for memory sharing
+     *
+     * @param  recv   Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  creds  credentials of the requesting process
+     */
+    void processShmAppName(MessageBuffer &recv, MessageBuffer &send, const Credentials &creds);
+
+    /**
+     * Process prepare file for memory sharing
+     *
+     * @param  recv   Raw received data buffer
+     * @param  send   Raw data buffer to be sent
+     * @param  creds  credentials of the requesting process
+     */
+    void processShmLabel(MessageBuffer &recv, MessageBuffer &send, const Credentials &creds);
 };
 
 } // namespace SecurityManager

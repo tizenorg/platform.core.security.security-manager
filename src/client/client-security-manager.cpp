@@ -37,12 +37,14 @@
 #include <unistd.h>
 #include <grp.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/xattr.h>
 #include <sys/smack.h>
 #include <sys/capability.h>
 #include <sys/syscall.h>
+#include <sys/mman.h>
 #include <signal.h>
 
 #include <dpl/log/log.h>
@@ -1551,3 +1553,34 @@ int security_manager_paths_register(const path_req *p_req)
         return retval;
     });
 }
+
+SECURITY_MANAGER_API
+int security_manager_prepare_shm_file_for_app(const char *name, int oflag, int mode, const char *app_name)
+{
+    using namespace SecurityManager;
+    return try_catch([&]() -> int {
+        if (!name || !app_name)
+            return -1;
+
+        int fd = shm_open(name, oflag, mode);
+        if (fd < 0)
+            return -1;
+
+        MessageBuffer send, recv;
+        Serialization::Serialize(send,
+                                 (int)SecurityModuleCall::SHM_APP_NAME,
+                                 std::string(name),
+                                 std::string(app_name));
+
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+
+        if (retval != SECURITY_MANAGER_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return -1;
+        }
+
+        Deserialization::Deserialize(recv, retval); // ignore retval as we must return fd
+        return fd;
+    });
+}
+

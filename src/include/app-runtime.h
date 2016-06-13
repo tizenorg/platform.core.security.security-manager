@@ -167,6 +167,18 @@ int security_manager_identify_app_from_pid(pid_t pid, char **pkg_id, char **app_
 int security_manager_app_has_privilege(const char *app_id, const char *privilege,
                                        uid_t uid, int *result);
 
+/**
+ * This function create descriptor that may be used as shared memory segment
+ * with app_id application.
+ *
+ * \param[in]  name       Unique identifaction of shared memory segment
+ * \param[in]  oflag      This value is passed to shm_open as second parameter (man 3 shm_open for details)
+ * \param[in]  mode       This value is passed to shm_open as third parameter (man 3 shm_open for details)
+ * \param[in]  app_id     Application identifier
+ * \return file descriptor
+ */
+int security_manager_prepare_shm_file_for_app(const char *name, int oflag, mode_t mode, const char *app_id);
+
 #ifdef __cplusplus
 }
 #endif
