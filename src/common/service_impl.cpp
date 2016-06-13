@@ -29,6 +29,8 @@
 #include <pwd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #include <cstring>
 #include <algorithm>
@@ -1437,6 +1439,52 @@ int ServiceImpl::pathsRegister(const Credentials &creds, path_req req)
                       req.pkgName,
                       static_cast<app_install_type>(req.installationType),
                       req.uid);
+}
+
+int ServiceImpl::shmAppName(const Credentials &creds, const std::string &name, const std::string &appName)
+{
+    try {
+        if (name.empty() || appName.empty())
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+        if (!PrivilegeDb::AppNameExists(appName)) {
+            LogError("Unknown application id: " << appName);
+            return SECURITY_MANAGER_ERROR_NO_SUCH_OBJECT;
+        }
+
+        if (!authenticate(creds, Config::PRIVILEGE_SHM)) {
+            LogError("Request from uid=" << creds.uid << ", Smack=" << creds.label << " for shm denied");
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        }
+
+        std::string label = SmackLabels::generateAppLabel(appName);
+
+        int fd = shm_open(name.c_str(), O_RDWR, 0);
+
+        if (fd < 0) {
+            LogError("Error in shm_open");
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+        }
+
+        std::unique_ptr<int, void(*)(int *)> ptr(&fd, [](int *ptr) { if(ptr && (*ptr)>=0) close(*ptr); });
+
+        if (creds.label != SmackLabels::getSmackLabelFromFd(fd)) {
+            // You don't have permission to access this file.
+            return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
+        }
+
+        SmackLabels::setSmackLabelForFd(fd, label);
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while querying Cynara for permissions: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    } catch (const SmackException::Base &e) {
+        LogError("Error while set/get smack label in /dev/shm: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation failed: " << e.what());
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+    return SECURITY_MANAGER_SUCCESS;
 }
 
 } /* namespace SecurityManager */

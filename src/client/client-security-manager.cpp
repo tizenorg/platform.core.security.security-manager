@@ -1551,3 +1551,34 @@ int security_manager_paths_register(const path_req *p_req)
         return retval;
     });
 }
+
+SECURITY_MANAGER_API
+int security_manager_prepare_shm_file_for_app(const char *name, int oflag, int mode, const char *app_name)
+{
+    using namespace SecurityManager;
+    return try_catch([&]() -> int {
+        if (!name || !app_name)
+            return -1;
+
+        int fd = shm_open(name, oflag, mode);
+        if (fd < 0)
+            return -1;
+
+        MessageBuffer send, recv;
+        Serialization::Serialize(send,
+                                 (int)SecurityModuleCall::SHM_APP_NAME,
+                                 std::string(name),
+                                 std::string(app_name));
+
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+
+        if (retval != SECURITY_MANAGER_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return -1;
+        }
+
+        Deserialization::Deserialize(recv, retval); // ignore retval as we must return fd
+        return fd;
+    });
+}
+
