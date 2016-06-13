@@ -147,12 +147,28 @@ std::string getSmackLabelFromPid(pid_t pid);
 std::string getSmackLabelFromPath(const std::string &path);
 
 /**
+ * Returns smack label for given file descriptor
+ *
+ * @param[in] fd file descriptor
+ * @return resulting Smack label
+ */
+std::string getSmackLabelFromFd(int fd);
+
+/**
  * Returns smack label for current process
  *
  * @param[in] sock socket file descriptor
  * @return resulting Smack label
  */
 std::string getSmackLabelFromSelf(void);
+
+/**
+ * Set up smack label for given file descriptor
+ *
+ * @param[in] fd file descriptor
+ * @return 0 on success. -1 on error
+ */
+void setSmackLabelForFd(int fd, const std::string &label);
 
 } // namespace SmackLabels
 } // namespace SecurityManager
