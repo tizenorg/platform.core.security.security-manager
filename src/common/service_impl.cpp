@@ -28,6 +28,9 @@
 #include <limits.h>
 #include <pwd.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <cstring>
 #include <algorithm>
@@ -1377,6 +1380,61 @@ int ServiceImpl::pathsRegister(const Credentials &creds, path_req req)
                       req.pkgName,
                       static_cast<app_install_type>(req.installationType),
                       req.uid);
+}
+
+int ServiceImpl::shmAppName(const Credentials &creds, const std::string &path, const std::string &appName)
+{
+    if (path.empty() || appName.empty())
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    try {
+        std::string label = SmackLabels::generateAppLabel(appName);
+        return shmLabel(creds, path, label);
+    } catch (const SmackException::Base &e) {
+        LogError("Error while set/get smack label in /dev/shm: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation failed: " << e.what());
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+}
+
+int ServiceImpl::shmLabel(const Credentials &creds, const std::string &path, const std::string &label)
+{
+    if (path.empty() || label.empty())
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+    try {
+        if (!authenticate(creds, Config::PRIVILEGE_SHM)) {
+            LogError("Request from uid=" << creds.uid << ", Smack=" << creds.label <<
+                " for shm denied");
+            return SECURITY_MANAGER_ERROR_AUTHENTICATION_FAILED;
+        }
+
+        int fd = shm_open(path.c_str(), O_RDWR, 0);
+        if (fd < 0) {
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+        }
+
+        if (creds.label != SmackLabels::getSmackLabelFromFd(fd)) {
+            // You don't have permission to access this file.
+            shm_unlink(path.c_str());
+            return SECURITY_MANAGER_ERROR_ACCESS_DENIED;
+        }
+
+        SmackLabels::setSmackLabelForFd(fd, label);
+        shm_unlink(path.c_str());
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while querying Cynara for permissions: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    } catch (const SmackException::Base &e) {
+        LogError("Error while set/get smack label in /dev/shm: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    } catch (const std::bad_alloc &e) {
+        LogError("Memory allocation failed: " << e.what());
+        return SECURITY_MANAGER_ERROR_MEMORY;
+    }
+    return SECURITY_MANAGER_SUCCESS;
 }
 
 } /* namespace SecurityManager */

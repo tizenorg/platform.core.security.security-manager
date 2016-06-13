@@ -1424,3 +1424,63 @@ int security_manager_paths_register(const path_req *p_req)
         return retval;
     });
 }
+
+SECURITY_MANAGER_API
+int security_manager_prepare_shm_file_for_app(const char *fname, const char *app_name)
+{
+    using namespace SecurityManager;
+    return try_catch([&]() -> int {
+        if (!fname || !app_name)
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+        MessageBuffer send, recv;
+        Serialization::Serialize(send,
+                                 (int)SecurityModuleCall::SHM_APP_NAME,
+                                 std::string(fname),
+                                 std::string(app_name));
+
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+
+        if (retval != SECURITY_MANAGER_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return retval;
+        }
+
+        Deserialization::Deserialize(recv, retval);
+        return retval;
+    });
+}
+
+SECURITY_MANAGER_API
+int security_manager_prepare_shm_file_for_socket_client(const char *fname, int socket)
+{
+    using namespace SecurityManager;
+    return try_catch([&]() -> int {
+        if (!fname)
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+
+        std::string label;
+        try {
+            label = SmackLabels::getSmackLabelFromSocket(socket);
+        } catch (...) {
+            return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+        }
+
+        MessageBuffer send, recv;
+        Serialization::Serialize(send,
+                                 (int)SecurityModuleCall::SHM_LABEL,
+                                 std::string(fname),
+                                 std::string(label));
+
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+
+        if (retval != SECURITY_MANAGER_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return retval;
+        }
+
+        Deserialization::Deserialize(recv, retval);
+        return retval;
+
+    });
+}
