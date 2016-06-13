@@ -180,6 +180,8 @@ private:
      * @param  creds  credentials of the requesting process
      */
     void processPathsRegister(MessageBuffer &recv, MessageBuffer &send, const Credentials &creds);
+    void processShmAppName(MessageBuffer &recv, MessageBuffer &send, const Credentials &creds);
+    void processShmLabel(MessageBuffer &recv, MessageBuffer &send, const Credentials &creds);
 };
 
 } // namespace SecurityManager

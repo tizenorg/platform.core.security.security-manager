@@ -167,6 +167,9 @@ int security_manager_identify_app_from_pid(pid_t pid, char **pkg_id, char **app_
 int security_manager_app_has_privilege(const char *app_id, const char *privilege,
                                        uid_t uid, int *result);
 
+int security_manager_prepare_shm_file_for_app(const char *fname, const char *app_id);
+int security_manager_prepare_shm_file_for_socket_client(const char *fname, int socket);
+
 #ifdef __cplusplus
 }
 #endif

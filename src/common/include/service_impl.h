@@ -253,6 +253,30 @@ public:
      * @return API return code, as defined in protocols.h
      */
     int pathsRegister(const Credentials &creds, path_req p_req);
+
+    /**
+     * Request for changing label on file created by shm_open.
+     *
+     * @param[in] creds credentials of the requesting process
+     * @param[in] appName name of the application
+     *
+     * @return API return code, as defined in protocols.h
+     */
+    int shmAppName(const Credentials &creds,
+                   const std::string &path,
+                   const std::string &appName);
+
+    /**
+     * Request for changing label on file created by shm_open.
+     *
+     * @param[in] creds credentials of the requesting process
+     * @param[in] label is the smack label that should be set on file
+     *
+     * @return API return code, as defined in protocols.h
+     */
+    int shmLabel(const Credentials &creds,
+                 const std::string &path,
+                 const std::string &label);
 };
 
 } /* namespace SecurityManager */

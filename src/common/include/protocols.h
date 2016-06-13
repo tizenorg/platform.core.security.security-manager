@@ -85,6 +85,8 @@ enum class SecurityModuleCall
     GROUPS_GET,
     APP_HAS_PRIVILEGE,
     PATHS_REGISTER,
+    SHM_APP_NAME,
+    SHM_LABEL,
     NOOP = 0x90,
 };
 
