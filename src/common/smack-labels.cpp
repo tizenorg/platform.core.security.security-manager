@@ -279,6 +279,11 @@ std::string getSmackLabelFromPath(const std::string &path)
     return getSmackLabel(&smack_new_label_from_path, path.c_str(), XATTR_NAME_SMACK, true);
 }
 
+std::string getSmackLabelFromFd(int fd)
+{
+    return getSmackLabel(&smack_new_label_from_file, fd, XATTR_NAME_SMACK);
+}
+
 std::string getSmackLabelFromSelf(void)
 {
     return getSmackLabel(&smack_new_label_from_self);
@@ -311,6 +316,14 @@ std::string generateAuthorLabel(const int authorId)
     }
 
     return "User::Author::" + std::to_string(authorId);
+}
+
+void setSmackLabelForFd(int fd, const std::string &label) {
+    // should we use smack_set_label_for_file here?
+    if (fsetxattr(fd, XATTR_NAME_SMACK, label.c_str(), label.length(), 0)) {
+        LogError("fsetxattr failed.");
+        ThrowMsg(SmackException::FileError, "fsetxattr failed.");
+    }
 }
 
 } // namespace SmackLabels
