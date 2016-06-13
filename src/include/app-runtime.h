@@ -167,6 +167,35 @@ int security_manager_identify_app_from_pid(pid_t pid, char **pkg_id, char **app_
 int security_manager_app_has_privilege(const char *app_id, const char *privilege,
                                        uid_t uid, int *result);
 
+/**
+ * This function changes file label
+ *
+ * File must exists. File must have the same label as caller of this function.
+ *
+ * Use this function to change label on file. After usage of this function file may
+ * be open by application connected with app_id.
+ *
+ * \param[in]  fname      File name used by mmap
+ * \param[in]  app_id     Application identifier
+ * \return API return code or error code
+ */
+int security_manager_prepare_shm_file_for_app(const char *fname, const char *app_id);
+
+/**
+ * This function changes file label
+ *
+ * File must exists. File must have the same label as caller of this function.
+ *
+ * This function changes label on file. The new label is taken from socket (so the
+ * service does not need to identify client/extract smack label and app_id and pass
+ * it to security-manager).
+ *
+ * \param[in]  fname      File name used by mmap
+ * \param[in]  socket     Descriptor to socket
+ * \return API return code or error code
+ */
+int security_manager_prepare_shm_file_for_socket_client(const char *fname, int socket);
+
 #ifdef __cplusplus
 }
 #endif

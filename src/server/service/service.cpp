@@ -128,6 +128,12 @@ bool Service::processOne(const ConnectionID &conn, MessageBuffer &buffer,
                 case SecurityModuleCall::PATHS_REGISTER:
                     processPathsRegister(buffer, send, creds);
                     break;
+                case SecurityModuleCall::SHM_APP_NAME:
+                    processShmAppName(buffer, send, creds);
+                    break;
+                case SecurityModuleCall::SHM_LABEL:
+                    processShmLabel(buffer, send, creds);
+                    break;
                 default:
                     LogError("Invalid call: " << call_type_int);
                     Throw(ServiceException::InvalidAction);
@@ -354,4 +360,21 @@ void Service::processPathsRegister(MessageBuffer &recv, MessageBuffer &send, con
     int ret = serviceImpl.pathsRegister(creds, std::move(req));
     Serialization::Serialize(send, ret);
 }
+
+void Service::processShmAppName(MessageBuffer &recv, MessageBuffer &send, const Credentials &creds)
+{
+    std::string path, name;
+    Deserialization::Deserialize(recv, path, name);
+    int ret = serviceImpl.shmAppName(creds, path, name);
+    Serialization::Serialize(send, ret);
+}
+
+void Service::processShmLabel(MessageBuffer &recv, MessageBuffer &send, const Credentials &creds)
+{
+    std::string path, label;
+    Deserialization::Deserialize(recv, path, label);
+    int ret = serviceImpl.shmLabel(creds, path, label);
+    Serialization::Serialize(send, ret);
+}
+
 } // namespace SecurityManager
