@@ -29,8 +29,8 @@ namespace SecurityManager {
 namespace Config {
 
 const std::string PRIVILEGE_VERSION =
-#ifdef PRIVILEGE_VERSION
-        PRIVILEGE_VERSION
+#ifdef PRIVILEGE_VERSION_STRING
+        PRIVILEGE_VERSION_STRING
 #else
         "3.0"
 #endif
