@@ -158,7 +158,7 @@ fi
 %defattr(-,root,root,-)
 %attr(755,root,root) %{_bindir}/security-manager-migration
 %attr(755,root,root) %{_bindir}/security-manager
-%attr(755,root,root) %{_bindir}/security-manager-cmd
+%attr(750,root,root) %{_bindir}/security-manager-cmd
 %attr(755,root,root) %{_bindir}/security-manager-cleanup
 %attr(755,root,root) %{_sysconfdir}/gumd/useradd.d/50_security-manager-add.post
 %attr(755,root,root) %{_sysconfdir}/gumd/userdel.d/50_security-manager-remove.pre
@@ -199,4 +199,4 @@ fi
 %files -n security-manager-policy
 %manifest %{name}.manifest
 %{_datadir}/security-manager/policy
-%attr(755,root,root) %{_bindir}/security-manager-policy-reload
+%attr(750,root,root) %{_bindir}/security-manager-policy-reload
