@@ -1207,6 +1207,65 @@ int security_manager_groups_get(char ***groups, size_t *groups_count)
 }
 
 SECURITY_MANAGER_API
+int security_manager_groups_get_for_user(uid_t uid, char ***groups, size_t *groups_count)
+{
+    using namespace SecurityManager;
+    if (!groups || !groups_count)
+        return SECURITY_MANAGER_ERROR_INPUT_PARAM;
+    return try_catch([&]() -> int {
+        MessageBuffer send, recv;
+
+        //put data into buffer
+        Serialization::Serialize(send, static_cast<int>(SecurityModuleCall::GROUPS_FOR_UID));
+        Serialization::Serialize(send, uid);
+
+        //send buffer to server
+        int retval = sendToServer(SERVICE_SOCKET, send.Pop(), recv);
+        if (retval != SECURITY_MANAGER_SUCCESS) {
+            LogError("Error in sendToServer. Error code: " << retval);
+            return retval;
+        }
+
+        //receive response from server
+        Deserialization::Deserialize(recv, retval);
+
+        if (retval != SECURITY_MANAGER_SUCCESS) {
+            return retval;
+        }
+
+        std::vector<std::string> vgroups;
+        Deserialization::Deserialize(recv, vgroups);
+        const auto vgroups_size = vgroups.size();
+        LogInfo("Number of groups: " << vgroups_size);
+
+        std::unique_ptr<char*[], std::function<void(char **)>> array(
+                static_cast<char **>(calloc(vgroups_size, sizeof(char *))),
+                std::bind(security_manager_groups_free, std::placeholders::_1, vgroups_size));
+
+        if (array == nullptr)
+            return SECURITY_MANAGER_ERROR_MEMORY;
+
+        for (size_t i = 0; i < vgroups_size; ++i) {
+            const auto &group = vgroups.at(i);
+
+            if (group.empty()) {
+                LogError("Unexpected empty group");
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+            }
+
+            array[i] = strdup(group.c_str());
+            if (array[i] == nullptr)
+                return SECURITY_MANAGER_ERROR_MEMORY;
+        }
+
+        *groups_count = vgroups_size;
+        *groups = array.release();
+
+        return SECURITY_MANAGER_SUCCESS;
+    });
+}
+
+SECURITY_MANAGER_API
 void security_manager_groups_free(char **groups, size_t groups_count)
 {
     if (groups == nullptr)
