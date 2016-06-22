@@ -525,4 +525,18 @@ void PrivilegeDb::GetGroups(std::vector<std::string> &groups)
     });
 }
 
+void PrivilegeDb::GetGroupsRelatedPrivileges(std::vector<std::tuple<std::string, std::string>> &privileges)
+{
+    try_catch<void>([&] {
+        auto command = getStatement(StmtType::EGetGroups);
+
+        while (command->Step()) {
+            const auto &groupName = command->GetColumnString(0);
+            const auto &privName = command->GetColumnString(1);
+            LogDebug("Privilege " << privName << " Group " << groupName);
+            privileges.push_back(std::make_tuple(groupName, privName));
+        };
+    });
+}
+
 } //namespace SecurityManager

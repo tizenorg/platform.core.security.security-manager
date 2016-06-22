@@ -83,6 +83,7 @@ enum class SecurityModuleCall
     GET_CONF_POLICY_SELF,
     POLICY_GET_DESCRIPTIONS,
     GROUPS_GET,
+    GROUPS_FOR_UID,
     APP_HAS_PRIVILEGE,
     PATHS_REGISTER,
     NOOP = 0x90,

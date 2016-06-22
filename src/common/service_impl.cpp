@@ -1100,6 +1100,60 @@ int ServiceImpl::policyGetGroups(std::vector<std::string> &groups)
     return ret;
 }
 
+int ServiceImpl::policyGroupsForUid(uid_t uid, std::vector<std::string> &groups)
+{
+    int ret = SECURITY_MANAGER_SUCCESS;
+
+    try {
+        auto userType = CynaraAdmin::getInstance().UserType(uid);
+
+        if (userType == SM_USER_TYPE_NONE) {
+            return SECURITY_MANAGER_ERROR_NO_SUCH_OBJECT;
+        }
+
+        auto uidStr = std::to_string(uid);
+        int result;
+        std::string resultExtra;
+        std::string bucket;
+
+        switch (userType) {
+            case SM_USER_TYPE_NORMAL:
+                bucket = CynaraAdmin::Buckets.at(Bucket::USER_TYPE_NORMAL);
+                break;
+            case SM_USER_TYPE_ADMIN:
+                bucket = CynaraAdmin::Buckets.at(Bucket::USER_TYPE_ADMIN);
+                break;
+            case SM_USER_TYPE_GUEST:
+                bucket = CynaraAdmin::Buckets.at(Bucket::USER_TYPE_GUEST);
+                break;
+            case SM_USER_TYPE_SYSTEM:
+                bucket = CynaraAdmin::Buckets.at(Bucket::USER_TYPE_SYSTEM);
+                break;
+            default:
+                // Improperly configured
+                return SECURITY_MANAGER_ERROR_UNKNOWN;
+        }
+
+        std::vector<std::tuple<std::string, std::string>> privileges;
+        PrivilegeDb::getInstance().GetGroupsRelatedPrivileges(privileges);
+
+        for (const auto &priv : privileges) {
+            CynaraAdmin::getInstance().Check(CYNARA_ADMIN_ANY, uidStr, std::get<1>(priv),
+                                             bucket, result, resultExtra, true);
+            if (result == CYNARA_ADMIN_ALLOW)
+                groups.push_back(std::get<0>(priv));
+        }
+    } catch (const CynaraException::Base &e) {
+        LogError("Error while getting user type from Cynara: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    } catch (const PrivilegeDb::Exception::Base &e) {
+        LogError("Error while getting groups from database: " << e.DumpToString());
+        return SECURITY_MANAGER_ERROR_SERVER_ERROR;
+    }
+
+    return ret;
+}
+
 int ServiceImpl::appHasPrivilege(
         std::string appName,
         std::string privilege,
