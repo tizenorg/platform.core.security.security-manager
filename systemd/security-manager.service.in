@@ -1,4 +1,6 @@
 [Unit]
+DefaultDependencies=false
+After=local-fs.target
 Description=Start the security manager
 
 [Service]
@@ -7,3 +9,6 @@ ExecStart=@BIN_INSTALL_DIR@/security-manager
 Sockets=security-manager.socket
 Restart=always
 SmackProcessLabel=System::Privileged
+
+[Install]
+WantedBy=sysinit.target
