@@ -129,7 +129,7 @@ private:
         { StmtType::EGetUserApps, "SELECT name FROM app WHERE uid=?" },
         { StmtType::EGetTizen2XPackages,  "SELECT DISTINCT pkg_name FROM app_pkg_view WHERE version LIKE '2.%%'" },
         { StmtType::EGetAppsInPkg, " SELECT app_name FROM app_pkg_view WHERE pkg_name = ?" },
-        { StmtType::EGetGroups, "SELECT DISTINCT group_name FROM privilege_group_view" },
+        { StmtType::EGetGroups, "SELECT DISTINCT group_name, privilege_name FROM privilege_group_view" },
         { StmtType::EGetPkgAuthorId, "SELECT author_id FROM pkg WHERE name = ? AND author_id IS NOT NULL"},
         { StmtType::EAuthorIdExists, "SELECT count(*) FROM author where author_id=?"},
         { StmtType::EGetAuthorIdByName, "SELECT author_id FROM author WHERE name=?"},
@@ -508,6 +508,16 @@ public:
      * @exception DB::SqlConnection::Exception::ConstraintError on constraint violation
      */
     void GetGroups(std::vector<std::string> &grp_names);
+
+    /**
+     * Retrieve vector of tuples with group_name (1st value) and privilege_name (2nd value)
+     *
+     * @param[out] privileges - list of privileges
+     * @exception DB::SqlConnection::Exception::InternalError on internal error
+     * @exception DB::SqlConnection::Exception::ConstraintError on constraint violation
+     */
+    void GetGroupsRelatedPrivileges(std::vector<std::tuple<std::string, std::string>> &privileges);
+
 };
 
 } //namespace SecurityManager

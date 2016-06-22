@@ -210,6 +210,16 @@ public:
     int policyGetGroups(std::vector<std::string> &groups);
 
     /**
+     * Process getting resources group list for given uid.
+     *
+     * @param[in] uid uid to return the groups for
+     * @param[out] groups empty vector for group strings
+     *
+     * @return API return code, as defined in protocols.h
+     */;
+    int policyGroupsForUid(uid_t uid, std::vector<std::string> &groups);
+
+    /**
      * Process checking application's privilege access based on app_name
      *
      * @param[in]  appName application identifier
