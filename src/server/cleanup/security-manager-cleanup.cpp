@@ -47,7 +47,14 @@ bool createFile(const std::string &path)
     mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
     fd = TEMP_FAILURE_RETRY(creat(path.c_str(), mode));
     if (fd == -1) {
-        std::cerr << "Creating file " << path << " failed with " << SecurityManager::GetErrnoString(errno);
+        try {
+            std::string error = SecurityManager::GetErrnoString(errno);
+            std::cerr << "Creating file " << path << " failed with " << error;
+        } catch (const std::exception &e) {
+            std::cerr << "Creating file " << path << " failed with " << e.what();
+        } catch (...) {
+            std::cerr << "Creating file " << path << " failed with unknown error";
+        }
         return false;
     }
     close(fd);
