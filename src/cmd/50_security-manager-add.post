@@ -1,1 +1,9 @@
 security-manager-cmd --manage-users=add --uid=$2 --usertype=$5
+mkdir -p /opt/var/security-manager/$1
+chsmack -a _ /opt/var/security-manager/$1
+chmod 700 /opt/var/security-manager/$1
+chown $1 /opt/var/security-manager/$1/
+touch /opt/var/security-manager/$1/apps-names
+chmod 444 /opt/var/security-manager/$1/apps-names
+chsmack -a _ /opt/var/security-manager/$1/apps-names
+chown $1 /opt/var/security-manager/$1/apps-names
