@@ -431,13 +431,24 @@ static int groupNamesToGids(const std::vector<std::string> &groupNames,
     std::vector<gid_t> &groups)
 {
     groups.reserve(groupNames.size());
+
+    struct group grp;
+    struct group* grpptr = nullptr;
+    char grpbuff[1024];
+
     for (const auto &groupName : groupNames) {
-        struct group *grp = getgrnam(groupName.c_str());
-        if (grp == nullptr) {
+        int err = 0;
+
+        int ret = getgrnam_r(groupName.c_str(), &grp, grpbuff, sizeof(grpbuff), &grpptr);
+
+        if (ret == 0 && grpptr == nullptr) {
             LogError("No such group: " << groupName);
             return SECURITY_MANAGER_ERROR_UNKNOWN;
+        } else if (ret != 0 && grpptr == nullptr) {
+            LogError("Error in getgrnam_r(): " << GetErrnoString(err));
+            return SECURITY_MANAGER_ERROR_UNKNOWN;
         }
-        groups.push_back(grp->gr_gid);
+        groups.push_back(grpptr->gr_gid);
     }
 
     return SECURITY_MANAGER_SUCCESS;
